@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <title>Cadastro de Animal</title>
+    <style>
+        body {font-family: sans-serif; max-width: 600px; margin: 20px auto;}
+        label {display:block; margin-top: 10px;}
+        input, select {width: 100%; padding: 8px;margin-top: 5px;}
+        button {margin-top: 20px; padding: 10px 20px; cursor: pointer;}
+        .alert{color: green; font-weight: bold;}
+        </style>
+    </head>
+    <body>
+        <h1>Novo Animal</h1>
+        {% if mensagem %}
+        <p class="alert">{{ mensagem }}</p>
+        {% endif %}
+        <form method="POST" action="/cadastro">
+        <label>Numero do Brinco:</label>
+        <input type="text" name="brinco" required placeholder="Ex: A-100">
+        <label>Sexo:</label>
+            <select name="sexo" required>
+                <option value="M">Macho</option>
+                <option value="F">Fêmea</option>                
+            </select>
+            <label>Data De Compra/Nascimento:</label>
+            <input type="date" name="data_compra" required>
+
+            <label>Preço de Compra (R$):</label>
+            <input type="number" step="0.01" name="preco_compra" required placeholder="0.00">
+            <label>Peso de Compra (Kg):</label>
+            <input type="number" step="0.01" name="peso_compra" required placeholder="0.00">
+            <button type="submit">Salvar Animal</button>
+        </form>
+        <br>
+        <a href="/">Voltar ao Menu</a>
+    </body>
