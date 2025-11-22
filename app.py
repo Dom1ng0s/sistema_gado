@@ -25,10 +25,10 @@ def ver_animal(id_animal):
 
     if conn:
         cursor = conn.cursor()
-        cursor.execute("select * from animais where id = %s",(id_animal))
+        cursor.execute("select * from animais where id = %s",(id_animal,))
         animal = cursor.fetchone()
 
-        cursor.execute("select * from pesagens where animal_id = %s",(id_animal))
+        cursor.execute("select * from pesagens where animal_id = %s",(id_animal,))
         pesagens = cursor.fetchall()
 
         cursor.close()
@@ -70,3 +70,7 @@ def cadastro():
                 mensagem = f"Erro ao salvar: {e}"
             finally:
                 close_db_connection(conn)
+    return render_template("cadastro.html", mensagem=mensagem)
+
+if __name__ == '__main__':
+    app.run(debug=True)

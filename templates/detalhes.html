@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Ficha do Animal</title>
+    <style>
+        .card { border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; background: #f9f9f9; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        .btn-voltar { text-decoration: none; background: #333; color: white; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Ficha Técnica: Animal {{ animal[1] }}</h1> 
+    
+    <div class="card">
+        <p><strong>Sexo:</strong> {{ animal[2] }}</p>
+        <p><strong>Data de Compra:</strong> {{ animal[3] }}</p>
+        <p><strong>Preço de Compra:</strong> R$ {{ animal[4] }}</p>
+    </div>
+
+    <h2>Histórico de Peso</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Data da Pesagem</th>
+                <th>Peso (kg)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registro in historico_peso %}
+            <tr>
+                <td>{{ registro[2] }}</td> 
+                <td>{{ registro[3] }} kg</td> 
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <br><br>
+    <a href="/" class="btn-voltar">Voltar ao Rebanho</a>
+</body>
+</html>
