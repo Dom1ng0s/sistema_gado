@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Aplicar Medicação</title>
+</head>
+<body>
+    <h1>Nova Medicação / Vacina</h1>
+    
+    <form method="POST" action="/medicar/{{ id_animal }}">
+        
+        <label>Data da Aplicação:</label><br>
+        <input type="date" name="data_aplicacao" required><br><br>
+
+        <label>Nome do Medicamento/Vacina:</label><br>
+        <input type="text" name="nome" placeholder="Ex: Ivermectina" required><br><br>
+
+        <label>Custo da Dose (R$):</label><br>
+        <input type="number" step="0.01" name="custo" placeholder="0.00"><br><br>
+
+        <label>Observações:</label><br>
+        <textarea name="obs"></textarea><br><br>
+
+        <button type="submit">Registrar Aplicação</button>
+    </form>
+    
+    <br>
+    <a href="/animal/{{ id_animal }}">Cancelar</a>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório Financeiro</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; }
+        h1 { text-align: center; color: #333; }
+        
+        .container { max-width: 900px; margin: 0 auto; }
+        
+        /* Grid de Cartões */
+        .grid-box { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-top: 30px; }
+        
+        .card { 
+            flex: 1; 
+            min-width: 250px; 
+            padding: 20px; 
+            border-radius: 8px; 
+            color: white; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .card h3 { margin: 0; font-size: 16px; opacity: 0.9; }
+        .card h2 { font-size: 32px; margin: 10px 0; }
+        .card small { font-size: 12px; opacity: 0.8; }
+
+        /* Cores Específicas */
+        .bg-azul { background: linear-gradient(45deg, #2196F3, #21CBF3); }
+        .bg-vermelho { background: linear-gradient(45deg, #FF5252, #f48fb1); }
+        .bg-verde { background: linear-gradient(45deg, #4CAF50, #8BC34A); }
+        .bg-roxo { background: linear-gradient(45deg, #673AB7, #9575CD); }
+        
+        .btn-voltar { display: block; width: 200px; margin: 40px auto; text-align: center; padding: 10px; background: #555; color: white; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Fluxo de Caixa da Fazenda</h1>
+
+        <div class="grid-box">
+            
+            <div class="card bg-roxo">
+                <h3>Patrimônio em Gado</h3>
+                <h2>R$ {{ financeiro.valor_rebanho }}</h2>
+                <small>Valor de compra dos animais no pasto</small>
+            </div>
+
+            <div class="card bg-vermelho">
+                <h3>Total de Saídas</h3>
+                <h2>R$ {{ financeiro.despesas_totais }}</h2>
+                <small>Compra de Gado (R$ {{ financeiro.total_compras }}) + <br> Remédios (R$ {{ financeiro.total_med }})</small>
+            </div>
+
+            <div class="card bg-azul">
+                <h3>Total de Entradas</h3>
+                <h2>R$ {{ financeiro.receitas }}</h2>
+                <small>Venda de Animais</small>
+            </div>
+
+            {% if financeiro.balanco >= 0 %}
+            <div class="card bg-verde">
+                <h3>Saldo em Caixa</h3>
+                <h2>R$ {{ financeiro.balanco }}</h2>
+                <small>Entradas - Saídas</small>
+            </div>
+            {% else %}
+            <div class="card bg-vermelho">
+                <h3>Saldo em Caixa</h3>
+                <h2>R$ {{ financeiro.balanco }}</h2>
+                <small>Entradas - Saídas</small>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <a href="/" class="btn-voltar">Voltar ao Menu</a>
+    </div>
+</body>
+</html>

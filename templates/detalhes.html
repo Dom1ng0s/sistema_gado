@@ -4,40 +4,152 @@
     <meta charset="UTF-8">
     <title>Ficha do Animal</title>
     <style>
-        .card { border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; background: #f9f9f9; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 8px; }
-        .btn-voltar { text-decoration: none; background: #333; color: white; padding: 10px; }
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f9; }
+        
+        /* Estilos dos Cartões (Ficha e KPIs) */
+        .card { border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        /* Estilos do Painel de KPIs (Lado a Lado) */
+        .dashboard { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .kpi-box { flex: 1; padding: 15px; border-radius: 8px; text-align: center; min-width: 150px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        /* Estilos de Tabela */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #efefef; }
+        
+        /* Botões */
+        .btn { padding: 8px 15px; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; display: inline-block; margin-bottom: 10px; }
+        .btn-peso { background-color: #007bff; } /* Azul */
+        .btn-med { background-color: #ff9800; }  /* Laranja */
+        .btn-voltar { background-color: #555; margin-top: 20px; }
+        
+        h1, h2 { color: #333; }
     </style>
 </head>
 <body>
-    <h1>Ficha Técnica: Animal {{ animal[1] }}</h1> 
+
+    {% if animal %}
+        <h1>Ficha Técnica: Brinco {{ animal[1] }}</h1>
+
+        <div class="dashboard">
+            <div class="kpi-box" style="background-color: #e3f2fd;">
+                <h3>Peso Atual</h3>
+                <strong style="font-size: 22px;">{{ indicadores.peso_atual }} kg</strong>
+            </div>
+
+            <div class="kpi-box" style="background-color: #e8f5e9;">
+                <h3>Ganho Total</h3>
+                {% if indicadores.ganho_total >= 0 %}
+                    <strong style="font-size: 22px; color: green;">+{{ indicadores.ganho_total }} kg</strong>
+                {% else %}
+                    <strong style="font-size: 22px; color: red;">{{ indicadores.ganho_total }} kg</strong>
+                {% endif %}
+            </div>
+
+            <div class="kpi-box" style="background-color: #fff3e0;"> <h3>Investimento Total</h3>
+                <strong style="font-size: 22px; color: #e65100;">R$ {{ indicadores.custo_total }}</strong>
+                <br>
+                <small style="font-size: 12px; color: #666;">(Compra + Sanitário)</small>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Dados Fixos</h3>
+            <p><strong>Sexo:</strong> {{ animal[2] }}</p>
+            <p><strong>Data de Compra/Nascimento:</strong> {{ animal[3] }}</p>
+            <p><strong>Preço de Compra:</strong> R$ {{ animal[4] }}</p>
+        </div>
+
+        <hr>
+
+        <hr>
+
+        <h2>Evolução de Peso</h2>
+        <a href="/pesar/{{ animal[0] }}" class="btn btn-peso">+ Nova Pesagem</a>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Data da Pesagem</th>
+                    <th>Peso (kg)</th>
+                    <th>Ações</th> </tr>
+            </thead>
+            <tbody>
+                {% for pesagem in historico_peso %}
+                <tr>
+                    <td>{{ pesagem[2] }}</td>
+                    
+                    <td>{{ pesagem[3] }} kg</td>
+                    
+                    <td>
+                        <a href="/excluir_pesagem/{{ pesagem[0] }}" 
+                           style="color: red; text-decoration: none; font-weight: bold;"
+                           onclick="return confirm('Tem certeza que deseja apagar este registro?');">
+                           [X] Excluir
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3">Nenhuma pesagem registrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <br><hr>
+
+        <h2>Histórico Sanitário (Vacinas/Remédios)</h2>
+        <a href="/medicar/{{ animal[0] }}" class="btn btn-med">+ Adicionar Vacina/Remédio</a>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Medicamento</th>
+                    <th>Custo</th>
+                    <th>Obs</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for med in historico_med %}
+                <tr>
+                    <td>{{ med[2] }}</td> <td>{{ med[3] }}</td> <td>R$ {{ med[4] }}</td> <td>{{ med[5] }}</td> </tr>
+                {% else %}
+                <tr><td colspan="4">Nenhuma medicação registrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    {% else %}
+        <h1>Erro: Animal não encontrado.</h1>
+    {% endif %}
+
+    <br>
+    <div style="margin: 20px 0;">
+            {% if not animal[6] %}
+                <a href="/vender/{{ animal[0] }}" style="background-color: #d32f2f; color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;">
+                    💲 Registrar Venda (Baixa)
+                </a>
+            {% else %}
+                <div style="background-color: #ffebee; color: #c62828; padding: 10px; border: 1px solid #ef9a9a; display: inline-block; border-radius: 5px;">
+                    <strong>VENDIDO</strong> em {{ animal[6] }} por R$ {{ animal[5] }}
+                </div>
+            {% endif %}
+        </div>
+<br><br><br>
     
-    <div class="card">
-        <p><strong>Sexo:</strong> {{ animal[2] }}</p>
-        <p><strong>Data de Compra:</strong> {{ animal[3] }}</p>
-        <p><strong>Preço de Compra:</strong> R$ {{ animal[4] }}</p>
+    <div style="border: 2px solid red; padding: 20px; border-radius: 8px; background-color: #ffe6e6;">
+        <h3 style="color: red; margin-top: 0;">Zona de Perigo</h3>
+        <p>Ações irreversíveis. Ao excluir o animal, todo o histórico de peso e vacinas será apagado.</p>
+        
+        <a href="/excluir_animal/{{ animal[0] }}" 
+           style="background-color: red; color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;"
+           onclick="return confirm('ATENÇÃO: Tem a certeza absoluta? Esta ação apagará o animal e TODO o seu histórico para sempre.');">
+           🗑️ EXCLUIR ANIMAL PERMANENTEMENTE
+        </a>
     </div>
 
-    <h2>Histórico de Peso</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Data da Pesagem</th>
-                <th>Peso (kg)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for registro in historico_peso %}
-            <tr>
-                <td>{{ registro[2] }}</td> 
-                <td>{{ registro[3] }} kg</td> 
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
     <br><br>
-    <a href="/" class="btn-voltar">Voltar ao Rebanho</a>
+    <a href="/" class="btn btn-voltar">Voltar ao Rebanho</a>
 </body>
 </html>
