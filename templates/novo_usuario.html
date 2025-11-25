@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Novo Usuário</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div style="max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <h2 style="text-align: center; color: #333;">👤 Criar Novo Acesso</h2>
+        
+        {% if mensagem %}
+            <div style="background-color: #e3f2fd; color: #0d47a1; padding: 10px; border-radius: 5px; margin-bottom: 20px; text-align: center;">
+                {{ mensagem }}
+            </div>
+        {% endif %}
+
+        <form method="POST" action="/novo_usuario">
+            <label>Nome de Usuário (Login):</label>
+            <input type="text" name="username" required placeholder="Sem espaços (ex: joao)">
+
+            <label>Senha de Acesso:</label>
+            <input type="password" name="password" required placeholder="******">
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">Salvar Usuário</button>
+        </form>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="/painel" style="color: #666;">Cancelar e Voltar</a>
+        </div>
+    </div>
+</body>
+</html>

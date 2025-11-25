@@ -3,45 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <title>Gestão de Rebanho</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f9; }
-        h1 { color: #333; }
-        
-        /* Botões Superiores */
-        .menu-bar { display: flex; gap: 10px; margin-bottom: 20px; }
-        .btn { padding: 10px 15px; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 14px; }
-        .btn-novo { background-color: #007bff; }
-        .btn-fin { background-color: #28a745; }
-
-        /* Barra de Busca */
-        .search-bar { display: flex; gap: 10px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .input-busca { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 300px; }
-        .btn-buscar { background-color: #333; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
-        .btn-limpar { color: #666; text-decoration: none; padding: 8px; align-self: center; }
-
-        /* Tabela */
-        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #efefef; color: #555; }
-        tr:hover { background-color: #f1f1f1; }
-
-        /* Status */
-        .tag-ativo { color: green; font-weight: bold; background: #e8f5e9; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; }
-        .tag-vendido { color: red; font-weight: bold; background: #ffebee; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Rebanho Atual</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-bottom: 20px;">
+        <h1 style="border: none; margin: 0; padding: 0;">Meu Rebanho</h1>
+        <div>
+            <span style="margin-right: 15px; color: #555;">Olá, <strong>{{ current_user.username }}</strong></span>
+            <a href="/logout" class="btn btn-danger" style="padding: 5px 15px; font-size: 12px;">Sair</a>
+        </div>
+    </div>
     
     <div class="menu-bar">
         <a href="/cadastro" class="btn btn-novo">+ Novo Animal</a>
-        <a href="/financeiro" class="btn btn-fin">$ Relatório Financeiro</a>
+        <a href="/financeiro" class="btn btn-fin">$ Financeiro</a>
+        <a href="/novo_usuario" class="btn btn-secondary">👤 Criar Usuário</a>
     </div>
 
-    <form action="/" method="GET" class="search-bar">
+    <form action="/painel" method="GET" class="search-bar">
         <input type="text" name="busca" class="input-busca" placeholder="Digite o número do brinco...">
         <button type="submit" class="btn-buscar">🔍 Buscar</button>
-        <a href="/" class="btn-limpar">Limpar Filtros</a>
+        <a href="/painel" class="btn-limpar">Limpar</a>
     </form>
 
     <table>
@@ -58,27 +40,22 @@
             {% for animal in lista_animais %}
             <tr>
                 <td style="font-weight: bold;">{{ animal[1] }}</td> 
-                
                 <td>{{ animal[2] }}</td>
-                
                 <td>{{ animal[3] }}</td>
-                
                 <td>
-                    {% if animal[6] %}
-                        <span class="tag-vendido">VENDIDO</span>
-                    {% else %}
-                        <span class="tag-ativo">ATIVO</span>
+                    {% if animal[6] %} <span class="tag-vendido">VENDIDO</span>
+                    {% else %} <span class="tag-ativo">ATIVO</span>
                     {% endif %}
                 </td>
-
                 <td>
                     <a href="/animal/{{ animal[0] }}" style="color: #007bff; text-decoration: none; font-weight: bold;">Ver Ficha &rarr;</a>
                 </td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="5" style="text-align: center; padding: 20px; color: #777;">
-                    Nenhum animal encontrado.
+                <td colspan="5" style="text-align: center; padding: 30px; color: #777;">
+                    Seu rebanho está vazio.<br>
+                    <a href="/cadastro" style="font-weight: bold;">Cadastre seu primeiro animal agora!</a>
                 </td>
             </tr>
             {% endfor %}

@@ -1,0 +1,42 @@
+
+
+/* Container Flex para os cartões ficarem lado a lado */
+.box-container { 
+    display: flex; 
+    gap: 20px; 
+    flex-wrap: wrap; 
+    justify-content: center;
+    margin-top: 30px;
+}
+
+/* O estilo do Cartão Original */
+.box { 
+    padding: 25px; 
+    border-radius: 8px; 
+    width: 220px; 
+    color: white; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    text-align: center;
+    flex: 1;
+    min-width: 200px;
+}
+.box-container { 
+    display: grid;                 /* Ativa o modo grade */
+    grid-template-columns: 1fr 1fr; /* Cria exatamente DUAS colunas de tamanho igual */
+    gap: 10px;                     /* Espaço entre os cartões */
+    max-width: 100px;             /* Limita a largura total para não ficar muito esticado */
+    margin: 10px auto;             /* Centraliza o bloco na tela */
+}
+
+.box h3 { margin-top: 0; font-size: 16px; opacity: 0.9; color: white; }
+.box h2 { font-size: 36px; margin: 10px 0; font-weight: bold; color: white; }
+.box small { font-size: 13px; opacity: 0.85; color: white; display: block; }
+
+/* As Cores Sólidas Originais */
+.azul { background-color: #2196F3; }
+.vermelho { background-color: #F44336; }
+.verde { background-color: #4CAF50; }
+.cinza { background-color: #607D8B; }
+
+/* Ajuste do botão voltar */
+.centro-botao { text-align: center; margin-top: 40px; }

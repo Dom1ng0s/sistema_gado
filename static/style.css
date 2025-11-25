@@ -1,0 +1,128 @@
+/* --- CONFIGURAÇÕES GERAIS --- */
+:root {
+    --primary-color: #2e7d32; /* Verde Fazenda */
+    --secondary-color: #388e3c;
+    --accent-color: #ff9800; /* Laranja para destaques */
+    --danger-color: #d32f2f; /* Vermelho para perigo/venda */
+    --text-dark: #333;
+    --bg-light: #f4f6f8;
+    --white: #ffffff;
+    --border-radius: 8px;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+h1, h2, h3 { color: var(--text-dark); margin-bottom: 15px; }
+h1 { text-align: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; display: inline-block; width: 100%; }
+
+a { text-decoration: none; transition: 0.3s; }
+
+/* --- BOTÕES PADRONIZADOS --- */
+button, .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    text-align: center;
+    display: inline-block;
+    
+    /* CORREÇÃO: Define uma cor padrão (Cinza Escuro) e texto Branco */
+    background-color: #555; 
+    color: var(--white);
+}
+
+button:hover, .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+/* Classes de Cores Específicas (Substituem o cinza padrão) */
+.btn-primary { background-color: var(--primary-color) !important; } /* Verde */
+.btn-danger { background-color: var(--danger-color) !important; } /* Vermelho */
+.btn-warning { background-color: var(--accent-color) !important; } /* Laranja */
+.btn-info { background-color: #0288d1 !important; } /* Azul */
+.btn-secondary { background-color: #757575 !important; } /* Cinza */
+
+button:hover, .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.btn-primary { background-color: var(--primary-color); } /* Verde */
+.btn-danger { background-color: var(--danger-color); } /* Vermelho */
+.btn-warning { background-color: var(--accent-color); } /* Laranja */
+.btn-info { background-color: #0288d1; } /* Azul */
+.btn-secondary { background-color: #757575; } /* Cinza */
+
+/* --- FORMULÁRIOS --- */
+form {
+    background: var(--white);
+    padding: 25px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    max-width: 600px;
+    margin: 20px auto;
+}
+
+label { display: block; margin-top: 15px; font-weight: 600; color: #555; }
+
+input[type="text"], input[type="number"], input[type="date"], select, textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box; /* Garante que o padding não aumente a largura total */
+}
+
+input:focus { border-color: var(--primary-color); outline: none; }
+
+/* --- TABELAS --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+    border-radius: var(--border-radius);
+    overflow: hidden; /* Para arredondar as bordas da tabela */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-top: 20px;
+}
+
+th { background-color: var(--primary-color); color: var(--white); padding: 12px; text-align: left; }
+td { padding: 12px; border-bottom: 1px solid #eee; }
+tr:hover { background-color: #e8f5e9; } /* Efeito hover nas linhas */
+
+/* --- DASHBOARD / CARDS --- */
+.dashboard, .grid-box {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.card, .kpi-box {
+    background: var(--white);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    flex: 1;
+    min-width: 200px;
+    text-align: center;
+}
+
+/* --- ALERTAS E TAGS --- */
+.alert {
+    padding: 15px;
+    background-color: #d4edda;
+    color: #155724;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.tag-ativo { background: #c8e6c9; color: #2e7d32; padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold;}
+.tag-vendido { background: #ffcdd2; color: #c62828; padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold;}
