@@ -4,17 +4,27 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import check_password_hash, generate_password_hash
 from db_config import get_db_connection, close_db_connection
 
+# ======================================================================
+# 1. INICIALIZAÇÃO DO APP E CONFIGURAÇÃO DE SEGURANÇA
+# ======================================================================
 app = Flask(__name__)
 
-# --- CONFIGURAÇÃO DE SEGURANÇA ---
-# Em produção, essa chave viria do arquivo .env
+# Chave secreta usada para assinar cookies de sessão.
+# CRÍTICO: Em produção, o fallback 'chave_desenvolvimento_segura_123' deve ser removido.
 app.secret_key = os.getenv('SECRET_KEY', 'chave_desenvolvimento_segura_123')
 
+# ======================================================================
+# 2. CONFIGURAÇÃO DO FLASK-LOGIN
+# ======================================================================
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'  # Define a rota para onde não-logados são chutados
+# Define a rota para onde o usuário é redirecionado se tentar acessar uma página protegida sem login.
+login_manager.login_view = 'login'
 
-# --- MODELO DE USUÁRIO ---
+# ======================================================================
+# 3. MODELO DE USUÁRIO E USER LOADER
+# Define a classe User para ser usada pelo Flask-Login.
+# ======================================================================
 class User(UserMixin):
     def __init__(self, id, username, password_hash):
         self.id = id
@@ -22,34 +32,41 @@ class User(UserMixin):
         self.password_hash = password_hash
 
     @staticmethod
-    def get(user_id):
+    def get_user_id(user_id):
+        """Busca um usuário pelo ID no banco de dados."""
         conn = get_db_connection()
-        user = None
         if conn:
             cursor = conn.cursor()
+            # Busca o usuário na tabela 'usuarios'
             cursor.execute("SELECT * FROM usuarios WHERE id = %s", (user_id,))
             dados = cursor.fetchone()
             cursor.close()
             close_db_connection(conn)
             if dados:
+                # Retorna uma instância da classe User
                 return User(dados[0], dados[1], dados[2])
         return None
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.get(user_id)
+    """Função obrigatória para recarregar o objeto User a partir do ID de sessão."""
+    return User.get_user_id(user_id)
 
-# --- ROTAS DE NAVEGAÇÃO E LOGIN ---
+# ======================================================================
+# 4. ROTAS DE AUTENTICAÇÃO E NAVEGAÇÃO BÁSICA
+# Controlam o acesso ao sistema.
+# ======================================================================
 
 @app.route('/')
 def index():
-    # Rota raiz agora serve apenas como gerenciador de tráfego
+    """Redireciona para o painel se logado, ou para o login se deslogado."""
     if current_user.is_authenticated:
         return redirect('/painel')
     return redirect('/login')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """Processa o formulário de login e autentica o usuário."""
     if current_user.is_authenticated:
         return redirect('/painel')
 
@@ -60,6 +77,7 @@ def login():
         conn = get_db_connection()
         if conn:
             cursor = conn.cursor()
+            # Busca o usuário pelo nome
             cursor.execute("SELECT * FROM usuarios WHERE username = %s", (username,))
             dados = cursor.fetchone()
             cursor.close()
@@ -67,6 +85,7 @@ def login():
             
             if dados:
                 user_obj = User(dados[0], dados[1], dados[2])
+                # Verifica o hash da senha usando werkzeug.security
                 if check_password_hash(user_obj.password_hash, password):
                     login_user(user_obj)
                     return redirect('/painel')
@@ -78,12 +97,14 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
+    """Desloga o usuário e o redireciona para a página de login."""
     logout_user()
     return redirect('/login')
 
 @app.route('/novo_usuario', methods=['GET', 'POST'])
 @login_required
 def novo_usuario():
+    """Permite a criação de novos usuários (apenas por usuários já logados)."""
     mensagem = None
     if request.method == 'POST':
         novo_user = request.form['username'].strip()
@@ -96,10 +117,12 @@ def novo_usuario():
         if conn:
             try:
                 cursor = conn.cursor()
+                # Verifica se o usuário já existe
                 cursor.execute("SELECT id FROM usuarios WHERE username = %s", (novo_user,))
                 if cursor.fetchone():
                     mensagem = f"Erro: Usuário '{novo_user}' já existe."
                 else:
+                    # Gera o hash seguro da senha
                     hash_senha = generate_password_hash(nova_senha)
                     cursor.execute("INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)", (novo_user, hash_senha))
                     mensagem = f"Sucesso! Usuário '{novo_user}' criado."
@@ -110,11 +133,15 @@ def novo_usuario():
                 close_db_connection(conn)
     return render_template('novo_usuario.html', mensagem=mensagem)
 
-# --- ROTAS PRINCIPAIS DO SISTEMA (PROTEGIDAS E FILTRADAS POR USUÁRIO) ---
+# ======================================================================
+# 5. ROTAS PRINCIPAIS DA APLICAÇÃO (PROTEGIDAS E FILTRADAS POR USUÁRIO)
+# Controlam o CRUD e relatórios do sistema.
+# ======================================================================
 
 @app.route('/painel')
 @login_required
 def painel():
+    """Exibe a lista de animais do usuário logado, com opção de busca."""
     conn = get_db_connection()
     animais = []
     termo_busca = request.args.get('busca')
@@ -122,7 +149,7 @@ def painel():
     if conn:
         cursor = conn.cursor()
         
-        # Lógica Multi-Tenant: Sempre filtrar por user_id = current_user.id
+        # Lógica Multi-Tenant: CRÍTICO - Sempre filtrar por user_id = current_user.id
         if termo_busca:
             sql = "SELECT * FROM animais WHERE brinco LIKE %s AND user_id = %s"
             val = (f"%{termo_busca}%", current_user.id)
@@ -136,12 +163,12 @@ def painel():
         cursor.close()
         close_db_connection(conn)
     
-    # Renderiza a lista de gado (antigo index.html)
     return render_template("index.html", lista_animais=animais)
 
 @app.route('/financeiro')
 @login_required
 def financeiro():
+    """Calcula e exibe o painel financeiro do usuário logado."""
     conn = get_db_connection()
     dados = {
         'valor_rebanho': 0, 'total_compras': 0, 'total_med': 0,
@@ -152,15 +179,14 @@ def financeiro():
         cursor = conn.cursor()
         uid = current_user.id # ID do usuário logado
         
-        # 1. Valor do Rebanho (Apenas animais do usuário)
+        # Todas as consultas são filtradas pelo user_id (uid)
         cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE data_venda IS NULL AND user_id = %s", (uid,))
         dados['valor_rebanho'] = cursor.fetchone()[0] or 0 
         
-        # 2. Total Compras
         cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE user_id = %s", (uid,))
         dados['total_compras'] = cursor.fetchone()[0] or 0
 
-        # 3. Medicamentos (Join para garantir que só somamos medicação dos meus animais)
+        # Consulta com JOIN para garantir que só soma medicação de animais do usuário
         cursor.execute("""
             SELECT SUM(m.custo) FROM medicacoes m 
             JOIN animais a ON m.animal_id = a.id 
@@ -168,7 +194,6 @@ def financeiro():
         """, (uid,))
         dados['total_med'] = cursor.fetchone()[0] or 0
 
-        # 4. Receitas
         cursor.execute("SELECT SUM(preco_venda) FROM animais WHERE data_venda IS NOT NULL AND user_id = %s", (uid,))
         dados['receitas'] = cursor.fetchone()[0] or 0
 
@@ -183,6 +208,7 @@ def financeiro():
 @app.route("/cadastro", methods=["GET", "POST"])
 @login_required
 def cadastro():
+    """Permite o cadastro de um novo animal, vinculando-o ao usuário logado."""
     mensagem = None
     if request.method == "POST":
         try:
@@ -197,6 +223,7 @@ def cadastro():
             except ValueError:
                 return render_template("cadastro.html", mensagem="Erro: Peso e Valor devem ser números.")
 
+            # Validações de negócio
             if peso <= 0 or valor_arroba <= 0:
                 return render_template("cadastro.html", mensagem="Erro: Valores devem ser positivos.")
             if not brinco:
@@ -209,13 +236,13 @@ def cadastro():
                 try:
                     cursor = conn.cursor()
                     
-                    # Verifica se brinco já existe PARA ESTE USUÁRIO
+                    # Verifica se brinco já existe PARA ESTE USUÁRIO (Multi-Tenant Check)
                     cursor.execute("SELECT id FROM animais WHERE brinco = %s AND user_id = %s", (brinco, current_user.id))
                     if cursor.fetchone():
                          cursor.close()
                          return render_template("cadastro.html", mensagem=f"Erro: O brinco {brinco} já existe no seu rebanho.")
 
-                    # Insere vinculando ao usuário logado
+                    # Insere o animal, vinculando-o ao usuário logado (current_user.id)
                     sql = "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) VALUES (%s, %s, %s, %s, %s)"
                     val = (brinco, sexo, data, preco_calc, current_user.id)
                     cursor.execute(sql, val)
@@ -237,7 +264,8 @@ def cadastro():
 
 @app.route('/animal/<int:id_animal>')
 @login_required
-def ver_animal(id_animal):
+def detalhes(id_animal):
+    """Exibe os detalhes, histórico de peso e medicação de um animal específico."""
     conn = get_db_connection()
     animal, pesagens, medicacoes = None, [], []
     kpis = {'peso_atual': 0, 'ganho_total': 0, 'custo_total': "0.00"}
@@ -250,7 +278,7 @@ def ver_animal(id_animal):
         animal = cursor.fetchone()
 
         if animal:
-            # Se o animal é meu, posso ver o histórico
+            # Se o animal é do usuário, busca seus históricos
             cursor.execute("SELECT * FROM pesagens WHERE animal_id = %s ORDER BY data_pesagem DESC", (id_animal,))
             pesagens = cursor.fetchall()
             cursor.execute("SELECT * FROM medicacoes WHERE animal_id = %s", (id_animal,))
@@ -259,11 +287,11 @@ def ver_animal(id_animal):
         cursor.close()
         close_db_connection(conn)
 
-    # Se não encontrou ou não é dono, volta pro painel
+    # Se não encontrou ou não é dono, redireciona para o painel (segurança)
     if not animal:
         return redirect('/painel')
 
-    # Cálculos
+    # Cálculos de KPIs
     if pesagens: 
         kpis['peso_atual'] = pesagens[0][3]
         kpis['ganho_total'] = pesagens[0][3] - pesagens[-1][3]
@@ -277,10 +305,12 @@ def ver_animal(id_animal):
 @app.route('/vender/<int:id_animal>', methods=['GET', 'POST'])
 @login_required
 def vender(id_animal):
+    """Processa a venda de um animal, atualizando o registro e registrando o peso final."""
     # Verificação de segurança (Propriedade)
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor()
+        # Verifica se o animal pertence ao usuário logado
         cursor.execute("SELECT id FROM animais WHERE id = %s AND user_id = %s", (id_animal, current_user.id))
         if not cursor.fetchone():
             cursor.close()
@@ -299,7 +329,7 @@ def vender(id_animal):
         if conn:
             try:
                 cursor = conn.cursor()
-                # Atualiza apenas se for meu animal
+                # Atualiza apenas se for meu animal (filtro user_id no UPDATE)
                 sql = "UPDATE animais SET data_venda = %s, preco_venda = %s WHERE id = %s AND user_id = %s"
                 cursor.execute(sql, (data_venda, preco_final, id_animal, current_user.id))
                 
@@ -315,10 +345,11 @@ def vender(id_animal):
 @app.route('/medicar/<int:id_animal>', methods=['GET', 'POST'])
 @login_required
 def medicar(id_animal):
+    """Registra a aplicação de medicamento em um animal."""
     conn = get_db_connection()
     don_exists = False
     
-    # Valida dono
+    # Valida dono (segurança)
     if conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM animais WHERE id = %s AND user_id = %s", (id_animal, current_user.id))
@@ -347,11 +378,12 @@ def medicar(id_animal):
 
 @app.route('/pesar/<int:id_animal>', methods=['GET', 'POST'])
 @login_required
-def pesar(id_animal):
+def nova_pesagem(id_animal):
+    """Registra uma nova pesagem para um animal."""
     conn = get_db_connection()
     don_exists = False
     
-    # Valida dono
+    # Valida dono (segurança)
     if conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM animais WHERE id = %s AND user_id = %s", (id_animal, current_user.id))
@@ -376,18 +408,26 @@ def pesar(id_animal):
 
     return render_template('nova_pesagem.html', id_animal=id_animal)
 
+# ======================================================================
+# 6. ROTAS DE MANUTENÇÃO/EXCLUSÃO
+# Controlam a remoção de dados.
+# ======================================================================
+
 @app.route('/excluir_animal/<int:id_animal>')
 @login_required
 def excluir_animal(id_animal):
+    """Exclui um animal e todos os seus registros associados (pesagens e medicações)."""
     conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
-            # Verifica se o animal pertence ao usuário antes de apagar
+            # CRÍTICO: Verifica se o animal pertence ao usuário antes de apagar
             cursor.execute("SELECT id FROM animais WHERE id = %s AND user_id = %s", (id_animal, current_user.id))
             if cursor.fetchone():
+                # Exclui registros filhos primeiro (pesagens e medicações)
                 cursor.execute("DELETE FROM pesagens WHERE animal_id = %s", (id_animal,))
                 cursor.execute("DELETE FROM medicacoes WHERE animal_id = %s", (id_animal,))
+                # Exclui o animal
                 cursor.execute("DELETE FROM animais WHERE id = %s", (id_animal,))
             cursor.close()
         except Exception as e:
@@ -399,13 +439,14 @@ def excluir_animal(id_animal):
 @app.route('/excluir_pesagem/<int:id_pesagem>')
 @login_required
 def excluir_pesagem(id_pesagem):
+    """Exclui uma pesagem específica, verificando a propriedade do animal."""
     conn = get_db_connection()
     animal_id = None
     if conn:
         try:
             cursor = conn.cursor()
             
-            # JOIN mágico: Verifica se a pesagem (P) pertence a um animal (A) que é do usuário (U)
+            # CRÍTICO: JOIN para verificar se a pesagem pertence a um animal que é do usuário logado
             sql_check = """
                 SELECT p.animal_id FROM pesagens p
                 JOIN animais a ON p.animal_id = a.id
@@ -428,5 +469,9 @@ def excluir_pesagem(id_pesagem):
         return redirect(f"/animal/{animal_id}")
     return redirect("/painel")
 
+# ======================================================================
+# 7. EXECUÇÃO PRINCIPAL
+# ======================================================================
 if __name__ == '__main__':
+    # Roda o servidor de desenvolvimento. O debug é controlado por variável de ambiente.
     app.run(debug=os.getenv('FLASK_DEBUG', 'False') == 'True')
