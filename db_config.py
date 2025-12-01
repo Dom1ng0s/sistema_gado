@@ -12,8 +12,8 @@ db_settings = {
     "password": os.getenv('DB_PASSWORD'),
     "database": os.getenv('DB_NAME'),
     "port": int(os.getenv('DB_PORT', 3306)),
-    "autocommit": True,
-    "connection_timeout": 10  # Evita travar se a internet cair
+    "autocommit": False, # IMPORTANTE: Desabilitar autocommit para gerenciar transações no context manager
+    "connection_timeout": 10
 }
 
 connection_pool = None
