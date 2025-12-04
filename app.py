@@ -4,7 +4,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import check_password_hash, generate_password_hash
 from db_config import get_db_connection, close_db_connection
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, datetime
 
 
 # ======================================================================
@@ -186,53 +186,95 @@ def painel():
     
     return render_template("index.html", lista_animais=animais)
 
+
+
 @app.route('/financeiro')
 @login_required
 def financeiro():
-    """
-    Calcula e exibe o painel financeiro do usuário logado.
-    OTIMIZAÇÃO: Agrupa todas as consultas de agregação em uma única conexão.
-    """
+    ano_atual = datetime.now().year
+    ano_selecionado = request.args.get('ano', default=ano_atual, type=int)
+
     dados = {
-        'valor_rebanho': 0, 'total_compras': 0, 'total_med': 0,
-        'despesas_totais': 0, 'receitas': 0, 'balanco': 0
+        'valor_rebanho': 0,
+        'saldo_total_operacao': 0, # <--- NOVO CAMPO: Saldo acumulado
+        'entradas_ano': 0,
+        'saidas_ano': 0,
+        'reposicao_ano': 0,
+        'custos_op_ano': 0,
+        'med_ano': 0,
+        'balanco_ano': 0
     }
+    
+    anos_disponiveis = []
 
     try:
         with get_db_cursor() as cursor:
-            uid = current_user.id # ID do usuário logado
+            uid = current_user.id 
             
-            # 1. Valor do Rebanho (Animais não vendidos)
+            # --- 1. CONSULTAS GLOBAIS (ACUMULADO DESDE O INÍCIO) ---
+            
+            # Busca anos disponíveis
+            cursor.execute("SELECT DISTINCT YEAR(data_compra) FROM animais WHERE user_id = %s ORDER BY 1 DESC", (uid,))
+            anos_db = cursor.fetchall()
+            anos_disponiveis = [a[0] for a in anos_db]
+            if ano_atual not in anos_disponiveis:
+                anos_disponiveis.insert(0, ano_atual)
+
+            # Valor do Rebanho (Animais Ativos HOJE)
             cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE data_venda IS NULL AND user_id = %s", (uid,))
             dados['valor_rebanho'] = cursor.fetchone()[0] or 0 
-            
-            # 2. Total de Compras (Custo de aquisição de todos os animais)
-            cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE user_id = %s", (uid,))
-            dados['total_compras'] = cursor.fetchone()[0] or 0
-            
-            # 3. Total de Receitas (Vendas)
-            cursor.execute("SELECT SUM(preco_venda) FROM animais WHERE data_venda IS NOT NULL AND user_id = %s", (uid,))
-            dados['receitas'] = cursor.fetchone()[0] or 0
 
-            # 4. Total de Medicação (Consulta com JOIN)
+            # CÁLCULO DO SALDO TOTAL DA OPERAÇÃO (Histórico Completo)
+            # Total Vendido (Receitas)
+            cursor.execute("SELECT SUM(preco_venda) FROM animais WHERE data_venda IS NOT NULL AND user_id = %s", (uid,))
+            total_vendas = cursor.fetchone()[0] or 0
+            
+            # Total Comprado (Gado)
+            cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE user_id = %s", (uid,))
+            total_compras = cursor.fetchone()[0] or 0
+            
+            # Total Medicações
             cursor.execute("""
                 SELECT SUM(m.custo) FROM medicacoes m 
                 JOIN animais a ON m.animal_id = a.id 
                 WHERE a.user_id = %s
             """, (uid,))
-            dados['total_med'] = cursor.fetchone()[0] or 0
+            total_meds = cursor.fetchone()[0] or 0
             
-    except ConnectionError:
-        # Em caso de erro de conexão, os valores permanecem 0
-        pass
+            # Total Custos Operacionais
+            cursor.execute("SELECT SUM(valor) FROM custos_operacionais WHERE user_id = %s", (uid,))
+            total_ops = cursor.fetchone()[0] or 0
+
+            # Fórmula: (Tudo que entrou) - (Tudo que saiu)
+            dados['saldo_total_operacao'] = total_vendas - (total_compras + total_meds + total_ops)
+
+
+            # --- 2. CONSULTAS ANUAIS (APENAS O ANO SELECIONADO) ---
+            
+            cursor.execute("SELECT SUM(preco_venda) FROM animais WHERE YEAR(data_venda) = %s AND user_id = %s", (ano_selecionado, uid))
+            dados['entradas_ano'] = cursor.fetchone()[0] or 0
+
+            cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE YEAR(data_compra) = %s AND user_id = %s", (ano_selecionado, uid))
+            dados['reposicao_ano'] = cursor.fetchone()[0] or 0
+
+            cursor.execute("SELECT SUM(valor) FROM custos_operacionais WHERE YEAR(data_custo) = %s AND user_id = %s", (ano_selecionado, uid))
+            dados['custos_op_ano'] = cursor.fetchone()[0] or 0
+
+            cursor.execute("""
+                SELECT SUM(m.custo) FROM medicacoes m 
+                JOIN animais a ON m.animal_id = a.id 
+                WHERE YEAR(m.data_aplicacao) = %s AND a.user_id = %s
+            """, (ano_selecionado, uid))
+            dados['med_ano'] = cursor.fetchone()[0] or 0
+            
     except Exception as e:
         print(f"Erro no financeiro: {e}")
 
-    # Cálculos finais
-    dados['despesas_totais'] = dados['total_compras'] + dados['total_med']
-    dados['balanco'] = dados['receitas'] - dados['despesas_totais']
+    # Fechamento do Ano
+    dados['saidas_ano'] = dados['reposicao_ano'] + dados['custos_op_ano'] + dados['med_ano']
+    dados['balanco_ano'] = dados['entradas_ano'] - dados['saidas_ano']
 
-    return render_template('financeiro.html', financeiro=dados)
+    return render_template('financeiro.html', financeiro=dados, ano_selecionado=ano_selecionado, anos=anos_disponiveis)
 
 # ======================================================================
 # ROTA 1: ENTREGAR A PÁGINA (Visual)
@@ -351,10 +393,42 @@ def cadastro():
     
     return render_template("cadastro.html", mensagem=mensagem)
 
-@app.route('/custos_operacionais')
+@app.route('/custos_operacionais', methods=['GET', 'POST'])
 @login_required
-def custosoperacionais():
-    print("Cheguei")
+def custos_operacionais():
+    mensagem = None
+    
+    if request.method == 'POST':
+        try:
+            # 1. Captura a categoria (Fixo ou Variável)
+            categoria = request.form.get('categoria')
+            
+            # 2. Decide qual campo de "tipo" ler baseado na categoria
+            if categoria == 'Fixo':
+                tipo = request.form.get('tipo_fixo') # Vem do Dropdown
+            else:
+                tipo = request.form.get('tipo_variavel') # Vem do campo de texto manual
+            
+            valor = float(request.form.get('valor'))
+            data = request.form.get('data')
+            desc = request.form.get('descricao')
+
+            # 3. Salva no banco (incluindo a categoria)
+            with get_db_cursor() as cursor:
+                sql = "INSERT INTO custos_operacionais (user_id, categoria, tipo_custo, valor, data_custo, descricao) VALUES (%s, %s, %s, %s, %s, %s)"
+                cursor.execute(sql, (current_user.id, categoria, tipo, valor, data, desc))
+                mensagem = "Custo registrado com sucesso!"
+
+        except Exception as e:
+            mensagem = f"Erro ao salvar: {e}"
+
+    # Para o GET: Buscar custos para exibir na tabela abaixo do formulário
+    custos = []
+    with get_db_cursor() as cursor:
+        cursor.execute("SELECT * FROM custos_operacionais WHERE user_id = %s ORDER BY data_custo DESC", (current_user.id,))
+        custos = cursor.fetchall()
+
+    return render_template('custos_operacionais.html', mensagem=mensagem, lista_custos=custos)
 
 @app.route('/animal/<int:id_animal>')
 @login_required

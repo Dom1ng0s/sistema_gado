@@ -1,42 +1,130 @@
-
-
-/* Container Flex para os cartões ficarem lado a lado */
-.box-container { 
-    display: flex; 
-    gap: 20px; 
-    flex-wrap: wrap; 
-    justify-content: center;
-    margin-top: 30px;
+/* --- LAYOUT DIVIDIDO (SPLIT VIEW) --- */
+.painel-dividido {
+    display: flex;
+    align-items: flex-start;
+    gap: 40px;
+    max-width: 1100px;
+    margin: 40px auto;
 }
 
-/* O estilo do Cartão Original */
-.box { 
-    padding: 25px; 
-    border-radius: 8px; 
-    width: 220px; 
-    color: white; 
-    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-    text-align: center;
+/* LADO ESQUERDO: COLUNA DE PATRIMÔNIO E SALDO */
+.lado-esquerdo {
     flex: 1;
-    min-width: 200px;
-}
-.box-container { 
-    display: grid;                 /* Ativa o modo grade */
-    grid-template-columns: 1fr 1fr; /* Cria exatamente DUAS colunas de tamanho igual */
-    gap: 10px;                     /* Espaço entre os cartões */
-    max-width: 100px;             /* Limita a largura total para não ficar muito esticado */
-    margin: 10px auto;             /* Centraliza o bloco na tela */
+    display: flex;
+    flex-direction: column; /* Importante: Empilha um item embaixo do outro */
+    justify-content: flex-start;
+    align-items: center;
+    gap: 30px; /* Espaço entre os cartões */
 }
 
-.box h3 { margin-top: 0; font-size: 16px; opacity: 0.9; color: white; }
-.box h2 { font-size: 36px; margin: 10px 0; font-weight: bold; color: white; }
-.box small { font-size: 13px; opacity: 0.85; color: white; display: block; }
+/* Cartão Verde (Valor do Rebanho) */
+.box-patrimonio {
+    background-color: #2e7d32;
+    color: white;
+    padding: 30px 20px;
+    border-radius: 20px;
+    text-align: center;
+    width: 100%;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    border: 4px solid #1b5e20;
+}
 
-/* As Cores Sólidas Originais */
-.azul { background-color: #2196F3; }
-.vermelho { background-color: #F44336; }
-.verde { background-color: #4CAF50; }
-.cinza { background-color: #607D8B; }
+/* NOVO: Cartão de Saldo Total (Cor variável no HTML) */
+.box-saldo {
+    color: white;
+    padding: 30px 20px;
+    border-radius: 20px;
+    text-align: center;
+    width: 100%;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    border: 4px solid rgba(0,0,0,0.1);
+}
 
-/* Ajuste do botão voltar */
-.centro-botao { text-align: center; margin-top: 40px; }
+.box-patrimonio h2, .box-saldo h2 { 
+    color: white; 
+    font-size: 2.2rem; 
+    margin: 10px 0; 
+}
+
+.box-patrimonio h3, .box-saldo h3 { 
+    color: rgba(255,255,255,0.9); 
+    font-size: 1.1rem; 
+    margin: 0; 
+}
+
+/* LINHA DIVISÓRIA */
+.linha-vertical {
+    width: 2px;
+    background-color: #ccc;
+    height: 450px;
+    align-self: center;
+    border-radius: 2px;
+}
+
+/* LADO DIREITO: FLUXO ANUAL */
+.lado-direito {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* FILTRO DE ANO */
+.filtro-ano {
+    background: #f1f1f1;
+    padding: 10px 20px;
+    border-radius: 50px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    align-self: flex-start;
+    border: 1px solid #ccc;
+}
+
+.filtro-ano select {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid #999;
+    font-weight: bold;
+    font-size: 16px;
+    background-color: white;
+    cursor: pointer;
+}
+
+/* GRID DOS CARDS ANUAIS */
+.grid-anual {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.card-ano {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    text-align: left;
+    border-left: 5px solid #ccc;
+    transition: transform 0.2s;
+}
+
+.card-ano:hover { transform: translateY(-2px); }
+
+.card-ano h4 { 
+    margin: 0 0 5px 0; 
+    font-size: 0.9rem; 
+    color: #666; 
+    text-transform: uppercase; 
+}
+
+.card-ano strong { 
+    font-size: 1.5rem; 
+    display: block; 
+    color: #333; 
+}
+
+/* Bordas Coloridas */
+.b-azul { border-left-color: #2196F3; }
+.b-vermelho { border-left-color: #F44336; }
+.b-laranja { border-left-color: #ff9800; }
+.b-roxo { border-left-color: #9c27b0; }

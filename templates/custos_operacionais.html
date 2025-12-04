@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Custos Operacionais</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-bottom: 20px;">
+        <h1 style="border: none; margin: 0;">Lançamento de Custos</h1>
+        <a href="/painel" class="btn btn-secondary">Voltar ao Painel</a>
+    </div>
+
+    {% if mensagem %}
+        <div class="alert">{{ mensagem }}</div>
+    {% endif %}
+
+    <div class="form-container">
+        <form method="POST" action="/custos_operacionais">
+            
+            <label>Categoria do Custo:</label>
+            <div class="radio-group">
+                <label>
+                    <input type="radio" id="cat_fixo" name="categoria" value="Fixo" checked onclick="alternarCampos()">
+                    Custo Fixo
+                </label>
+                <label>
+                    <input type="radio" id="cat_variavel" name="categoria" value="Variavel" onclick="alternarCampos()">
+                    Custo Variável
+                </label>
+            </div>
+
+            <div id="div_fixo">
+                <label>Tipo de Custo Fixo:</label>
+                <select name="tipo_fixo" id="input_fixo">
+                    <option value="Salário">Salário</option>
+                    <option value="Arrendamento">Arrendamento</option>
+                    <option value="Nutrição">Nutrição</option>
+                    <option value="Outro">Outro</option>
+                </select>
+            </div>
+
+            <div id="div_variavel" style="display: none;">
+                <label>Descreva o Custo Variável:</label>
+                <input type="text" name="tipo_variavel" id="input_variavel" placeholder="Ex: Conserto de Cerca, Medicamento Extra...">
+            </div>
+
+            <hr>
+
+            <label>Valor (R$):</label>
+            <input type="number" step="0.01" name="valor" required placeholder="0.00">
+
+            <label>Data:</label>
+            <input type="date" name="data" required>
+
+            <label>Descrição (Opcional):</label>
+            <textarea name="descricao" placeholder="Detalhes adicionais..."></textarea>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">Registrar Custo</button>
+        </form>
+    </div>
+
+    <h2 style="text-align: center; margin-top: 40px;">Histórico de Custos</h2>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Categoria</th>
+                <th>Tipo/Descrição</th>
+                <th>Valor</th>
+                <th>Detalhes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for custo in lista_custos %}
+            <tr>
+                <td>{{ custo[5] }}</td> 
+                <td>
+                    {% if custo[2] == 'Fixo' %}
+                        <span class="tag-ativo" style="background: #e3f2fd; color: #0d47a1;">FIXO</span>
+                    {% else %}
+                        <span class="tag-vendido" style="background: #fff3e0; color: #e65100;">VARIÁVEL</span>
+                    {% endif %}
+                </td>
+                <td>{{ custo[3] }}</td>
+                <td>R$ {{ custo[4] }}</td>
+                <td>{{ custo[6] }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 20px; color: #777;">
+                    Nenhum custo registrado.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        function alternarCampos() {
+            const isFixo = document.getElementById('cat_fixo').checked;
+            
+            const divFixo = document.getElementById('div_fixo');
+            const divVar = document.getElementById('div_variavel');
+            const inputFixo = document.getElementById('input_fixo');
+            const inputVar = document.getElementById('input_variavel');
+            
+            if (isFixo) {
+                divFixo.style.display = 'block';
+                divVar.style.display = 'none';
+                
+                // Lógica de campos obrigatórios
+                inputVar.required = false;
+                inputVar.value = ""; 
+                
+            } else {
+                divFixo.style.display = 'none';
+                divVar.style.display = 'block';
+                
+                inputVar.required = true;
+            }
+        }
+        
+        window.onload = alternarCampos;
+    </script>
+
+</body>
+</html>

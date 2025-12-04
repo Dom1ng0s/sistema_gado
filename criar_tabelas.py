@@ -61,6 +61,22 @@ try:
     """
     cursor.execute(sql_medicacoes)
 
+    print("Criando tabela 'custos_operacionais'...")
+    sql_custos = """
+    CREATE TABLE IF NOT EXISTS custos_operacionais (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        categoria VARCHAR(20) NOT NULL,  -- 'Fixo' ou 'Variavel'
+        tipo_custo VARCHAR(50) NOT NULL, -- Ex: 'Salário' ou o que o usuário digitar
+        valor DECIMAL(10, 2) NOT NULL,
+        data_custo DATE NOT NULL,
+        descricao TEXT,
+        FOREIGN KEY (user_id) REFERENCES usuarios(id)
+    );
+    """
+    cursor.execute(sql_custos)
+
+
     conn.commit()
     cursor.close()
     conn.close()

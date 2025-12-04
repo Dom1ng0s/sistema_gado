@@ -3,53 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <title>Relatório Financeiro</title>
-    
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    
     <link rel="stylesheet" href="{{ url_for('static', filename='financeiro.css') }}">
 </head>
 <body>
     
-    <h1>Fluxo de Caixa da Fazenda</h1>
-
-    <div class="box-container">
-        
-        <div class="box cinza">
-            <h3>Valor do Rebanho</h3>
-            <h2>R$ {{ financeiro.valor_rebanho }}</h2>
-            <small>Patrimônio no pasto</small>
-        </div>
-
-        <div class="box vermelho">
-            <h3>Saídas Totais</h3>
-            <h2>R$ {{ financeiro.despesas_totais }}</h2>
-            <small>Compras + Medicamentos</small>
-        </div>
-
-        <div class="box azul">
-            <h3>Entradas (Vendas)</h3>
-            <h2>R$ {{ financeiro.receitas }}</h2>
-            <small>Total vendido</small>
-        </div>
-
-        {% if financeiro.balanco >= 0 %}
-        <div class="box verde">
-            <h3>Saldo em Caixa</h3>
-            <h2>R$ {{ financeiro.balanco }}</h2>
-            <small>Lucro Operacional</small>
-        </div>
-        {% else %}
-        <div class="box vermelho" style="background-color: #D32F2F;">
-            <h3>Saldo em Caixa</h3>
-            <h2>R$ {{ financeiro.balanco }}</h2>
-            <small>Prejuízo Operacional</small>
-        </div>
-        {% endif %}
-
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="border: none;">Dashboard Financeiro</h1>
+        <a href="/" class="btn btn-secondary">Voltar ao Menu</a>
     </div>
 
-    <div class="centro-botao">
-        <a href="/" class="btn btn-secondary">Voltar ao Menu</a>
+    <div class="painel-dividido">
+        
+        <div class="lado-esquerdo">
+            
+            <div class="box-patrimonio">
+                <h3>Valor do Rebanho (Ativo)</h3>
+                <h2>R$ {{ financeiro.valor_rebanho }}</h2>
+                <small>Patrimônio atual no pasto</small>
+            </div>
+
+            <div class="box-saldo" style="background-color: {{ '#2e7d32' if financeiro.saldo_total_operacao >= 0 else '#c62828' }};">
+                <h3>Saldo Total da Operação</h3>
+                <h2>R$ {{ financeiro.saldo_total_operacao }}</h2>
+                <small>Caixa acumulado desde o início</small>
+            </div>
+
+        </div>
+
+        <div class="linha-vertical"></div>
+
+        <div class="lado-direito">
+            
+            <form action="/financeiro" method="GET" class="filtro-ano">
+                <label>Análise do Ano:</label>
+                <select name="ano" onchange="this.form.submit()">
+                    {% for ano in anos %}
+                        <option value="{{ ano }}" {% if ano == ano_selecionado %}selected{% endif %}>{{ ano }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <div class="grid-anual">
+                
+                <div class="card-ano b-azul">
+                    <h4>Entradas ({{ ano_selecionado }})</h4>
+                    <strong>R$ {{ financeiro.entradas_ano }}</strong>
+                    <small style="color: green;">Vendas de Gado</small>
+                </div>
+
+                <div class="card-ano b-vermelho">
+                    <h4>Saídas Totais ({{ ano_selecionado }})</h4>
+                    <strong>R$ {{ financeiro.saidas_ano }}</strong>
+                    <small style="color: red;">Compras + Ops + Med</small>
+                </div>
+
+                <div class="card-ano b-roxo">
+                    <h4>Valor de Reposição</h4>
+                    <strong>R$ {{ financeiro.reposicao_ano }}</strong>
+                    <small>Compras de Gado</small>
+                </div>
+
+                <div class="card-ano b-laranja">
+                    <h4>Custos Operacionais</h4>
+                    <strong>R$ {{ financeiro.custos_op_ano }}</strong>
+                    <small>Cerca, Salário, Arrend.</small>
+                </div>
+
+            </div>
+
+            <div style="text-align: right; margin-top: 10px; color: #555;">
+                Saldo do Exercício {{ ano_selecionado }}: 
+                <span style="font-weight: bold; font-size: 1.2rem; color: {{ 'green' if financeiro.balanco_ano >= 0 else 'red' }};">
+                    R$ {{ financeiro.balanco_ano }}
+                </span>
+            </div>
+
+        </div>
     </div>
 
 </body>
