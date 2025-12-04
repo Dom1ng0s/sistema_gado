@@ -171,7 +171,7 @@ def painel():
                 val = (f"%{termo_busca}%", current_user.id)
                 cursor.execute(sql, val)
             else:
-                sql = "SELECT id, brinco, sexo, data_compra, preco_compra, data_venda, preco_venda FROM animais WHERE user_id = %s"
+                sql = "SELECT id, brinco, sexo, data_compra, preco_compra, data_venda, preco_venda FROM animais WHERE user_id = %s ORDER BY brinco ASC"
                 val = (current_user.id,)
                 cursor.execute(sql, val)
                 
