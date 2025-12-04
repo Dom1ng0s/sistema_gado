@@ -1,0 +1,5 @@
+- Adicionar Custos Operacionais
+    - cerca 
+    - Salários
+    - Gasolina
+    - Etc.

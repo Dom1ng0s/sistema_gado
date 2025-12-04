@@ -1,10 +1,11 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from db_config import get_db_connection, close_db_connection
 from contextlib import contextmanager
 from datetime import date
+
 
 # ======================================================================
 # 1. INICIALIZAÇÃO DO APP E CONFIGURAÇÃO DE SEGURANÇA
@@ -233,10 +234,72 @@ def financeiro():
 
     return render_template('financeiro.html', financeiro=dados)
 
+# ======================================================================
+# ROTA 1: ENTREGAR A PÁGINA (Visual)
+# ======================================================================
 @app.route('/graficos')
+@login_required
 def graficos():
-    # Apenas renderiza o arquivo, sem processar dados
+    """Apenas carrega o arquivo HTML. O JavaScript da página buscará os dados depois."""
     return render_template('graficos.html')
+
+
+# ======================================================================
+# ROTA 2: ENTREGAR OS DADOS (API / JSON)
+# ======================================================================
+@app.route('/dados-graficos')
+@login_required
+def dados_graficos_api():
+    """Processa as contagens no banco e retorna JSON para o gráfico."""
+    try:
+        with get_db_cursor() as cursor:
+            uid = current_user.id
+            
+            # --- 1. DADOS DE SEXO (Agregação via SQL) ---
+            # Conta bois vs vacas ativos
+            cursor.execute("""
+                SELECT sexo, COUNT(*) 
+                FROM animais 
+                WHERE user_id = %s AND data_venda IS NULL 
+                GROUP BY sexo
+            """, (uid,))
+            resultado_sexo = cursor.fetchall()
+            dados_sexo = {sexo: qtd for sexo, qtd in resultado_sexo}
+            
+            # --- 2. DADOS DE PESO (Lógica Mista) ---
+            # Busca apenas o PESO MAIS RECENTE de cada animal ativo
+            cursor.execute("""
+                SELECT p.peso 
+                FROM pesagens p
+                INNER JOIN (
+                    SELECT animal_id, MAX(id) as max_id
+                    FROM pesagens
+                    GROUP BY animal_id
+                ) ultimas ON p.id = ultimas.max_id
+                INNER JOIN animais a ON p.animal_id = a.id
+                WHERE a.user_id = %s AND a.data_venda IS NULL
+            """, (uid,))
+            pesos_brutos = cursor.fetchall()
+
+            # Categorização das Arrobas (Lógica Python)
+            categorias = {
+                'Menos de 10@': 0, '10@ a 15@': 0, 
+                '15@ a 20@': 0, 'Mais de 20@': 0
+            }
+
+            for (peso_kg,) in pesos_brutos:
+                peso_arroba = float(peso_kg) / 30
+                if peso_arroba < 10: categorias['Menos de 10@'] += 1
+                elif 10 <= peso_arroba < 15: categorias['10@ a 15@'] += 1
+                elif 15 <= peso_arroba < 20: categorias['15@ a 20@'] += 1
+                else: categorias['Mais de 20@'] += 1
+
+            # Retorna o JSON final
+            return jsonify({'sexo': dados_sexo, 'peso': categorias})
+
+    except Exception as e:
+        print(f"Erro na API de gráficos: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route("/cadastro", methods=["GET", "POST"])
 @login_required
@@ -287,6 +350,11 @@ def cadastro():
             mensagem = f"Erro Inesperado: {e}"
     
     return render_template("cadastro.html", mensagem=mensagem)
+
+@app.route('/custos_operacionais')
+@login_required
+def custosoperacionais():
+    print("Cheguei")
 
 @app.route('/animal/<int:id_animal>')
 @login_required
