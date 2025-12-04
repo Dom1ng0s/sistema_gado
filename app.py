@@ -191,12 +191,22 @@ def painel():
 @app.route('/financeiro')
 @login_required
 def financeiro():
-    ano_atual = datetime.now().year
+    """
+    Exibe o dashboard financeiro com:
+    1. Patrimônio Atual (Valor do Rebanho Ativo)
+    2. Saldo Total Acumulado (Histórico Completo)
+    3. Fluxo de Caixa Anual (Filtrado por Ano)
+    """
+    
+    # Define o ano padrão como o atual se nenhum for selecionado
+    ano_atual = date.today().year
     ano_selecionado = request.args.get('ano', default=ano_atual, type=int)
 
+    # Inicializa o dicionário de dados
     dados = {
         'valor_rebanho': 0,
-        'saldo_total_operacao': 0, # <--- NOVO CAMPO: Saldo acumulado
+        'saldo_total_operacao': 0,
+        'classe_saldo': 'bg-verde', # Classe CSS padrão
         'entradas_ano': 0,
         'saidas_ano': 0,
         'reposicao_ano': 0,
@@ -211,29 +221,36 @@ def financeiro():
         with get_db_cursor() as cursor:
             uid = current_user.id 
             
-            # --- 1. CONSULTAS GLOBAIS (ACUMULADO DESDE O INÍCIO) ---
-            
-            # Busca anos disponíveis
+            # ==========================================================
+            # 1. PREPARAÇÃO DO FILTRO DE ANOS
+            # ==========================================================
             cursor.execute("SELECT DISTINCT YEAR(data_compra) FROM animais WHERE user_id = %s ORDER BY 1 DESC", (uid,))
             anos_db = cursor.fetchall()
             anos_disponiveis = [a[0] for a in anos_db]
+            
+            # Garante que o ano atual apareça na lista, mesmo sem compras
             if ano_atual not in anos_disponiveis:
                 anos_disponiveis.insert(0, ano_atual)
 
-            # Valor do Rebanho (Animais Ativos HOJE)
+            # ==========================================================
+            # 2. DADOS GLOBAIS (HISTÓRICO COMPLETO / ATUAL)
+            # ==========================================================
+            
+            # A. Valor do Rebanho (Animais que estão no pasto HOJE)
             cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE data_venda IS NULL AND user_id = %s", (uid,))
             dados['valor_rebanho'] = cursor.fetchone()[0] or 0 
 
-            # CÁLCULO DO SALDO TOTAL DA OPERAÇÃO (Histórico Completo)
-            # Total Vendido (Receitas)
+            # B. Saldo Total da Operação (Tudo que entrou - Tudo que saiu desde o dia 1)
+            
+            # Receita Total (Vendas)
             cursor.execute("SELECT SUM(preco_venda) FROM animais WHERE data_venda IS NOT NULL AND user_id = %s", (uid,))
             total_vendas = cursor.fetchone()[0] or 0
             
-            # Total Comprado (Gado)
+            # Despesa Total: Compra de Gado
             cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE user_id = %s", (uid,))
             total_compras = cursor.fetchone()[0] or 0
             
-            # Total Medicações
+            # Despesa Total: Medicações
             cursor.execute("""
                 SELECT SUM(m.custo) FROM medicacoes m 
                 JOIN animais a ON m.animal_id = a.id 
@@ -241,25 +258,34 @@ def financeiro():
             """, (uid,))
             total_meds = cursor.fetchone()[0] or 0
             
-            # Total Custos Operacionais
+            # Despesa Total: Custos Operacionais
             cursor.execute("SELECT SUM(valor) FROM custos_operacionais WHERE user_id = %s", (uid,))
             total_ops = cursor.fetchone()[0] or 0
 
-            # Fórmula: (Tudo que entrou) - (Tudo que saiu)
-            dados['saldo_total_operacao'] = total_vendas - (total_compras + total_meds + total_ops)
-
-
-            # --- 2. CONSULTAS ANUAIS (APENAS O ANO SELECIONADO) ---
+            # Cálculo do Saldo Histórico
+            saldo_total = total_vendas - (total_compras + total_meds + total_ops)
+            dados['saldo_total_operacao'] = saldo_total
             
+            # Lógica de Cor para o CSS (Define se o box será verde ou vermelho)
+            dados['classe_saldo'] = 'bg-verde' if saldo_total >= 0 else 'bg-vermelho'
+
+            # ==========================================================
+            # 3. DADOS DO ANO SELECIONADO (FILTRADOS)
+            # ==========================================================
+            
+            # Entradas (Vendas neste ano)
             cursor.execute("SELECT SUM(preco_venda) FROM animais WHERE YEAR(data_venda) = %s AND user_id = %s", (ano_selecionado, uid))
             dados['entradas_ano'] = cursor.fetchone()[0] or 0
 
+            # Saída 1: Reposição (Compra de animais neste ano)
             cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE YEAR(data_compra) = %s AND user_id = %s", (ano_selecionado, uid))
             dados['reposicao_ano'] = cursor.fetchone()[0] or 0
 
+            # Saída 2: Custos Operacionais deste ano
             cursor.execute("SELECT SUM(valor) FROM custos_operacionais WHERE YEAR(data_custo) = %s AND user_id = %s", (ano_selecionado, uid))
             dados['custos_op_ano'] = cursor.fetchone()[0] or 0
 
+            # Saída 3: Medicações deste ano
             cursor.execute("""
                 SELECT SUM(m.custo) FROM medicacoes m 
                 JOIN animais a ON m.animal_id = a.id 
@@ -268,14 +294,15 @@ def financeiro():
             dados['med_ano'] = cursor.fetchone()[0] or 0
             
     except Exception as e:
-        print(f"Erro no financeiro: {e}")
+        print(f"Erro no cálculo financeiro: {e}")
 
-    # Fechamento do Ano
+    # ==========================================================
+    # 4. FECHAMENTO DOS CÁLCULOS ANUAIS
+    # ==========================================================
     dados['saidas_ano'] = dados['reposicao_ano'] + dados['custos_op_ano'] + dados['med_ano']
     dados['balanco_ano'] = dados['entradas_ano'] - dados['saidas_ano']
 
     return render_template('financeiro.html', financeiro=dados, ano_selecionado=ano_selecionado, anos=anos_disponiveis)
-
 # ======================================================================
 # ROTA 1: ENTREGAR A PÁGINA (Visual)
 # ======================================================================

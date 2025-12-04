@@ -8,22 +8,22 @@
 </head>
 <body>
     
-    <div style="text-align: center; margin-bottom: 20px;">
-        <h1 style="border: none;">Dashboard Financeiro</h1>
-        <a href="/" class="btn btn-secondary">Voltar ao Menu</a>
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-bottom: 20px;">
+        <h1 style="border: none; margin: 0;">Dashboard Financeiro</h1>
+        <a href="/painel" class="btn btn-secondary">Voltar ao Painel</a>
     </div>
 
     <div class="painel-dividido">
         
         <div class="lado-esquerdo">
             
-            <div class="box-patrimonio">
+            <div class="box-resumo bg-verde">
                 <h3>Valor do Rebanho (Ativo)</h3>
                 <h2>R$ {{ financeiro.valor_rebanho }}</h2>
                 <small>Patrimônio atual no pasto</small>
             </div>
 
-            <div class="box-saldo" style="background-color: {{ '#2e7d32' if financeiro.saldo_total_operacao >= 0 else '#c62828' }};">
+            <div class="box-resumo {{ financeiro.classe_saldo }}">
                 <h3>Saldo Total da Operação</h3>
                 <h2>R$ {{ financeiro.saldo_total_operacao }}</h2>
                 <small>Caixa acumulado desde o início</small>
@@ -45,7 +45,6 @@
             </form>
 
             <div class="grid-anual">
-                
                 <div class="card-ano b-azul">
                     <h4>Entradas ({{ ano_selecionado }})</h4>
                     <strong>R$ {{ financeiro.entradas_ano }}</strong>
@@ -69,12 +68,11 @@
                     <strong>R$ {{ financeiro.custos_op_ano }}</strong>
                     <small>Cerca, Salário, Arrend.</small>
                 </div>
-
             </div>
 
             <div style="text-align: right; margin-top: 10px; color: #555;">
                 Saldo do Exercício {{ ano_selecionado }}: 
-                <span style="font-weight: bold; font-size: 1.2rem; color: {{ 'green' if financeiro.balanco_ano >= 0 else 'red' }};">
+                <span style="font-weight: bold; font-size: 1.2rem;">
                     R$ {{ financeiro.balanco_ano }}
                 </span>
             </div>

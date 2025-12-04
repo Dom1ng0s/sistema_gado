@@ -1,4 +1,4 @@
-/* --- LAYOUT DIVIDIDO (SPLIT VIEW) --- */
+/* --- LAYOUT GERAL --- */
 .painel-dividido {
     display: flex;
     align-items: flex-start;
@@ -7,61 +7,53 @@
     margin: 40px auto;
 }
 
-/* LADO ESQUERDO: COLUNA DE PATRIMÔNIO E SALDO */
+/* --- LADO ESQUERDO (Patrimônio e Saldo) --- */
 .lado-esquerdo {
     flex: 1;
     display: flex;
-    flex-direction: column; /* Importante: Empilha um item embaixo do outro */
-    justify-content: flex-start;
-    align-items: center;
-    gap: 30px; /* Espaço entre os cartões */
+    flex-direction: column;
+    gap: 30px;
+    min-width: 300px; /* Garante um tamanho mínimo saudável */
 }
 
-/* Cartão Verde (Valor do Rebanho) */
-.box-patrimonio {
-    background-color: #2e7d32;
-    color: white;
+/* Cartão Padrão (Base) */
+.box-resumo {
     padding: 30px 20px;
     border-radius: 20px;
     text-align: center;
     width: 100%;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    color: white;
+    
+    /* CORREÇÃO PRINCIPAL: Impede que o padding estoure a largura */
+    box-sizing: border-box; 
+}
+
+.box-resumo h2 { font-size: 2.2rem; margin: 10px 0; color: white; }
+.box-resumo h3 { font-size: 1.1rem; margin: 0; color: rgba(255,255,255,0.9); }
+.box-resumo small { display: block; margin-top: 5px; opacity: 0.8; }
+
+/* VARIAÇÕES DE COR (Classes Puras) */
+.bg-verde {
+    background-color: #2e7d32;
     border: 4px solid #1b5e20;
 }
 
-/* NOVO: Cartão de Saldo Total (Cor variável no HTML) */
-.box-saldo {
-    color: white;
-    padding: 30px 20px;
-    border-radius: 20px;
-    text-align: center;
-    width: 100%;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-    border: 4px solid rgba(0,0,0,0.1);
+.bg-vermelho {
+    background-color: #c62828;
+    border: 4px solid #b71c1c;
 }
 
-.box-patrimonio h2, .box-saldo h2 { 
-    color: white; 
-    font-size: 2.2rem; 
-    margin: 10px 0; 
-}
-
-.box-patrimonio h3, .box-saldo h3 { 
-    color: rgba(255,255,255,0.9); 
-    font-size: 1.1rem; 
-    margin: 0; 
-}
-
-/* LINHA DIVISÓRIA */
+/* --- LINHA DIVISÓRIA --- */
 .linha-vertical {
     width: 2px;
-    background-color: #ccc;
-    height: 450px;
-    align-self: center;
-    border-radius: 2px;
+    background-color: #e0e0e0;
+    height: 100%; /* Ajusta altura automaticamente */
+    min-height: 450px;
+    align-self: stretch; /* Estica para acompanhar o conteúdo */
 }
 
-/* LADO DIREITO: FLUXO ANUAL */
+/* --- LADO DIREITO (Anual) --- */
 .lado-direito {
     flex: 2;
     display: flex;
@@ -69,7 +61,6 @@
     gap: 20px;
 }
 
-/* FILTRO DE ANO */
 .filtro-ano {
     background: #f1f1f1;
     padding: 10px 20px;
@@ -84,14 +75,12 @@
 .filtro-ano select {
     padding: 5px 10px;
     border-radius: 5px;
-    border: 1px solid #999;
-    font-weight: bold;
     font-size: 16px;
-    background-color: white;
+    border: 1px solid #999;
     cursor: pointer;
 }
 
-/* GRID DOS CARDS ANUAIS */
+/* Grid Cards */
 .grid-anual {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -103,25 +92,12 @@
     padding: 20px;
     border-radius: 15px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    text-align: left;
     border-left: 5px solid #ccc;
-    transition: transform 0.2s;
+    box-sizing: border-box; /* Prevenção também aqui */
 }
 
-.card-ano:hover { transform: translateY(-2px); }
-
-.card-ano h4 { 
-    margin: 0 0 5px 0; 
-    font-size: 0.9rem; 
-    color: #666; 
-    text-transform: uppercase; 
-}
-
-.card-ano strong { 
-    font-size: 1.5rem; 
-    display: block; 
-    color: #333; 
-}
+.card-ano h4 { margin: 0 0 5px 0; font-size: 0.9rem; color: #666; text-transform: uppercase; }
+.card-ano strong { font-size: 1.5rem; display: block; color: #333; }
 
 /* Bordas Coloridas */
 .b-azul { border-left-color: #2196F3; }
