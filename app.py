@@ -215,115 +215,68 @@ def painel():
 @login_required
 def financeiro():
     """
-    Exibe o dashboard financeiro com:
-    1. Patrimônio Atual (Valor do Rebanho Ativo)
-    2. Saldo Total Acumulado (Histórico Completo)
-    3. Fluxo de Caixa Anual (Filtrado por Ano)
+    Relatório Financeiro Otimizado (Fase 3).
+    Consome a View 'v_fluxo_caixa' para performance instantânea O(1).
     """
-    
-    # Define o ano padrão como o atual se nenhum for selecionado
     ano_atual = date.today().year
     ano_selecionado = request.args.get('ano', default=ano_atual, type=int)
-
-    # Inicializa o dicionário de dados
+    
+    # Estrutura inicial zerada (Evita erros de template se não houver dados)
     dados = {
-        'valor_rebanho': 0,
-        'saldo_total_operacao': 0,
-        'classe_saldo': 'bg-verde', # Classe CSS padrão
-        'entradas_ano': 0,
-        'saidas_ano': 0,
-        'reposicao_ano': 0,
-        'custos_op_ano': 0,
-        'med_ano': 0,
-        'balanco_ano': 0
+        'valor_rebanho': 0, 
+        'saldo_total_operacao': 0, 
+        'classe_saldo': 'bg-verde',
+        'entradas_ano': 0, 
+        'saidas_ano': 0, 
+        'balanco_ano': 0,
+        'reposicao_ano': 0, 
+        'custos_op_ano': 0, 
+        'med_ano': 0
     }
     
-    anos_disponiveis = []
+    anos_disponiveis = [ano_atual]
 
     try:
         with get_db_cursor() as cursor:
-            uid = current_user.id 
+            uid = current_user.id
             
-            # ==========================================================
-            # 1. PREPARAÇÃO DO FILTRO DE ANOS
-            # ==========================================================
-            cursor.execute("SELECT DISTINCT YEAR(data_compra) FROM animais WHERE user_id = %s ORDER BY 1 DESC", (uid,))
-            anos_db = cursor.fetchall()
-            anos_disponiveis = [a[0] for a in anos_db]
-            
-            # Garante que o ano atual apareça na lista, mesmo sem compras
-            if ano_atual not in anos_disponiveis:
-                anos_disponiveis.insert(0, ano_atual)
-
-            # ==========================================================
-            # 2. DADOS GLOBAIS (HISTÓRICO COMPLETO / ATUAL)
-            # ==========================================================
-            
-            # A. Valor do Rebanho (Animais que estão no pasto HOJE)
+            # QUERY 1: Patrimônio Ativo (Soma dos animais no pasto hoje)
             cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE data_venda IS NULL AND user_id = %s", (uid,))
-            dados['valor_rebanho'] = cursor.fetchone()[0] or 0 
+            res_rebanho = cursor.fetchone()
+            if res_rebanho and res_rebanho[0]:
+                dados['valor_rebanho'] = res_rebanho[0]
 
-            # B. Saldo Total da Operação (Tudo que entrou - Tudo que saiu desde o dia 1)
+            # QUERY 2: Fluxo de Caixa (Traz o histórico completo da View)
+            # A view já soma vendas, compras, remédios e custos operacionais por ano.
+            cursor.execute("SELECT ano, total_entradas, total_compras, total_med, total_ops FROM v_fluxo_caixa WHERE user_id = %s ORDER BY ano DESC", (uid,))
+            historico = cursor.fetchall()
             
-            # Receita Total (Vendas)
-            cursor.execute("SELECT SUM(preco_venda) FROM animais WHERE data_venda IS NOT NULL AND user_id = %s", (uid,))
-            total_vendas = cursor.fetchone()[0] or 0
-            
-            # Despesa Total: Compra de Gado
-            cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE user_id = %s", (uid,))
-            total_compras = cursor.fetchone()[0] or 0
-            
-            # Despesa Total: Medicações
-            cursor.execute("""
-                SELECT SUM(m.custo) FROM medicacoes m 
-                JOIN animais a ON m.animal_id = a.id 
-                WHERE a.user_id = %s
-            """, (uid,))
-            total_meds = cursor.fetchone()[0] or 0
-            
-            # Despesa Total: Custos Operacionais
-            cursor.execute("SELECT SUM(valor) FROM custos_operacionais WHERE user_id = %s", (uid,))
-            total_ops = cursor.fetchone()[0] or 0
+            if historico:
+                anos_disponiveis = [row[0] for row in historico]
+                
+                # A. Saldo Acumulado Global (Soma de todos os anos da história)
+                total_receita = sum(row[1] for row in historico)
+                total_despesa = sum(row[2] + row[3] + row[4] for row in historico)
+                dados['saldo_total_operacao'] = total_receita - total_despesa
+                
+                # B. Dados Específicos do Ano Selecionado
+                dados_ano = next((row for row in historico if row[0] == ano_selecionado), None)
+                if dados_ano:
+                    # Desempacota a tupla da View: ano, entradas, compras, meds, ops
+                    _, ent, comp, med, ops = dados_ano
+                    dados['entradas_ano'] = ent
+                    dados['reposicao_ano'] = comp
+                    dados['med_ano'] = med
+                    dados['custos_op_ano'] = ops
+                    
+                    dados['saidas_ano'] = comp + med + ops
+                    dados['balanco_ano'] = ent - dados['saidas_ano']
 
-            # Cálculo do Saldo Histórico
-            saldo_total = total_vendas - (total_compras + total_meds + total_ops)
-            dados['saldo_total_operacao'] = saldo_total
-            
-            # Lógica de Cor para o CSS (Define se o box será verde ou vermelho)
-            dados['classe_saldo'] = 'bg-verde' if saldo_total >= 0 else 'bg-vermelho'
+            # Define cor do box de saldo (Verde/Vermelho)
+            dados['classe_saldo'] = 'bg-verde' if dados['saldo_total_operacao'] >= 0 else 'bg-vermelho'
 
-            # ==========================================================
-            # 3. DADOS DO ANO SELECIONADO (FILTRADOS)
-            # ==========================================================
-            
-            # Entradas (Vendas neste ano)
-            cursor.execute("SELECT SUM(preco_venda) FROM animais WHERE YEAR(data_venda) = %s AND user_id = %s", (ano_selecionado, uid))
-            dados['entradas_ano'] = cursor.fetchone()[0] or 0
-
-            # Saída 1: Reposição (Compra de animais neste ano)
-            cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE YEAR(data_compra) = %s AND user_id = %s", (ano_selecionado, uid))
-            dados['reposicao_ano'] = cursor.fetchone()[0] or 0
-
-            # Saída 2: Custos Operacionais deste ano
-            cursor.execute("SELECT SUM(valor) FROM custos_operacionais WHERE YEAR(data_custo) = %s AND user_id = %s", (ano_selecionado, uid))
-            dados['custos_op_ano'] = cursor.fetchone()[0] or 0
-
-            # Saída 3: Medicações deste ano
-            cursor.execute("""
-                SELECT SUM(m.custo) FROM medicacoes m 
-                JOIN animais a ON m.animal_id = a.id 
-                WHERE YEAR(m.data_aplicacao) = %s AND a.user_id = %s
-            """, (ano_selecionado, uid))
-            dados['med_ano'] = cursor.fetchone()[0] or 0
-            
     except Exception as e:
-        print(f"Erro no cálculo financeiro: {e}")
-
-    # ==========================================================
-    # 4. FECHAMENTO DOS CÁLCULOS ANUAIS
-    # ==========================================================
-    dados['saidas_ano'] = dados['reposicao_ano'] + dados['custos_op_ano'] + dados['med_ano']
-    dados['balanco_ano'] = dados['entradas_ano'] - dados['saidas_ano']
+        print(f"Erro no financeiro: {e}")
 
     return render_template('financeiro.html', financeiro=dados, ano_selecionado=ano_selecionado, anos=anos_disponiveis)
 # ======================================================================

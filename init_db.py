@@ -2,159 +2,179 @@ import mysql.connector
 import os
 from dotenv import load_dotenv
 
-# Carrega variáveis do arquivo .env (CRÍTICO para conexões cloud)
+# Carrega variáveis de ambiente
 load_dotenv()
 
-def obter_configuracao():
-    """Busca credenciais seguras do ambiente."""
-    print("--- 📡 CONFIGURAÇÃO DE CONEXÃO ---")
-    host = os.getenv('DB_HOST')
-    user = os.getenv('DB_USER')
-    db_name = os.getenv('DB_NAME')
-    
-    # Debug Seguro (Mostra onde está tentando conectar sem vazar senha)
-    print(f"Host Alvo: {host}")
-    print(f"Usuário: {user}")
-    print(f"Banco de Dados: {db_name}")
-    
-    if not host or not user or not db_name:
-        raise ValueError("❌ ERRO: Verifique seu arquivo .env. Faltam variáveis (DB_HOST, DB_USER ou DB_NAME).")
+print("\n--- 🚀 INICIANDO SETUP COMPLETO DO BANCO DE DADOS ---")
 
-    return {
-        'host': host,
-        'user': user,
-        'password': os.getenv('DB_PASSWORD'),
-        'database': db_name,
-        'port': int(os.getenv('DB_PORT', 3306))
-    }
+try:
+    # 1. Conexão
+    conn = mysql.connector.connect(
+        host=os.getenv('DB_HOST'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
+        database=os.getenv('DB_NAME'),
+        port=int(os.getenv('DB_PORT', 3306))
+    )
+    cursor = conn.cursor()
+    print("✅ Conexão estabelecida.")
 
-def configurar_banco_cloud():
-    print("\n--- 🚀 INICIANDO SETUP (MODO CLOUD) ---")
+    # ==============================================================================
+    # ETAPA 1: TABELAS FUNDAMENTAIS (Ordem de Dependência: Usuários -> Outros)
+    # ==============================================================================
     
-    config = obter_configuracao()
-    
+    # 1.1 Tabela USUÁRIOS
+    print("🔨 [1/6] Criando tabela 'usuarios'...")
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS usuarios (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(50) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL
+    );
+    """)
+
+    # 1.2 Inserção do ADMIN Padrão
+    print("👤 Verificando usuário 'admin'...")
+    hash_admin = 'scrypt:32768:8:1$kXp5C5q9Zz8s$6e28d45f348043653131707572706854199c07172551061919864273347072557766858172970635489708764835940561570198038755030800008853755355'
     try:
-        # Tenta conexão direta (Sem tentar criar Database, pois a Cloud já fornece)
-        conn = mysql.connector.connect(**config)
-        cursor = conn.cursor()
-        print("✅ Conexão estabelecida com sucesso!")
-        
-        # 1. Tabelas (Idempotente: Só cria se não existir)
-        tabelas = [
-            """CREATE TABLE IF NOT EXISTS usuarios (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                username VARCHAR(50) UNIQUE NOT NULL,
-                password_hash VARCHAR(255) NOT NULL
-            )""",
-            """CREATE TABLE IF NOT EXISTS animais (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL,
-                brinco VARCHAR(20) NOT NULL,
-                sexo ENUM('M', 'F') NOT NULL,
-                data_compra DATE NOT NULL,
-                preco_compra DECIMAL(10,2),
-                data_venda DATE,
-                preco_venda DECIMAL(10,2),
-                FOREIGN KEY (user_id) REFERENCES usuarios(id)
-            )""",
-            """CREATE TABLE IF NOT EXISTS pesagens (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                animal_id INT NOT NULL,
-                data_pesagem DATE NOT NULL,
-                peso DECIMAL(10,2) NOT NULL,
-                FOREIGN KEY (animal_id) REFERENCES animais(id)
-            )""",
-            """CREATE TABLE IF NOT EXISTS medicacoes (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                animal_id INT NOT NULL,
-                data_aplicacao DATE NOT NULL,
-                nome_medicamento VARCHAR(100),
-                custo DECIMAL(10,2),
-                observacoes TEXT,
-                FOREIGN KEY (animal_id) REFERENCES animais(id)
-            )""",
-            """CREATE TABLE IF NOT EXISTS custos_operacionais (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL,
-                categoria VARCHAR(50),
-                tipo_custo VARCHAR(50),
-                valor DECIMAL(10,2),
-                data_custo DATE,
-                descricao TEXT,
-                FOREIGN KEY (user_id) REFERENCES usuarios(id)
-            )"""
-        ]
-        
-        print("1. Validando estrutura de tabelas...")
-        for query in tabelas:
-            cursor.execute(query)
-
-        # 2. View Analítica (A Inteligência do GMD)
-        # NOTA: Alguns provedores cloud exigem permissões específicas para VIEWS.
-        # Se der erro aqui, é permissão do seu usuário cloud.
-        print("2. Atualizando View de Inteligência (GMD)...")
-        
-        # Dropamos a view antiga para garantir que a nova lógica seja aplicada
-        cursor.execute("DROP VIEW IF EXISTS v_gmd_analitico")
-        
-        sql_view = """
-        CREATE VIEW v_gmd_analitico AS
-        WITH PesagensOrdenadas AS (
-            SELECT 
-                animal_id, 
-                data_pesagem, 
-                peso,
-                ROW_NUMBER() OVER(PARTITION BY animal_id ORDER BY data_pesagem ASC) as rn_asc,
-                ROW_NUMBER() OVER(PARTITION BY animal_id ORDER BY data_pesagem DESC) as rn_desc
-            FROM pesagens
-        ),
-        PrimeiraUltima AS (
-            SELECT 
-                animal_id,
-                MAX(CASE WHEN rn_asc = 1 THEN data_pesagem END) AS data_inicial,
-                MAX(CASE WHEN rn_asc = 1 THEN peso END) AS peso_inicial,
-                MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_final,
-                MAX(CASE WHEN rn_desc = 1 THEN peso END) AS peso_final
-            FROM PesagensOrdenadas
-            GROUP BY animal_id
-        )
-        SELECT 
-            a.user_id,
-            a.id as animal_id,
-            a.brinco,
-            p.data_inicial,
-            p.peso_inicial,
-            p.data_final,
-            p.peso_final,
-            (p.peso_final - p.peso_inicial) as ganho_total,
-            DATEDIFF(p.data_final, p.data_inicial) as dias,
-            CASE 
-                WHEN DATEDIFF(p.data_final, p.data_inicial) > 0 
-                THEN (p.peso_final - p.peso_inicial) / DATEDIFF(p.data_final, p.data_inicial)
-                ELSE 0 
-            END as gmd
-        FROM PrimeiraUltima p
-        JOIN animais a ON p.animal_id = a.id
-        WHERE p.data_inicial <> p.data_final;
-        """
-        cursor.execute(sql_view)
-        
-        conn.commit()
-        print("✅ SUCESSO! Banco Cloud atualizado e pronto.")
-        
+        cursor.execute("INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)", ('admin', hash_admin))
+        print("   -> Usuário 'admin' criado (Senha: admin123).")
     except mysql.connector.Error as err:
-        print(f"\n❌ ERRO DE CONEXÃO OU SQL:")
-        print(f"Código: {err.errno}")
-        print(f"Mensagem: {err.msg}")
-        print("\nDica: Verifique se o IP da sua máquina está liberado no firewall do banco cloud.")
-    
-    except Exception as e:
-        print(f"\n❌ ERRO GERAL: {e}")
-    
-    finally:
-        if 'conn' in locals() and conn.is_connected():
-            cursor.close()
-            conn.close()
+        if err.errno == 1062:
+            print("   -> Usuário 'admin' já existe.")
+        else:
+            raise err
 
-if __name__ == "__main__":
-    configurar_banco_cloud()
+    # 1.3 Tabela ANIMAIS
+    print("🔨 [2/6] Criando tabela 'animais'...")
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS animais (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        brinco VARCHAR(50) NOT NULL,
+        sexo CHAR(1) NOT NULL,
+        data_compra DATE NOT NULL,
+        preco_compra DECIMAL(10, 2),
+        data_venda DATE,
+        preco_venda DECIMAL(10, 2),
+        user_id INT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES usuarios(id),
+        UNIQUE KEY idx_brinco_user (brinco, user_id)
+    );
+    """)
+
+    # 1.4 Tabelas Satélites (Pesagens, Medicações, Custos)
+    print("🔨 [3/6] Criando tabelas satélites (pesagens, medicacoes, custos)...")
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS pesagens (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        animal_id INT NOT NULL,
+        data_pesagem DATE NOT NULL,
+        peso DECIMAL(10, 2) NOT NULL,
+        FOREIGN KEY (animal_id) REFERENCES animais(id)
+    );
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS medicacoes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        animal_id INT NOT NULL,
+        data_aplicacao DATE NOT NULL,
+        nome_medicamento VARCHAR(100) NOT NULL,
+        custo DECIMAL(10, 2),
+        observacoes TEXT,
+        FOREIGN KEY (animal_id) REFERENCES animais(id)
+    );
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS custos_operacionais (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        categoria VARCHAR(20) NOT NULL,
+        tipo_custo VARCHAR(50) NOT NULL,
+        valor DECIMAL(10, 2) NOT NULL,
+        data_custo DATE NOT NULL,
+        descricao TEXT,
+        FOREIGN KEY (user_id) REFERENCES usuarios(id)
+    );
+    """)
+
+    # ==============================================================================
+    # ETAPA 2: INTELIGÊNCIA DE DADOS (VIEWS)
+    # ==============================================================================
+
+    # 2.1 View de GMD (Ganho Médio Diário)
+    print("🧠 [4/6] Atualizando View de Inteligência Zootécnica (GMD)...")
+    cursor.execute("""
+    CREATE OR REPLACE VIEW v_gmd_analitico AS
+    WITH PesagensOrdenadas AS (
+        SELECT 
+            animal_id, data_pesagem, peso,
+            ROW_NUMBER() OVER(PARTITION BY animal_id ORDER BY data_pesagem ASC) as rn_asc,
+            ROW_NUMBER() OVER(PARTITION BY animal_id ORDER BY data_pesagem DESC) as rn_desc
+        FROM pesagens
+    ),
+    PrimeiraUltima AS (
+        SELECT 
+            animal_id,
+            MAX(CASE WHEN rn_asc = 1 THEN data_pesagem END) AS data_inicial,
+            MAX(CASE WHEN rn_asc = 1 THEN peso END) AS peso_inicial,
+            MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_final,
+            MAX(CASE WHEN rn_desc = 1 THEN peso END) AS peso_final
+        FROM PesagensOrdenadas
+        GROUP BY animal_id
+    )
+    SELECT 
+        a.user_id, a.id as animal_id, a.brinco,
+        p.peso_final,
+        (p.peso_final - p.peso_inicial) as ganho_total,
+        DATEDIFF(p.data_final, p.data_inicial) as dias,
+        CASE 
+            WHEN DATEDIFF(p.data_final, p.data_inicial) > 0 
+            THEN (p.peso_final - p.peso_inicial) / DATEDIFF(p.data_final, p.data_inicial)
+            ELSE 0 
+        END as gmd
+    FROM PrimeiraUltima p
+    JOIN animais a ON p.animal_id = a.id
+    WHERE p.data_inicial <> p.data_final;
+    """)
+
+    # 2.2 View Financeira (Fluxo de Caixa)
+    print("🧠 [5/6] Atualizando View de Inteligência Financeira (Fluxo de Caixa)...")
+    cursor.execute("""
+    CREATE OR REPLACE VIEW v_fluxo_caixa AS
+    SELECT 
+        user_id,
+        ano,
+        SUM(receita) as total_entradas,
+        SUM(despesa_compra) as total_compras,
+        SUM(despesa_med) as total_med,
+        SUM(despesa_ops) as total_ops
+    FROM (
+        SELECT user_id, YEAR(data_venda) as ano, preco_venda as receita, 0 as despesa_compra, 0 as despesa_med, 0 as despesa_ops
+        FROM animais WHERE data_venda IS NOT NULL
+        UNION ALL
+        SELECT user_id, YEAR(data_compra) as ano, 0, preco_compra, 0, 0
+        FROM animais
+        UNION ALL
+        SELECT a.user_id, YEAR(m.data_aplicacao) as ano, 0, 0, m.custo, 0
+        FROM medicacoes m JOIN animais a ON m.animal_id = a.id
+        UNION ALL
+        SELECT user_id, YEAR(data_custo) as ano, 0, 0, 0, valor
+        FROM custos_operacionais
+    ) as uniao_geral
+    GROUP BY user_id, ano;
+    """)
+
+    # ==============================================================================
+    # CONCLUSÃO
+    # ==============================================================================
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print("\n✅ [6/6] SUCESSO! Banco de dados atualizado e pronto para produção.")
+
+except Exception as e:
+    print(f"\n❌ ERRO FATAL: {e}")
+    print("Dica: Verifique se o IP está liberado ou se as credenciais no .env estão corretas.")
