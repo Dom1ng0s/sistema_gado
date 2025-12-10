@@ -70,5 +70,29 @@
             {% endfor %}
         </tbody>
     </table>
+    <div style="display: flex; justify-content: center; margin-top: 20px; gap: 10px;">
+        
+        {% if pagina_atual > 1 %}
+            <a href="/painel?page={{ pagina_atual - 1 }}&busca={{ busca }}" class="btn btn-secondary">
+                &laquo; Anterior
+            </a>
+        {% else %}
+            <span class="btn btn-secondary" style="opacity: 0.5; cursor: not-allowed;">&laquo; Anterior</span>
+        {% endif %}
+
+        <span style="align-self: center; font-weight: bold;">
+            Página {{ pagina_atual }} de {{ total_paginas }}
+        </span>
+
+        {% if pagina_atual < total_paginas %}
+            <a href="/painel?page={{ pagina_atual + 1 }}&busca={{ busca }}" class="btn btn-secondary">
+                Próximo &raquo;
+            </a>
+        {% else %}
+            <span class="btn btn-secondary" style="opacity: 0.5; cursor: not-allowed;">Próximo &raquo;</span>
+        {% endif %}
+        
+    </div>
+    <br><br>
 </body>
 </html>

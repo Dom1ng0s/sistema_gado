@@ -5,6 +5,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from db_config import get_db_connection, close_db_connection
 from contextlib import contextmanager
 from datetime import date, datetime
+import math
 
 
 # ======================================================================
@@ -157,40 +158,59 @@ def novo_usuario():
 # ======================================================================
 
 
+
 @app.route('/painel')
 @login_required
 def painel():
-    """
-    Lista simples e rápida.
-    Performance: O(1) query (Select direto na tabela indexada).
-    Sem cálculos de GMD aqui.
-    """
     animais = []
-    termo_busca = request.args.get('busca')
+    termo_busca = request.args.get('busca', '')
+    
+    # Configuração da Paginação
+    pagina_atual = request.args.get('page', 1, type=int)
+    itens_por_pagina = 20
+    offset = (pagina_atual - 1) * itens_por_pagina
+    
+    total_animais = 0
+    total_paginas = 1
 
     try:
         with get_db_cursor() as cursor:
-            # Selecionamos apenas as colunas necessárias para a tabela visual
             colunas = "id, brinco, sexo, data_compra, preco_compra, data_venda, preco_venda"
             
             if termo_busca:
-                # Busca filtrada
-                sql = f"SELECT {colunas} FROM animais WHERE brinco LIKE %s AND user_id = %s ORDER BY brinco ASC"
-                cursor.execute(sql, (f"%{termo_busca}%", current_user.id))
+                # 1. Conta o total de resultados (para saber quantas páginas teremos)
+                cursor.execute("SELECT COUNT(*) FROM animais WHERE brinco LIKE %s AND user_id = %s", (f"%{termo_busca}%", current_user.id))
+                total_animais = cursor.fetchone()[0]
+
+                # 2. Busca apenas a fatia da página atual (LIMIT/OFFSET)
+                sql = f"SELECT {colunas} FROM animais WHERE brinco LIKE %s AND user_id = %s ORDER BY brinco ASC LIMIT %s OFFSET %s"
+                cursor.execute(sql, (f"%{termo_busca}%", current_user.id, itens_por_pagina, offset))
+            
             else:
-                # Busca total (rápida)
-                sql = f"SELECT {colunas} FROM animais WHERE user_id = %s ORDER BY brinco ASC"
-                cursor.execute(sql, (current_user.id,))
+                # 1. Conta total
+                cursor.execute("SELECT COUNT(*) FROM animais WHERE user_id = %s", (current_user.id,))
+                total_animais = cursor.fetchone()[0]
+
+                # 2. Busca fatia
+                sql = f"SELECT {colunas} FROM animais WHERE user_id = %s ORDER BY brinco ASC LIMIT %s OFFSET %s"
+                cursor.execute(sql, (current_user.id, itens_por_pagina, offset))
                 
             animais = cursor.fetchall()
+            
+            # Calcula total de páginas
+            if total_animais > 0:
+                total_paginas = math.ceil(total_animais / itens_por_pagina)
             
     except ConnectionError:
         pass
     except Exception as e:
         print(f"Erro no painel: {e}")
     
-    return render_template("index.html", lista_animais=animais)
-
+    return render_template("index.html", 
+                           lista_animais=animais, 
+                           pagina_atual=pagina_atual, 
+                           total_paginas=total_paginas,
+                           busca=termo_busca)
 @app.route('/financeiro')
 @login_required
 def financeiro():
