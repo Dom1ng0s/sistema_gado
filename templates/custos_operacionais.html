@@ -61,43 +61,6 @@
         </form>
     </div>
 
-    <h2 style="text-align: center; margin-top: 40px;">Histórico de Custos</h2>
-    
-    <table>
-        <thead>
-            <tr>
-                <th>Data</th>
-                <th>Categoria</th>
-                <th>Tipo/Descrição</th>
-                <th>Valor</th>
-                <th>Detalhes</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for custo in lista_custos %}
-            <tr>
-                <td>{{ custo[5] }}</td> 
-                <td>
-                    {% if custo[2] == 'Fixo' %}
-                        <span class="tag-ativo" style="background: #e3f2fd; color: #0d47a1;">FIXO</span>
-                    {% else %}
-                        <span class="tag-vendido" style="background: #fff3e0; color: #e65100;">VARIÁVEL</span>
-                    {% endif %}
-                </td>
-                <td>{{ custo[3] }}</td>
-                <td>R$ {{ custo[4] }}</td>
-                <td>{{ custo[6] }}</td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="5" style="text-align: center; padding: 20px; color: #777;">
-                    Nenhum custo registrado.
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
     <script>
         function alternarCampos() {
             const isFixo = document.getElementById('cat_fixo').checked;

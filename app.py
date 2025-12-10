@@ -157,13 +157,12 @@ def novo_usuario():
 # 6. ROTAS PRINCIPAIS DA APLICAÇÃO (PROTEGIDAS E FILTRADAS POR USUÁRIO)
 # ======================================================================
 
-
-
 @app.route('/painel')
 @login_required
 def painel():
     animais = []
     termo_busca = request.args.get('busca', '')
+    filtro_status = request.args.get('status', 'todos') # Padrão: 'todos'
     
     # Configuração da Paginação
     pagina_atual = request.args.get('page', 1, type=int)
@@ -177,24 +176,39 @@ def painel():
         with get_db_cursor() as cursor:
             colunas = "id, brinco, sexo, data_compra, preco_compra, data_venda, preco_venda"
             
+            # --- CONSTRUÇÃO DINÂMICA DA QUERY ---
+            condicoes = ["user_id = %s"]
+            parametros = [current_user.id]
+
+            # 1. Filtro de Busca (Texto)
             if termo_busca:
-                # [OTIMIZADO] Removi o '%' inicial para ativar o índice 'idx_brinco_user'
-                termo_prefixo = f"{termo_busca}%"
-                
-                cursor.execute("SELECT COUNT(*) FROM animais WHERE brinco LIKE %s AND user_id = %s", (termo_prefixo, current_user.id))
-                total_animais = cursor.fetchone()[0]
+                condicoes.append("brinco LIKE %s")
+                parametros.append(f"{termo_busca}%") # Busca Otimizada (Prefixo)
 
-                sql = f"SELECT {colunas} FROM animais WHERE brinco LIKE %s AND user_id = %s ORDER BY brinco ASC LIMIT %s OFFSET %s"
-                cursor.execute(sql, (termo_prefixo, current_user.id, itens_por_pagina, offset))
-            else:
-                # 1. Conta total
-                cursor.execute("SELECT COUNT(*) FROM animais WHERE user_id = %s", (current_user.id,))
-                total_animais = cursor.fetchone()[0]
+            # 2. Filtro de Status (Ativos/Vendidos)
+            if filtro_status == 'ativos':
+                condicoes.append("data_venda IS NULL")
+            elif filtro_status == 'vendidos':
+                condicoes.append("data_venda IS NOT NULL")
+            
+            # Monta a cláusula WHERE
+            where_clause = " WHERE " + " AND ".join(condicoes)
 
-                # 2. Busca fatia
-                sql = f"SELECT {colunas} FROM animais WHERE user_id = %s ORDER BY brinco ASC LIMIT %s OFFSET %s"
-                cursor.execute(sql, (current_user.id, itens_por_pagina, offset))
-                
+            # --- EXECUÇÃO ---
+            
+            # A. Conta total (para paginação)
+            sql_count = f"SELECT COUNT(*) FROM animais {where_clause}"
+            cursor.execute(sql_count, tuple(parametros))
+            total_animais = cursor.fetchone()[0]
+
+            # B. Busca dados (com limite)
+            # Ordena pelo TAMANHO do texto primeiro, depois pelo texto.
+# Isso faz '9' (tamanho 1) vir antes de '10' (tamanho 2).
+            sql_data = f"SELECT {colunas} FROM animais {where_clause} ORDER BY LENGTH(brinco) ASC, brinco ASC LIMIT %s OFFSET %s"
+            # Adiciona params de paginação à lista existente
+            params_data = parametros + [itens_por_pagina, offset] 
+            
+            cursor.execute(sql_data, tuple(params_data))
             animais = cursor.fetchall()
             
             # Calcula total de páginas
@@ -202,7 +216,7 @@ def painel():
                 total_paginas = math.ceil(total_animais / itens_por_pagina)
             
     except ConnectionError:
-        pass
+        pass # Tratar erro de conexão se necessário
     except Exception as e:
         print(f"Erro no painel: {e}")
     
@@ -210,75 +224,87 @@ def painel():
                            lista_animais=animais, 
                            pagina_atual=pagina_atual, 
                            total_paginas=total_paginas,
-                           busca=termo_busca)
+                           busca=termo_busca,
+                           status=filtro_status) # Passamos o status para o template manter o botão ativo
+
+
 @app.route('/financeiro')
 @login_required
 def financeiro():
     """
-    Relatório Financeiro Otimizado .
-    Consome a View 'v_fluxo_caixa' para performance instantânea O(1).
+    Relatório Financeiro + Detalhamento de Custos
     """
     ano_atual = date.today().year
     ano_selecionado = request.args.get('ano', default=ano_atual, type=int)
     
-    # Estrutura inicial zerada (Evita erros de template se não houver dados)
+    # Estrutura inicial
     dados = {
         'valor_rebanho': 0, 
         'saldo_total_operacao': 0, 
         'classe_saldo': 'bg-verde',
         'entradas_ano': 0, 
         'saidas_ano': 0, 
-        'balanco_ano': 0,
         'reposicao_ano': 0, 
         'custos_op_ano': 0, 
-        'med_ano': 0
+        'med_ano': 0,
+        'balanco_ano': 0
     }
     
     anos_disponiveis = [ano_atual]
+    lista_custos_detalhada = []
 
     try:
         with get_db_cursor() as cursor:
             uid = current_user.id
             
-            # QUERY 1: Patrimônio Ativo (Soma dos animais no pasto hoje)
+            # 1. Dados Macro (Patrimônio e View de Fluxo) - Mantido igual
             cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE data_venda IS NULL AND user_id = %s", (uid,))
             res_rebanho = cursor.fetchone()
             if res_rebanho and res_rebanho[0]:
                 dados['valor_rebanho'] = res_rebanho[0]
 
-            # QUERY 2: Fluxo de Caixa (Traz o histórico completo da View)
-            # A view já soma vendas, compras, remédios e custos operacionais por ano.
             cursor.execute("SELECT ano, total_entradas, total_compras, total_med, total_ops FROM v_fluxo_caixa WHERE user_id = %s ORDER BY ano DESC", (uid,))
             historico = cursor.fetchall()
             
             if historico:
                 anos_disponiveis = [row[0] for row in historico]
-                
-                # A. Saldo Acumulado Global (Soma de todos os anos da história)
                 total_receita = sum(row[1] for row in historico)
                 total_despesa = sum(row[2] + row[3] + row[4] for row in historico)
                 dados['saldo_total_operacao'] = total_receita - total_despesa
                 
-                # B. Dados Específicos do Ano Selecionado
                 dados_ano = next((row for row in historico if row[0] == ano_selecionado), None)
                 if dados_ano:
-                    # Desempacota a tupla da View: ano, entradas, compras, meds, ops
                     _, ent, comp, med, ops = dados_ano
                     dados['entradas_ano'] = ent
                     dados['reposicao_ano'] = comp
                     dados['med_ano'] = med
                     dados['custos_op_ano'] = ops
-                    
                     dados['saidas_ano'] = comp + med + ops
                     dados['balanco_ano'] = ent - dados['saidas_ano']
 
-            # Define cor do box de saldo (Verde/Vermelho)
             dados['classe_saldo'] = 'bg-verde' if dados['saldo_total_operacao'] >= 0 else 'bg-vermelho'
+
+            # 2. [NOVO] Busca Detalhada dos Custos Operacionais do Ano
+            # Usamos o índice 'idx_custos_busca' criado anteriormente para performance máxima
+            sql_detalhes = """
+                SELECT data_custo, categoria, tipo_custo, valor, descricao 
+                FROM custos_operacionais 
+                WHERE user_id = %s AND YEAR(data_custo) = %s 
+                ORDER BY data_custo DESC
+            """
+            cursor.execute(sql_detalhes, (uid, ano_selecionado))
+            lista_custos_detalhada = cursor.fetchall()
 
     except Exception as e:
         print(f"Erro no financeiro: {e}")
 
-    return render_template('financeiro.html', financeiro=dados, ano_selecionado=ano_selecionado, anos=anos_disponiveis)
+    return render_template('financeiro.html', 
+                           financeiro=dados, 
+                           ano_selecionado=ano_selecionado, 
+                           anos=anos_disponiveis,
+                           detalhes_custos=lista_custos_detalhada) # Nova variável passada]
+
+
 # ======================================================================
 # ROTA 1: ENTREGAR A PÁGINA (Visual)
 # ======================================================================
@@ -295,52 +321,53 @@ def graficos():
 @app.route('/dados-graficos')
 @login_required
 def dados_graficos_api():
-    """Processa as contagens no banco e retorna JSON para o gráfico."""
+    """API de métricas: Sexo, Peso e GMD Médio (KPI)."""
     try:
         with get_db_cursor() as cursor:
             uid = current_user.id
             
-            # --- 1. DADOS DE SEXO (Agregação via SQL) ---
-            # Conta bois vs vacas ativos
-            cursor.execute("""
-                SELECT sexo, COUNT(*) 
-                FROM animais 
-                WHERE user_id = %s AND data_venda IS NULL 
-                GROUP BY sexo
-            """, (uid,))
-            resultado_sexo = cursor.fetchall()
-            dados_sexo = {sexo: qtd for sexo, qtd in resultado_sexo}
+            # 1. Sexo
+            cursor.execute("SELECT sexo, COUNT(*) FROM animais WHERE user_id = %s AND data_venda IS NULL GROUP BY sexo", (uid,))
+            dados_sexo = {sexo: qtd for sexo, qtd in cursor.fetchall()}
             
-            # --- 2. DADOS DE PESO (Lógica Mista) ---
-            # Busca apenas o PESO MAIS RECENTE de cada animal ativo
+            # 2. Peso
             cursor.execute("""
                 SELECT p.peso 
                 FROM pesagens p
                 INNER JOIN (
-                    SELECT animal_id, MAX(id) as max_id
-                    FROM pesagens
-                    GROUP BY animal_id
+                    SELECT animal_id, MAX(id) as max_id FROM pesagens GROUP BY animal_id
                 ) ultimas ON p.id = ultimas.max_id
                 INNER JOIN animais a ON p.animal_id = a.id
                 WHERE a.user_id = %s AND a.data_venda IS NULL
             """, (uid,))
             pesos_brutos = cursor.fetchall()
 
-            # Categorização das Arrobas (Lógica Python)
-            categorias = {
-                'Menos de 10@': 0, '10@ a 15@': 0, 
-                '15@ a 20@': 0, 'Mais de 20@': 0
-            }
-
+            cat_peso = {'Menos de 10@': 0, '10@ a 15@': 0, '15@ a 20@': 0, 'Mais de 20@': 0}
             for (peso_kg,) in pesos_brutos:
                 peso_arroba = float(peso_kg) / 30
-                if peso_arroba < 10: categorias['Menos de 10@'] += 1
-                elif 10 <= peso_arroba < 15: categorias['10@ a 15@'] += 1
-                elif 15 <= peso_arroba < 20: categorias['15@ a 20@'] += 1
-                else: categorias['Mais de 20@'] += 1
+                if peso_arroba < 10: cat_peso['Menos de 10@'] += 1
+                elif 10 <= peso_arroba < 15: cat_peso['10@ a 15@'] += 1
+                elif 15 <= peso_arroba < 20: cat_peso['15@ a 20@'] += 1
+                else: cat_peso['Mais de 20@'] += 1
 
-            # Retorna o JSON final
-            return jsonify({'sexo': dados_sexo, 'peso': categorias})
+            # 3. GMD MÉDIO (Cálculo Direto no Banco)
+            # A view v_gmd_analitico já tem o GMD calculado por animal. 
+            # Fazemos a média apenas dos ativos.
+            cursor.execute("""
+                SELECT AVG(v.gmd) 
+                FROM v_gmd_analitico v
+                JOIN animais a ON v.animal_id = a.id
+                WHERE v.user_id = %s AND a.data_venda IS NULL
+            """, (uid,))
+            
+            media_result = cursor.fetchone()[0]
+            gmd_medio_val = float(media_result) if media_result else 0.0
+
+            return jsonify({
+                'sexo': dados_sexo, 
+                'peso': cat_peso, 
+                'gmd_medio': gmd_medio_val # Retorna número único
+            })
 
     except Exception as e:
         print(f"Erro na API de gráficos: {e}")
@@ -426,12 +453,9 @@ def custos_operacionais():
             mensagem = f"Erro ao salvar: {e}"
 
     # Para o GET: Buscar custos para exibir na tabela abaixo do formulário
-    custos = []
-    with get_db_cursor() as cursor:
-        cursor.execute("SELECT * FROM custos_operacionais WHERE user_id = %s ORDER BY data_custo DESC", (current_user.id,))
-        custos = cursor.fetchall()
+    
 
-    return render_template('custos_operacionais.html', mensagem=mensagem, lista_custos=custos)
+    return render_template('custos_operacionais.html', mensagem=mensagem)
 
 @app.route('/animal/<int:id_animal>')
 @login_required

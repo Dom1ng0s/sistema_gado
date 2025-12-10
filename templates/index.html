@@ -16,18 +16,43 @@
     
     <div class="menu-bar">
         <a href="/cadastro" class="btn btn-novo">+ Novo Animal</a>
-        <a href="/financeiro" class="btn btn-fin">$ Financeiro</a>
-        <a href="/graficos" class="btn btn-secondary">📊 Gráficos</a>
-        <a href="/custos_operacionais" class="btn btn-secondary">Custos Operacionais</a>
+        <a href="/financeiro" class="btn btn-novo">$ Financeiro</a>
+        <a href="/graficos" class="btn btn-novo">📊 Gráficos</a>
+        
     </div>
 
     <form action="/painel" method="GET" class="search-bar">
-        <input type="text" name="busca" class="input-busca" placeholder="Digite o número do brinco...">
+        <input type="hidden" name="status" value="{{ status }}">
+        
+        <input type="text" name="busca" class="input-busca" placeholder="Digite o número do brinco..." value="{{ busca }}">
         <button type="submit" class="btn-buscar">🔍 Buscar</button>
-        {% if request.args.get('busca') %}
+        
+        {% if busca or status != 'todos' %}
             <a href="/painel" class="btn-limpar">Limpar</a>
         {% endif %}
     </form>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+        <span style="margin-right: 10px; font-weight: bold; color: #555;">Exibir:</span>
+        
+        <a href="/painel?status=todos&busca={{ busca }}" 
+           class="btn {% if status == 'todos' %}btn-primary{% else %}btn-secondary{% endif %}"
+           style="padding: 5px 15px; font-size: 13px;">
+           Todos
+        </a>
+
+        <a href="/painel?status=ativos&busca={{ busca }}" 
+           class="btn {% if status == 'ativos' %}btn-primary{% else %}btn-secondary{% endif %}"
+           style="padding: 5px 15px; font-size: 13px;">
+           Apenas Ativos
+        </a>
+
+        <a href="/painel?status=vendidos&busca={{ busca }}" 
+           class="btn {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}"
+           style="padding: 5px 15px; font-size: 13px;">
+           Apenas Vendidos
+        </a>
+    </div>
 
     <table>
         <thead>
@@ -59,8 +84,8 @@
             {% else %}
             <tr>
                 <td colspan="5" style="text-align: center; padding: 30px; color: #777;">
-                    {% if request.args.get('busca') %}
-                        Nenhum animal encontrado.
+                    {% if busca or status != 'todos' %}
+                        Nenhum animal encontrado com estes filtros.
                     {% else %}
                         Seu rebanho está vazio.<br>
                         <a href="/cadastro" style="font-weight: bold;">Cadastre seu primeiro animal agora!</a>
@@ -70,10 +95,11 @@
             {% endfor %}
         </tbody>
     </table>
+
     <div style="display: flex; justify-content: center; margin-top: 20px; gap: 10px;">
         
         {% if pagina_atual > 1 %}
-            <a href="/painel?page={{ pagina_atual - 1 }}&busca={{ busca }}" class="btn btn-secondary">
+            <a href="/painel?page={{ pagina_atual - 1 }}&busca={{ busca }}&status={{ status }}" class="btn btn-secondary">
                 &laquo; Anterior
             </a>
         {% else %}
@@ -85,7 +111,7 @@
         </span>
 
         {% if pagina_atual < total_paginas %}
-            <a href="/painel?page={{ pagina_atual + 1 }}&busca={{ busca }}" class="btn btn-secondary">
+            <a href="/painel?page={{ pagina_atual + 1 }}&busca={{ busca }}&status={{ status }}" class="btn btn-secondary">
                 Próximo &raquo;
             </a>
         {% else %}

@@ -15,6 +15,7 @@
             justify-content: center;
             gap: 40px;
             margin-top: 30px;
+            margin-bottom: 50px;
         }
         .grafico-box {
             background: white;
@@ -23,10 +24,17 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             width: 400px;
             text-align: center;
+            /* Flex para centralizar conteúdo verticalmente se necessário */
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
         }
-        .grafico-box h2 { border: none; font-size: 1.2rem; margin-bottom: 15px; }
+        .grafico-box h2 { border: none; font-size: 1.2rem; margin-bottom: 15px; color: #333; }
 
-        /* Estilo do Switch */
+        /* KPI Específico */
+        .kpi-valor { font-size: 4.5rem; font-weight: 800; color: #2e7d32; margin: 10px 0; }
+        .kpi-sub { font-size: 1rem; color: #666; font-weight: normal; }
+
         .switch-wrapper {
             display: flex;
             align-items: center;
@@ -36,44 +44,20 @@
             border-radius: 20px;
             border: 1px solid #ccc;
         }
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 20px;
-            margin: 0;
-        }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; margin: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 14px; width: 14px;
-            left: 3px; bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider { background-color: #2196F3; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2e7d32; }
         input:checked + .slider:before { transform: translateX(20px); }
-        
         .label-switch { font-size: 12px; font-weight: bold; color: #555; }
     </style>
 </head>
 <body>
     
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-bottom: 20px;">
-        
         <div style="display: flex; align-items: center; gap: 20px;">
-            <h1 style="border: none; margin: 0; padding: 0; width: auto;">Dashboard</h1>
-            
+            <h1 style="border: none; margin: 0; padding: 0; width: auto;">Meu Rebanho</h1>
             <div class="switch-wrapper">
                 <label class="switch">
                     <input type="checkbox" id="daltonicoSwitch" onchange="alternarCores()">
@@ -82,19 +66,27 @@
                 <span class="label-switch">Modo Alto Contraste</span>
             </div>
         </div>
-
         <a href="/painel" class="btn btn-secondary" style="padding: 5px 15px; font-size: 14px;">Voltar ao Painel</a>
     </div>
 
     <div class="grafico-container">
-        <div class="grafico-box">
+        
+        <div class="grafico-box" style="display: block;">
             <h2>Composição (Sexo)</h2>
             <canvas id="chartSexo"></canvas>
         </div>
-        <div class="grafico-box">
+
+        <div class="grafico-box" style="display: block;">
             <h2>Distribuição de Peso (@)</h2>
             <canvas id="chartPeso"></canvas>
         </div>
+
+        <div class="grafico-box">
+            <h2>GMD Médio do Rebanho</h2>
+            <div class="kpi-valor" id="txtGMD">--</div>
+            <div class="kpi-sub">kg/dia (Média Global)</div>
+        </div>
+
     </div>
 
     <script>
@@ -107,31 +99,19 @@
             peso: ['#81c784', '#4caf50', '#2e7d32', '#1b5e20']
         };
 
-        
-        //pattern.draw('tipo', 'cor') para criar os padrões
-        // --- PALETA PERSONALIZADA COM TEXTURAS ---
         const CORES_TEXTURA = {
-            sexo: [
-                pattern.draw('diagonal', '#2196F3'),       // Azul (Listras) -> Machos
-                pattern.draw('dot', '#F44336')             // Vermelho (Bolinhas) -> Fêmeas
-            ],
-            peso: [
-                pattern.draw('ring', '#9E9E9E'),           // Cinza (Anéis) -> Menos de 10@
-                pattern.draw('box', '#FFC107'),            // Amarelo (Quadrados) -> 10@ a 15@
-                pattern.draw('zigzag', '#2196F3'),         // Azul (ZigZag) -> 15@ a 20@
-                pattern.draw('triangle', '#F44336')        // Vermelho (Triângulos) -> Mais de 20@
-            ]
+            sexo: [pattern.draw('diagonal', '#2196F3'), pattern.draw('dot', '#F44336')],
+            peso: [pattern.draw('ring', '#9E9E9E'), pattern.draw('box', '#FFC107'), pattern.draw('zigzag', '#2196F3'), pattern.draw('triangle', '#F44336')]
         };
 
         function desenharGraficos(usarTexturas) {
             if (!dadosGlobais) return;
-            
             const paleta = usarTexturas ? CORES_TEXTURA : CORES_PADRAO;
 
             if (chartSexo) chartSexo.destroy();
             if (chartPeso) chartPeso.destroy();
 
-            // Renderiza Sexo
+            // Sexo
             const ctxSexo = document.getElementById('chartSexo').getContext('2d');
             chartSexo = new Chart(ctxSexo, {
                 type: 'doughnut',
@@ -146,7 +126,7 @@
                 options: { plugins: { legend: { position: 'bottom' } } }
             });
 
-            // Renderiza Peso
+            // Peso
             const ctxPeso = document.getElementById('chartPeso').getContext('2d');
             chartPeso = new Chart(ctxPeso, {
                 type: 'pie',
@@ -160,20 +140,27 @@
                 },
                 options: { plugins: { legend: { position: 'bottom' } } }
             });
+
+            // GMD (Apenas atualiza texto)
+            const valorGMD = dadosGlobais.gmd_medio ? dadosGlobais.gmd_medio.toFixed(3) : "0.000";
+            document.getElementById('txtGMD').innerText = valorGMD;
         }
 
         function alternarCores() {
-            const isChecked = document.getElementById('daltonicoSwitch').checked;
-            desenharGraficos(isChecked);
+            desenharGraficos(document.getElementById('daltonicoSwitch').checked);
         }
 
         fetch('/dados-graficos')
             .then(res => res.json())
             .then(dados => {
-                dadosGlobais = dados;
-                desenharGraficos(false);
+                if(dados.error) {
+                    alert("Erro: " + dados.error);
+                } else {
+                    dadosGlobais = dados;
+                    desenharGraficos(false);
+                }
             })
-            .catch(err => console.error("Erro:", err));
+            .catch(err => console.error(err));
     </script>
 </body>
 </html>

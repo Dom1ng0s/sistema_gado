@@ -77,6 +77,52 @@
                 </span>
             </div>
 
+            <div style="margin-top: 40px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: #444;">📋 Detalhamento de Custos ({{ ano_selecionado }})</h3>
+                    <a href="/custos_operacionais" style="font-size: 0.9rem; color: #2e7d32; text-decoration: none; font-weight: bold;">+ Novo Lançamento</a>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden;">
+                    <thead>
+                        <tr style="background-color: #f9f9f9; color: #666; font-size: 0.9rem;">
+                            <th style="padding: 12px; text-align: left;">Data</th>
+                            <th style="padding: 12px; text-align: left;">Categoria</th>
+                            <th style="padding: 12px; text-align: left;">Descrição</th>
+                            <th style="padding: 12px; text-align: right;">Valor (R$)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in detalhes_custos %}
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 12px;">{{ item[0] }}</td> <td style="padding: 12px;">
+                                {% if item[1] == 'Fixo' %}
+                                    <span style="background: #e3f2fd; color: #1565c0; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">FIXO</span>
+                                {% else %}
+                                    <span style="background: #fff3e0; color: #ef6c00; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">VARIÁVEL</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding: 12px;">
+                                <strong>{{ item[2] }}</strong>
+                                {% if item[4] %}
+                                    <br><small style="color: #888;">{{ item[4] }}</small>
+                                {% endif %}
+                            </td>
+                            <td style="padding: 12px; text-align: right; color: #d32f2f; font-weight: bold;">
+                                - {{ item[3] }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="padding: 20px; text-align: center; color: #999;">
+                                Nenhum custo operacional lançado neste ano.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
         </div>
     </div>
 
