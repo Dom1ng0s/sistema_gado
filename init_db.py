@@ -101,6 +101,29 @@ try:
     """)
 
     # ==============================================================================
+    # ETAPA 1.5: ÍNDICES DE PERFORMANCE (OTIMIZAÇÃO)
+    # ==============================================================================
+    print("🚀 [Extra] Aplicando índices de performance...")
+    
+    indices_sql = [
+        ("idx_pesagens_otimizada", "CREATE INDEX idx_pesagens_otimizada ON pesagens (animal_id, data_pesagem)"),
+        ("idx_pesagens_max", "CREATE INDEX idx_pesagens_max ON pesagens (animal_id, id DESC)"),
+        ("idx_custos_busca", "CREATE INDEX idx_custos_busca ON custos_operacionais (user_id, data_custo)"),
+        ("idx_med_busca", "CREATE INDEX idx_med_busca ON medicacoes (animal_id, data_aplicacao)"),
+        ("idx_animais_venda", "CREATE INDEX idx_animais_venda ON animais (user_id, data_venda)")
+    ]
+
+    for nome_idx, sql in indices_sql:
+        try:
+            cursor.execute(sql)
+            print(f"   -> Índice '{nome_idx}' criado com sucesso.")
+        except mysql.connector.Error as err:
+            if err.errno == 1061:  # Código 1061 = Duplicate key name
+                print(f"   -> Índice '{nome_idx}' já existe (ignorado).")
+            else:
+                print(f"   ⚠️  Erro ao criar '{nome_idx}': {err}")
+
+    # ==============================================================================
     # ETAPA 2: INTELIGÊNCIA DE DADOS (VIEWS)
     # ==============================================================================
 

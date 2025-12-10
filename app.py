@@ -178,14 +178,14 @@ def painel():
             colunas = "id, brinco, sexo, data_compra, preco_compra, data_venda, preco_venda"
             
             if termo_busca:
-                # 1. Conta o total de resultados (para saber quantas páginas teremos)
-                cursor.execute("SELECT COUNT(*) FROM animais WHERE brinco LIKE %s AND user_id = %s", (f"%{termo_busca}%", current_user.id))
+                # [OTIMIZADO] Removi o '%' inicial para ativar o índice 'idx_brinco_user'
+                termo_prefixo = f"{termo_busca}%"
+                
+                cursor.execute("SELECT COUNT(*) FROM animais WHERE brinco LIKE %s AND user_id = %s", (termo_prefixo, current_user.id))
                 total_animais = cursor.fetchone()[0]
 
-                # 2. Busca apenas a fatia da página atual (LIMIT/OFFSET)
                 sql = f"SELECT {colunas} FROM animais WHERE brinco LIKE %s AND user_id = %s ORDER BY brinco ASC LIMIT %s OFFSET %s"
-                cursor.execute(sql, (f"%{termo_busca}%", current_user.id, itens_por_pagina, offset))
-            
+                cursor.execute(sql, (termo_prefixo, current_user.id, itens_por_pagina, offset))
             else:
                 # 1. Conta total
                 cursor.execute("SELECT COUNT(*) FROM animais WHERE user_id = %s", (current_user.id,))
@@ -215,7 +215,7 @@ def painel():
 @login_required
 def financeiro():
     """
-    Relatório Financeiro Otimizado (Fase 3).
+    Relatório Financeiro Otimizado .
     Consome a View 'v_fluxo_caixa' para performance instantânea O(1).
     """
     ano_atual = date.today().year
