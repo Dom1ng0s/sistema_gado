@@ -156,37 +156,40 @@ def novo_usuario():
 # 6. ROTAS PRINCIPAIS DA APLICAÇÃO (PROTEGIDAS E FILTRADAS POR USUÁRIO)
 # ======================================================================
 
+
 @app.route('/painel')
 @login_required
 def painel():
-    """Exibe a lista de animais do usuário logado, com opção de busca."""
+    """
+    Lista simples e rápida.
+    Performance: O(1) query (Select direto na tabela indexada).
+    Sem cálculos de GMD aqui.
+    """
     animais = []
     termo_busca = request.args.get('busca')
 
     try:
         with get_db_cursor() as cursor:
-            # Lógica Multi-Tenant: CRÍTICO - Sempre filtrar por user_id = current_user.id
+            # Selecionamos apenas as colunas necessárias para a tabela visual
+            colunas = "id, brinco, sexo, data_compra, preco_compra, data_venda, preco_venda"
+            
             if termo_busca:
-                sql = "SELECT id, brinco, sexo, data_compra, preco_compra, data_venda, preco_venda FROM animais WHERE brinco LIKE %s AND user_id = %s"
-                val = (f"%{termo_busca}%", current_user.id)
-                cursor.execute(sql, val)
+                # Busca filtrada
+                sql = f"SELECT {colunas} FROM animais WHERE brinco LIKE %s AND user_id = %s ORDER BY brinco ASC"
+                cursor.execute(sql, (f"%{termo_busca}%", current_user.id))
             else:
-                sql = "SELECT id, brinco, sexo, data_compra, preco_compra, data_venda, preco_venda FROM animais WHERE user_id = %s ORDER BY brinco ASC"
-                val = (current_user.id,)
-                cursor.execute(sql, val)
+                # Busca total (rápida)
+                sql = f"SELECT {colunas} FROM animais WHERE user_id = %s ORDER BY brinco ASC"
+                cursor.execute(sql, (current_user.id,))
                 
-            # Otimização: Retorna como tupla para manter a compatibilidade com o template index.html
             animais = cursor.fetchall()
             
     except ConnectionError:
-        # Em caso de erro de conexão, retorna lista vazia e o template deve lidar com isso
         pass
     except Exception as e:
-        print(f"Erro ao buscar animais: {e}")
+        print(f"Erro no painel: {e}")
     
     return render_template("index.html", lista_animais=animais)
-
-
 
 @app.route('/financeiro')
 @login_required
@@ -461,52 +464,64 @@ def custos_operacionais():
 @login_required
 def detalhes(id_animal):
     """
-    Exibe os detalhes, histórico de peso e medicação de um animal específico.
-    OTIMIZAÇÃO: Agrupa todas as consultas em uma única conexão.
+    Exibe os detalhes consumindo a VIEW INTELIGENTE do banco (v_gmd_analitico).
     """
     animal, pesagens, medicacoes = None, [], []
-    kpis = {'peso_atual': 0, 'ganho_total': 0, 'custo_total': "0.00"}
+    # KPIs padrão caso o animal não tenha dados suficientes na View (ex: só 1 pesagem)
+    kpis = {
+        'peso_atual': 0, 
+        'ganho_total': 0, 
+        'gmd': "0.000", 
+        'dias': 0, 
+        'custo_total': "0.00"
+    }
 
     try:
         with get_db_cursor() as cursor:
             
-            # 1. BUSCA SEGURA: Só retorna se o animal pertencer ao usuário logado
+            # 1. Validação de Segurança (Dono do Animal)
             cursor.execute("SELECT * FROM animais WHERE id = %s AND user_id = %s", (id_animal, current_user.id))
             animal = cursor.fetchone()
             
             if animal:
-                # 2. Busca histórico de pesagens
+                # 2. Históricos (Mantidos para as tabelas visuais)
                 cursor.execute("SELECT * FROM pesagens WHERE animal_id = %s ORDER BY data_pesagem DESC", (id_animal,))
                 pesagens = cursor.fetchall()
                 
-                # 3. Busca histórico de medicações
                 cursor.execute("SELECT * FROM medicacoes WHERE animal_id = %s", (id_animal,))
                 medicacoes = cursor.fetchall()
-        
-    except ConnectionError:
-        # Em caso de erro de conexão, retorna None e listas vazias
-        pass
-    except Exception as e:
-        print(f"Erro nos detalhes do animal: {e}")
+                
+                # 3. USO DA VIEW (Inteligência do Banco)
+                # A view só retorna dados se houver pelo menos 2 pesagens (diferença de tempo)
+                cursor.execute("""
+                    SELECT peso_final, ganho_total, dias, gmd 
+                    FROM v_gmd_analitico 
+                    WHERE animal_id = %s
+                """, (id_animal,))
+                
+                dados_view = cursor.fetchone()
+                
+                if dados_view:
+                    kpis['peso_atual'] = dados_view[0]
+                    kpis['ganho_total'] = dados_view[1]
+                    kpis['dias'] = dados_view[2]
+                    kpis['gmd'] = "{:.3f}".format(dados_view[3]) # Formata GMD com 3 casas
+                elif pesagens:
+                    # Fallback: Se tiver apenas 1 pesagem, o peso atual é a única pesagem
+                    kpis['peso_atual'] = pesagens[0][3]
 
-    # Se não encontrou ou não é dono, redireciona para o painel (segurança)
+    except Exception as e:
+        print(f"Erro nos detalhes: {e}")
+
     if not animal:
         return redirect('/painel')
 
-    # Cálculos de KPIs
-    if pesagens: 
-        # Otimização: A pesagem mais recente é a primeira da lista (ORDER BY DESC)
-        peso_atual = pesagens[0][3] # Coluna 'peso'
-        peso_inicial = pesagens[-1][3] # Coluna 'peso'
-        kpis['peso_atual'] = peso_atual
-        kpis['ganho_total'] = peso_atual - peso_inicial
-
-    custo_compra = float(animal[4]) if animal[4] else 0.0 # Coluna 'preco_compra'
-    custo_sanitario = sum(float(m[4]) for m in medicacoes if m[4]) # Coluna 'custo'
+    # Cálculo de Custos (Mantido no Python pois soma tabelas distintas)
+    custo_compra = float(animal[4]) if animal[4] else 0.0
+    custo_sanitario = sum(float(m[4]) for m in medicacoes if m[4])
     kpis['custo_total'] = f"{custo_compra + custo_sanitario:.2f}"
 
     return render_template("detalhes.html", animal=animal, historico_peso=pesagens, historico_med=medicacoes, indicadores=kpis)
-
 @app.route('/vender/<int:id_animal>', methods=['GET', 'POST'])
 @login_required
 def vender(id_animal):

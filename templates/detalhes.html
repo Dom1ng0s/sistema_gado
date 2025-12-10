@@ -10,25 +10,31 @@
     {% if animal %}
         <h1>Ficha Técnica: Brinco {{ animal[1] }}</h1>
 
-        <div class="dashboard">
-            <div class="kpi-box" style="background-color: #e3f2fd;">
-                <h3>Peso Atual</h3>
-                <strong style="font-size: 22px;">{{ indicadores.peso_atual }} kg</strong>
+        <div class="dashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            
+            <div class="kpi-box" style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #1565c0;">Peso Atual</h3>
+                <strong style="font-size: 24px;">{{ indicadores.peso_atual }} kg</strong>
             </div>
 
-            <div class="kpi-box" style="background-color: #e8f5e9;">
-                <h3>Ganho Total</h3>
+            <div class="kpi-box" style="background-color: #f3e5f5; padding: 15px; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #6a1b9a;">GMD (Média)</h3>
+                <strong style="font-size: 24px; color: #4a148c;">{{ indicadores.gmd }}</strong>
+                <br><small style="font-size: 11px;">kg/dia em {{ indicadores.dias }} dias</small>
+            </div>
+
+            <div class="kpi-box" style="background-color: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #2e7d32;">Ganho Total</h3>
                 {% if indicadores.ganho_total >= 0 %}
-                    <strong style="font-size: 22px; color: green;">+{{ indicadores.ganho_total }} kg</strong>
+                    <strong style="font-size: 24px; color: green;">+{{ indicadores.ganho_total }} kg</strong>
                 {% else %}
-                    <strong style="font-size: 22px; color: red;">{{ indicadores.ganho_total }} kg</strong>
+                    <strong style="font-size: 24px; color: red;">{{ indicadores.ganho_total }} kg</strong>
                 {% endif %}
             </div>
 
-            <div class="kpi-box" style="background-color: #fff3e0;"> <h3>Investimento Total</h3>
-                <strong style="font-size: 22px; color: #e65100;">R$ {{ indicadores.custo_total }}</strong>
-                <br>
-                <small style="font-size: 12px; color: #666;">(Compra + Sanitário)</small>
+            <div class="kpi-box" style="background-color: #fff3e0; padding: 15px; border-radius: 8px; text-align: center;"> 
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #ef6c00;">Custo Total</h3>
+                <strong style="font-size: 24px; color: #e65100;">R$ {{ indicadores.custo_total }}</strong>
             </div>
         </div>
 

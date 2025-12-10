@@ -17,14 +17,16 @@
     <div class="menu-bar">
         <a href="/cadastro" class="btn btn-novo">+ Novo Animal</a>
         <a href="/financeiro" class="btn btn-fin">$ Financeiro</a>
-        <a href="/graficos" class="btn btn-secondary">📊 Graficos</a>
+        <a href="/graficos" class="btn btn-secondary">📊 Gráficos</a>
         <a href="/custos_operacionais" class="btn btn-secondary">Custos Operacionais</a>
     </div>
 
     <form action="/painel" method="GET" class="search-bar">
         <input type="text" name="busca" class="input-busca" placeholder="Digite o número do brinco...">
         <button type="submit" class="btn-buscar">🔍 Buscar</button>
-        <a href="/painel" class="btn-limpar">Limpar</a>
+        {% if request.args.get('busca') %}
+            <a href="/painel" class="btn-limpar">Limpar</a>
+        {% endif %}
     </form>
 
     <table>
@@ -44,8 +46,10 @@
                 <td>{{ animal[2] }}</td>
                 <td>{{ animal[3] }}</td>
                 <td>
-                    {% if animal[6] %} <span class="tag-vendido">VENDIDO</span>
-                    {% else %} <span class="tag-ativo">ATIVO</span>
+                    {% if animal[5] %} 
+                        <span class="tag-vendido">VENDIDO</span>
+                    {% else %} 
+                        <span class="tag-ativo">ATIVO</span>
                     {% endif %}
                 </td>
                 <td>
@@ -55,8 +59,12 @@
             {% else %}
             <tr>
                 <td colspan="5" style="text-align: center; padding: 30px; color: #777;">
-                    Seu rebanho está vazio.<br>
-                    <a href="/cadastro" style="font-weight: bold;">Cadastre seu primeiro animal agora!</a>
+                    {% if request.args.get('busca') %}
+                        Nenhum animal encontrado.
+                    {% else %}
+                        Seu rebanho está vazio.<br>
+                        <a href="/cadastro" style="font-weight: bold;">Cadastre seu primeiro animal agora!</a>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
