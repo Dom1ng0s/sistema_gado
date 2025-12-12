@@ -1,103 +1,137 @@
+# 🐮 Sistema de Gestão de Gado (SGG) - High Performance Backend
 
-# 🐮 Sistema de Gestão de Gado (GMD & Financeiro)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)
+![Flask](https://img.shields.io/badge/Flask-Framework-red?style=for-the-badge&logo=flask)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-orange?style=for-the-badge&logo=mysql)
+![Status](https://img.shields.io/badge/Status-Concluído-success?style=for-the-badge)
 
-Sistema web de alta performance para gestão pecuária, focado em controle zootécnico (GMD) e análise financeira rigorosa. Desenvolvido com Python (Flask) e MySQL, utilizando arquitetura otimizada com Views SQL para processamento de dados.
+> **Um ERP Zootécnico focado em performance, utilizando a inteligência do Banco de Dados para cálculos complexos.**
 
-## 🚀 Funcionalidades Implementadas
-
-### 1. Gestão de Rebanho
-* **Cadastro Completo:** Registro de animais com Brinco, Sexo, Data de Compra e Peso Inicial.
-* **Painel Otimizado:** Listagem ultrarrápida com **Paginação Server-Side** (10 itens/página) e Busca por Brinco.
-* **Status Inteligente:** Classificação automática (Ativo/Vendido) baseada na data de saída real.
-
-### 2. Inteligência Zootécnica
-* **Cálculo de GMD:** O sistema calcula automaticamente o *Ganho Médio Diário* (kg/dia) de cada animal com base no histórico de pesagens (via View SQL).
-* **Ficha Técnica:** Exibição detalhada de evolução de peso e histórico sanitário (vacinas e medicamentos).
-
-### 3. Controle Financeiro (Fluxo de Caixa)
-* **Dashboard Otimizado:** Relatório instantâneo alimentado por Views SQL (Complexidade O(1)).
-* **Custos Operacionais:** Módulo para lançamento de despesas fixas (Salários, Arrendamento) e variáveis (Manutenção, Gasolina).
-* **Balanço Anual:** Visão consolidada de Entradas vs. Saídas (Compras + Medicação + Custos).
+O **SGG** é uma solução web para resolver a dor de cabeça do pecuarista: o cálculo do GMD (Ganho Médio Diário) e o controle de Fluxo de Caixa real. Diferente de sistemas tradicionais que processam tudo no backend (Python), este projeto delega a lógica pesada para o **MySQL**, garantindo escalabilidade.
 
 ---
 
-## 🛠️ Instalação e Configuração
+## 📸 Visão Geral do Sistema
+
+### 1. Dashboard Financeiro (Fluxo de Caixa)
+*Visão consolidada de entradas, saídas e custos operacionais, calculados via View SQL.*
+![Dashboard Financeiro](Financeiro.png)
+
+### 2. Análise Zootécnica (GMD)
+*Cálculo automático de ganho de peso diário baseado no histórico de pesagens.*
+![Ficha do Animal](animal.png)
+
+### 3. Analytics do Rebanho
+*Distribuição de peso e sexo do rebanho em tempo real.*
+![Analytics](rebanho.png)
+
+---
+
+## 🚀 Diferenciais de Engenharia (Backend)
+
+Este projeto foi desenhado com princípios de **Performance-First**. Abaixo, os destaques técnicos:
+
+### 🧠 1. Inteligência no Banco de Dados (Views SQL)
+Ao invés de carregar milhares de registros para o Python somar, criei **Views Otimizadas**. O banco entrega o dado pronto (O(1) para a aplicação).
+
+* **`v_gmd_analitico`**: Cruza a primeira e a última pesagem de cada animal para calcular o GMD exato, dias de cocho e ganho total.
+* **`v_fluxo_caixa`**: Unifica 4 tabelas (Vendas, Compras, Medicações, Custos Fixos) em uma única visão financeira anual.
+
+### ⚡ 2. Performance e Otimização
+* **Server-Side Pagination:** O painel principal carrega apenas o necessário (LIMIT/OFFSET), permitindo escalar para milhares de animais sem travar o navegador.
+* **Índices Estratégicos:** Criação de índices compostos (`idx_pesagens_otimizada`, `idx_custos_busca`) para garantir que as buscas e filtros sejam instantâneos.
+
+### 🛡️ 3. Segurança e Arquitetura
+* **MVC:** Separação clara entre Rotas, Templates e Banco de Dados.
+* **Hash de Senha:** Implementação de segurança com `Werkzeug Security`.
+* **Proteção de Rotas:** Decorators `@login_required` e validação de propriedade (Multi-tenant ready).
+
+---
+
+## 🛠️ Tecnologias Utilizadas
+
+* **Linguagem:** Python 3.10
+* **Framework Web:** Flask
+* **Banco de Dados:** MySQL 8.0 (com Connector/Python Pooling)
+* **Frontend:** HTML5, CSS3 (Responsivo), Chart.js
+* **Infra/Deploy:** Pronto para Docker/Nuvem (Aiven/AWS)
+
+---
+
+## ⚙️ Instalação e Execução
 
 ### Pré-requisitos
 * Python 3.10+
-* MySQL 8.0+ (Local ou Nuvem)
+* MySQL Server rodando localmente ou na nuvem.
 
-### Passo 1: Preparar o Ambiente
+### 1. Clone e Prepare o Ambiente
 ```bash
+git clone [https://github.com/dom1ng0s/sistema_gado.git](https://github.com/dom1ng0s/sistema_gado.git)
+cd sistema_gado
+
 # Criar ambiente virtual
 python -m venv venv
-
 # Ativar (Windows)
 venv\Scripts\activate
 # Ativar (Linux/Mac)
 source venv/bin/activate
 ````
 
-### Passo 2: Instalar Dependências
+### 2\. Instale as Dependências
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Passo 3: Configurar Variáveis de Ambiente
+### 3\. Configuração (.env)
 
-Crie um arquivo `.env` na raiz do projeto com suas credenciais do banco:
+Crie um arquivo `.env` na raiz com suas credenciais:
 
 ```ini
-DB_HOST=seu-host-mysql
-DB_USER=seu-usuario
-DB_PASSWORD=sua-senha
-DB_NAME=defaultdb
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=sua_senha
+DB_NAME=sistema_gado
 DB_PORT=3306
-SECRET_KEY=sua_chave_secreta_segura
+SECRET_KEY=sua_chave_secreta
 ```
 
-### Passo 4: Inicializar o Banco de Dados
+### 4\. Inicialização do Banco (Migrations)
 
-Execute o script mestre que cria as Tabelas e as Views de Inteligência:
+Execute o script que cria as Tabelas, Views e Índices:
 
 ```bash
 python init_db.py
 ```
 
-*Isso criará automaticamente o usuário admin padrão se não existir:*
+### 5\. (Opcional) Popular com Dados de Teste
 
-  * **Usuário:** `admin`
-  * **Senha:** `admin123`
+Para ver o dashboard bonito como nos prints, rode o script de seed que gera dados realistas:
 
-### Passo 5: Rodar a Aplicação
+```bash
+python seed_db.py
+```
+
+### 6\. Execute
 
 ```bash
 python app.py
 ```
 
-Acesse em: `http://localhost:5000`
+Acesse: `http://localhost:5000`
 
 -----
 
-## 🏗️ Arquitetura Técnica
+## 📞 Contato
 
-O projeto segue princípios de **Performance First**:
+**Davi Domingos** - *Backend Developer*
 
-1.  **Views SQL (`v_fluxo_caixa`, `v_gmd_analitico`):**
+  * [LinkedIn](https://www.google.com/search?q=https://www.linkedin.com/in/davi-domingos-oli)
+  * [GitHub](https://www.google.com/search?q=https://github.com/dom1ng0s)
+  * Email: odomingosdavi@gmail.com
 
-      * Toda a lógica matemática (somas, médias, datas) reside no banco de dados.
-      * O Python atua apenas como interface, garantindo resposta em milissegundos.
+<!-- end list -->
 
-2.  **Server-Side Pagination:**
+````
 
-      * O Painel busca apenas a "fatia" necessária de dados (LIMIT/OFFSET), economizando memória e permitindo escalar para milhares de animais.
-
-3.  **Segurança Implementada:**
-
-      * Hash de Senhas robusto (Werkzeug Security).
-      * Gerenciamento de Sessão seguro (Flask-Login).
-      * Proteção de Rotas (`@login_required`).
-
-
-
+---
