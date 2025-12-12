@@ -15,7 +15,7 @@ O **SGG** é uma solução web para resolver a dor de cabeça do pecuarista: o c
 
 ### 1. Dashboard Financeiro (Fluxo de Caixa)
 *Visão consolidada de entradas, saídas e custos operacionais, calculados via View SQL.*
-![Dashboard Financeiro](Financeiro.png)
+![Dashboard Financeiro](financeiro.png)
 
 ### 2. Análise Zootécnica (GMD)
 *Cálculo automático de ganho de peso diário baseado no histórico de pesagens.*
