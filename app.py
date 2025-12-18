@@ -228,29 +228,84 @@ def painel():
                            status=filtro_status) # Passamos o status para o template manter o botão ativo
 
 
+
+def calcular_kpis_unificados(cursor, user_id):
+    """
+    Função Helper: Centraliza a lógica de custo para usar no
+    Painel Financeiro e no Simulador sem repetir código.
+    """
+    # 1. Valores Padrão
+    dados = {
+        'qtd_animais': 0,
+        'gmd_medio': 0.0,
+        'custo_mensal_total': 0.0,
+        'custo_diaria': 0.0,
+        'custo_arroba': 0.0,
+        'dias_para_arroba': 0,
+        # Detalhes para o formulário
+        'arrendamento': 0.0, 'suplementacao': 0.0, 'mao_obra': 0.0, 'extras': 0.0
+    }
+
+    # 2. Busca QTD e GMD
+    cursor.execute("SELECT COUNT(*) FROM animais WHERE user_id = %s AND data_venda IS NULL", (user_id,))
+    dados['qtd_animais'] = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT AVG(v.gmd) FROM v_gmd_analitico v 
+        JOIN animais a ON v.animal_id = a.id 
+        WHERE v.user_id = %s AND a.data_venda IS NULL
+    """, (user_id,))
+    res_gmd = cursor.fetchone()
+    if res_gmd and res_gmd[0]:
+        dados['gmd_medio'] = float(res_gmd[0])
+
+    # 3. Busca Custos (Média 90 dias)
+    data_limite = date.today() - timedelta(days=90)
+    cursor.execute("""
+        SELECT tipo_custo, SUM(valor) 
+        FROM custos_operacionais 
+        WHERE user_id = %s AND data_custo >= %s
+        GROUP BY tipo_custo
+    """, (user_id, data_limite))
+    
+    total_trimestre = 0.0
+    for tipo, valor_total in cursor.fetchall():
+        media_mensal = float(valor_total) / 3
+        total_trimestre += media_mensal
+        
+        # Preenche categorias específicas
+        if tipo == 'Arrendamento': dados['arrendamento'] += media_mensal
+        elif tipo == 'Nutrição': dados['suplementacao'] += media_mensal
+        elif tipo == 'Salário': dados['mao_obra'] += media_mensal
+        else: dados['extras'] += media_mensal
+
+    dados['custo_mensal_total'] = total_trimestre
+
+    # 4. Cálculos Matemáticos Finais
+    if dados['qtd_animais'] > 0:
+        dados['custo_diaria'] = (dados['custo_mensal_total'] / dados['qtd_animais']) / 30
+    
+    if dados['gmd_medio'] > 0:
+        dados['dias_para_arroba'] = 30 / dados['gmd_medio']
+        dados['custo_arroba'] = dados['custo_diaria'] * dados['dias_para_arroba']
+
+    return dados
+
+
+
 @app.route('/financeiro')
 @login_required
 def financeiro():
-    """
-    Relatório Financeiro + KPIs de Eficiência (Custo @ e Diária)
-    """
     ano_atual = date.today().year
     ano_selecionado = request.args.get('ano', default=ano_atual, type=int)
     
-    # Estrutura base
-    dados = {
-        'valor_rebanho': 0, 
-        'saldo_total_operacao': 0, 
-        'classe_saldo': 'bg-verde',
-        'entradas_ano': 0, 
-        'saidas_ano': 0, 
-        'reposicao_ano': 0, 
-        'custos_op_ano': 0, 
-        'med_ano': 0,
-        'balanco_ano': 0,
-        # NOVOS KPIs
-        'custo_diaria': "---",
-        'custo_arroba': "---"
+    # Estrutura base visual
+    view_data = {
+        'valor_rebanho': 0, 'saldo_total_operacao': 0, 'classe_saldo': 'bg-verde',
+        'entradas_ano': 0, 'saidas_ano': 0, 'reposicao_ano': 0, 
+        'custos_op_ano': 0, 'med_ano': 0, 'balanco_ano': 0,
+        # KPIs vêm da função unificada agora
+        'custo_diaria': "---", 'custo_arroba': "---"
     }
     
     anos_disponiveis = [ano_atual]
@@ -260,11 +315,11 @@ def financeiro():
         with get_db_cursor() as cursor:
             uid = current_user.id
             
-            # --- PARTE 1: FINANCEIRO CLÁSSICO (Mantido) ---
+            # 1. Lógica Padrão Financeira (Fluxo de Caixa)
             cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE data_venda IS NULL AND user_id = %s", (uid,))
             res_rebanho = cursor.fetchone()
             if res_rebanho and res_rebanho[0]:
-                dados['valor_rebanho'] = f"{res_rebanho[0]:,.2f}"
+                view_data['valor_rebanho'] = f"{res_rebanho[0]:,.2f}"
 
             cursor.execute("SELECT ano, total_entradas, total_compras, total_med, total_ops FROM v_fluxo_caixa WHERE user_id = %s ORDER BY ano DESC", (uid,))
             historico = cursor.fetchall()
@@ -273,72 +328,40 @@ def financeiro():
                 anos_disponiveis = [row[0] for row in historico]
                 total_receita = sum(row[1] for row in historico)
                 total_despesa = sum(row[2] + row[3] + row[4] for row in historico)
-                saldo_total = total_receita - total_despesa
-                dados['saldo_total_operacao'] = f"{saldo_total:,.2f}"
-                dados['classe_saldo'] = 'bg-verde' if saldo_total >= 0 else 'bg-vermelho'
+                saldo = total_receita - total_despesa
+                view_data['saldo_total_operacao'] = f"{saldo:,.2f}"
+                view_data['classe_saldo'] = 'bg-verde' if saldo >= 0 else 'bg-vermelho'
                 
+                # Dados do Ano Específico
                 dados_ano = next((row for row in historico if row[0] == ano_selecionado), None)
                 if dados_ano:
                     _, ent, comp, med, ops = dados_ano
-                    dados['entradas_ano'] = f"{ent:,.2f}"
-                    dados['reposicao_ano'] = f"{comp:,.2f}"
-                    dados['med_ano'] = f"{med:,.2f}"
-                    dados['custos_op_ano'] = f"{ops:,.2f}"
-                    
-                    total_saidas = comp + med + ops
-                    dados['saidas_ano'] = f"{total_saidas:,.2f}"
-                    dados['balanco_ano'] = f"{(ent - total_saidas):,.2f}"
+                    view_data['entradas_ano'] = f"{ent:,.2f}"
+                    view_data['reposicao_ano'] = f"{comp:,.2f}"
+                    view_data['med_ano'] = f"{med:,.2f}"
+                    view_data['custos_op_ano'] = f"{ops:,.2f}"
+                    view_data['saidas_ano'] = f"{(comp + med + ops):,.2f}"
+                    view_data['balanco_ano'] = f"{(ent - (comp + med + ops)):,.2f}"
 
-            # --- PARTE 2: CÁLCULO INTELIGENTE DOS KPIS (Custo @ e Diária) ---
-            # Lógica: Usa custos dos últimos 90 dias + GMD Médio Histórico + Qtd Atual
-            
-            # A. Qtd Animais Atuais
-            cursor.execute("SELECT COUNT(*) FROM animais WHERE user_id = %s AND data_venda IS NULL", (uid,))
-            qtd_animais = cursor.fetchone()[0]
+            # 2. [OTIMIZAÇÃO] CHAMA A FUNÇÃO UNIFICADA PARA OS KPIs
+            kpis = calcular_kpis_unificados(cursor, uid)
+            if kpis['custo_arroba'] > 0:
+                view_data['custo_diaria'] = f"{kpis['custo_diaria']:.2f}"
+                view_data['custo_arroba'] = f"{kpis['custo_arroba']:.2f}"
 
-            # B. GMD Médio
+            # 3. Lista detalhada
             cursor.execute("""
-                SELECT AVG(v.gmd) FROM v_gmd_analitico v 
-                JOIN animais a ON v.animal_id = a.id 
-                WHERE v.user_id = %s AND a.data_venda IS NULL
-            """, (uid,))
-            res_gmd = cursor.fetchone()
-            gmd_medio = float(res_gmd[0]) if res_gmd and res_gmd[0] else 0.0
-
-            # C. Média Mensal de Custos (Últimos 90 dias)
-            data_limite = date.today() - timedelta(days=90)
-            cursor.execute("SELECT SUM(valor) FROM custos_operacionais WHERE user_id = %s AND data_custo >= %s", (uid, data_limite))
-            res_custos = cursor.fetchone()
-            custo_trimestral = float(res_custos[0]) if res_custos and res_custos[0] else 0.0
-            custo_mensal_medio = custo_trimestral / 3
-
-            # D. Cálculos Finais
-            if qtd_animais > 0 and gmd_medio > 0:
-                custo_diaria_val = (custo_mensal_medio / qtd_animais) / 30
-                dias_para_arroba = 30 / gmd_medio
-                custo_arroba_val = custo_diaria_val * dias_para_arroba
-                
-                dados['custo_diaria'] = f"{custo_diaria_val:.2f}"
-                dados['custo_arroba'] = f"{custo_arroba_val:.2f}"
-
-            # --- PARTE 3: DETALHAMENTO DE CUSTOS (Tabela) ---
-            sql_detalhes = """
                 SELECT data_custo, categoria, tipo_custo, valor, descricao 
                 FROM custos_operacionais 
                 WHERE user_id = %s AND YEAR(data_custo) = %s 
                 ORDER BY data_custo DESC
-            """
-            cursor.execute(sql_detalhes, (uid, ano_selecionado))
+            """, (uid, ano_selecionado))
             lista_custos_detalhada = cursor.fetchall()
 
     except Exception as e:
-        print(f"Erro no financeiro: {e}")
+        print(f"Erro financeiro: {e}")
 
-    return render_template('financeiro.html', 
-                           financeiro=dados, 
-                           ano_selecionado=ano_selecionado, 
-                           anos=anos_disponiveis,
-                           detalhes_custos=lista_custos_detalhada)
+    return render_template('financeiro.html', financeiro=view_data, ano_selecionado=ano_selecionado, anos=anos_disponiveis, detalhes_custos=lista_custos_detalhada)
 
 # ======================================================================
 # ROTA: SIMULADOR DE CUSTO PRO (Automatizado)
@@ -348,110 +371,61 @@ def financeiro():
 def simulador_custo():
     resultados = None
     
-    # Valores Iniciais (Sugestões Automáticas)
-    sugestoes = {
-        'qtd_animais': 0, 
-        'gmd_medio': 0.0,
-        'arrendamento': 0.0, 
-        'suplementacao': 0.0,
-        'mao_obra': 0.0, 
-        'extras': 0.0
-    }
-
+    # 1. Carrega dados via Função Unificada (GET)
+    # Valores iniciais zerados para garantir estrutura
+    sugestoes = {'qtd_animais': 0, 'gmd_medio': 0.0, 'arrendamento': 0.0, 'suplementacao': 0.0, 'mao_obra': 0.0, 'extras': 0.0}
+    
     try:
-        with get_db_cursor() as cursor:
-            uid = current_user.id
-            
-            # 1. QTD ANIMAIS (Ativos Hoje)
-            cursor.execute("SELECT COUNT(*) FROM animais WHERE user_id = %s AND data_venda IS NULL", (uid,))
-            res_qtd = cursor.fetchone()
-            if res_qtd:
-                sugestoes['qtd_animais'] = res_qtd[0]
-
-            # 2. GMD (Média Histórica da View)
-            cursor.execute("""
-                SELECT AVG(v.gmd) FROM v_gmd_analitico v 
-                JOIN animais a ON v.animal_id = a.id 
-                WHERE v.user_id = %s AND a.data_venda IS NULL
-            """, (uid,))
-            gmd_db = cursor.fetchone()[0]
-            if gmd_db: 
-                sugestoes['gmd_medio'] = float(gmd_db)
-
-            # 3. CUSTOS OPERACIONAIS (Média dos últimos 90 dias / 3 meses)
-            # Esta lógica suaviza picos e preenche a planilha automaticamente
-            data_limite = date.today() - timedelta(days=90)
-            
-            sql_custos = """
-                SELECT tipo_custo, SUM(valor) 
-                FROM custos_operacionais 
-                WHERE user_id = %s AND data_custo >= %s
-                GROUP BY tipo_custo
-            """
-            cursor.execute(sql_custos, (uid, data_limite))
-            
-            for tipo, valor_total in cursor.fetchall():
-                media_mensal = float(valor_total) / 3  # Média trimestral
-                
-                # Mapeamento: Banco de Dados -> Simulador
-                if tipo == 'Arrendamento':
-                    sugestoes['arrendamento'] += media_mensal
-                elif tipo == 'Nutrição':
-                    sugestoes['suplementacao'] += media_mensal
-                elif tipo == 'Salário':
-                    sugestoes['mao_obra'] += media_mensal
-                else:
-                    # 'Outro', 'Manutenção', 'Energia' vão para Extras
-                    sugestoes['extras'] += media_mensal
+        # Apenas leitura inicial para sugestão
+        if request.method == 'GET':
+            with get_db_cursor() as cursor:
+                kpis = calcular_kpis_unificados(cursor, current_user.id)
+                sugestoes = kpis # O dicionário já bate com o que o template espera (chaves iguais)
 
     except Exception as e:
-        print(f"Erro na automação do simulador: {e}")
+        print(f"Erro sugestão simulador: {e}")
 
-    # Processamento do Formulário (POST)
+    # 2. Processa Cálculo Manual (POST)
     if request.method == 'POST':
         try:
-            # Captura valores (o utilizador pode ter editado a sugestão)
+            # Captura do Form
             qtd = int(request.form.get('qtd_animais', 1))
             gmd = float(request.form.get('gmd', '0').replace(',', '.'))
-            
             c_arrendamento = float(request.form.get('custo_arrendamento', '0').replace(',', '.'))
             c_suple = float(request.form.get('custo_suplementacao', '0').replace(',', '.'))
             c_mao_obra = float(request.form.get('custo_mao_obra', '0').replace(',', '.'))
             c_extras = float(request.form.get('custos_extras', '0').replace(',', '.'))
 
-            # Atualiza sugestões para manter o que foi digitado
+            # Atualiza sugestões para re-renderizar a tela com o que foi digitado
             sugestoes.update({
                 'qtd_animais': qtd, 'gmd_medio': gmd,
-                'arrendamento': c_arrendamento, 'suplementacao': c_suple,
+                'arrendamento': c_arrendamento, 'suplementacao': c_suple, 
                 'mao_obra': c_mao_obra, 'extras': c_extras
             })
 
-            # --- CÁLCULOS MATEMÁTICOS ---
-            custo_mensal_total = c_arrendamento + c_suple + c_mao_obra + c_extras
-            
+            # Recálculo Matemático (Lógica local pois depende do input do usuário, não do banco)
+            custo_mensal = c_arrendamento + c_suple + c_mao_obra + c_extras
             custo_diaria = 0
-            if qtd > 0:
-                # Custo mensal por cabeça / 30 dias
-                custo_diaria = (custo_mensal_total / qtd) / 30
+            if qtd > 0: custo_diaria = (custo_mensal / qtd) / 30
             
-            dias_para_arroba = 0
-            # Padrão de Mercado: 1@ = 30kg Peso Vivo
-            if gmd > 0:
-                dias_para_arroba = 30 / gmd
+            dias_arroba = 0
+            if gmd > 0: dias_arroba = 30 / gmd
             
-            custo_por_arroba = custo_diaria * dias_para_arroba
+            custo_arroba = custo_diaria * dias_arroba
 
             resultados = {
-                'custo_mensal_total': f"{custo_mensal_total:,.2f}",
+                'custo_mensal_total': f"{custo_mensal:,.2f}",
                 'custo_diaria': f"{custo_diaria:,.2f}",
-                'dias_arroba': int(dias_para_arroba),
-                'custo_arroba': f"{custo_por_arroba:,.2f}"
+                'dias_arroba': int(dias_arroba),
+                'custo_arroba': f"{custo_arroba:,.2f}"
             }
 
         except ValueError:
-            resultados = {'erro': "Erro de formato numérico."}
+            resultados = {'erro': "Erro numérico."}
 
     return render_template('simulador_custo.html', sugestoes=sugestoes, resultados=resultados)
+
+    
 
 
 # ======================================================================
