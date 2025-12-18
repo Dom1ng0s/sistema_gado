@@ -2,7 +2,7 @@ import mysql.connector
 import os
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import random
 
 # Carrega variáveis

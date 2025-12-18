@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador de Custo PRO</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .layout-simulador { display: flex; gap: 30px; flex-wrap: wrap; margin-top: 20px; }
+        .coluna-form { flex: 1; min-width: 300px; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .coluna-result { flex: 1; min-width: 300px; }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        
+        .result-card { background: #fff; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .result-value { font-size: 2.2em; font-weight: bold; color: #2e7d32; margin: 10px 0; }
+        .result-label { font-size: 0.85em; text-transform: uppercase; color: #777; letter-spacing: 1px; }
+        
+        .badge-auto { background: #e3f2fd; color: #1565c0; font-size: 0.7em; padding: 2px 6px; border-radius: 4px; float: right; }
+        .btn-calc { background-color: #2e7d32; color: white; width: 100%; padding: 12px; font-size: 1.1em; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-calc:hover { background-color: #1b5e20; }
+    </style>
+</head>
+<body>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-bottom: 10px; max-width: 1000px; margin: 20px auto;">
+        <h1 style="border: none; margin: 0; color: #333;">🧮 Simulador de Custo PRO</h1>
+        <a href="/financeiro" class="btn btn-secondary">Voltar</a>
+    </div>
+
+    <div style="max-width: 1000px; margin: 0 auto;" class="layout-simulador">
+        
+        <div class="coluna-form">
+            <h3 style="margin-top: 0; color: #2e7d32; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                1. Dados Reais da Fazenda
+                <span style="font-size: 0.6em; color: #666; font-weight: normal; float: right; margin-top: 5px;">(Média Mensal)</span>
+            </h3>
+            
+            <form action="/simulador-custo" method="POST">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Animais (Lote) <span class="badge-auto">AUTO</span></label>
+                        <input type="number" name="qtd_animais" value="{{ sugestoes.qtd_animais }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>GMD (kg/dia) <span class="badge-auto">AUTO</span></label>
+                        <input type="number" step="0.001" name="gmd" value="{{ '%0.3f'|format(sugestoes.gmd_medio) }}" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Arrendamento (R$) <span class="badge-auto">MÉDIA 90D</span></label>
+                    <input type="number" step="0.01" name="custo_arrendamento" value="{{ '%0.2f'|format(sugestoes.arrendamento) }}">
+                </div>
+                
+                <div class="form-group">
+                    <label>Suplementação (R$) <span class="badge-auto">MÉDIA 90D</span></label>
+                    <input type="number" step="0.01" name="custo_suplementacao" value="{{ '%0.2f'|format(sugestoes.suplementacao) }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Mão de Obra (R$) <span class="badge-auto">MÉDIA 90D</span></label>
+                    <input type="number" step="0.01" name="custo_mao_obra" value="{{ '%0.2f'|format(sugestoes.mao_obra) }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Custos Extras (R$) <span class="badge-auto">MÉDIA 90D</span></label>
+                    <input type="number" step="0.01" name="custos_extras" value="{{ '%0.2f'|format(sugestoes.extras) }}">
+                    <small style="color: #999;">Energia, Combustível, Manutenção...</small>
+                </div>
+
+                <button type="submit" class="btn-calc">CALCULAR CUSTO @</button>
+            </form>
+        </div>
+
+        <div class="coluna-result">
+            {% if resultados %}
+                {% if resultados.erro %}
+                    <div style="background: #ffebee; color: #c62828; padding: 15px; border-radius: 5px;">
+                        {{ resultados.erro }}
+                    </div>
+                {% else %}
+                    
+                    <div class="result-card" style="border: 2px solid #4caf50; background: #f1f8e9;">
+                        <div class="result-label">Custo da Arroba Produzida</div>
+                        <div class="result-value">R$ {{ resultados.custo_arroba }}</div>
+                        <div style="font-size: 0.9em; color: #555;">Seu Ponto de Equilíbrio</div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="result-card">
+                            <div class="result-label">Diária/Cab</div>
+                            <div style="font-size: 1.5em; font-weight: bold; color: #444; margin-top: 5px;">R$ {{ resultados.custo_diaria }}</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-label">Dias p/ 1@</div>
+                            <div style="font-size: 1.5em; font-weight: bold; color: #444; margin-top: 5px;">{{ resultados.dias_arroba }}</div>
+                        </div>
+                    </div>
+
+                    <div class="result-card" style="background: #fafafa;">
+                        <div class="result-label">Custo Mensal Total (Lote)</div>
+                        <div style="font-size: 1.3em; font-weight: bold; color: #666; margin-top: 5px;">R$ {{ resultados.custo_mensal_total }}</div>
+                    </div>
+
+                {% endif %}
+            {% else %}
+                <div style="text-align: center; padding: 40px; color: #888; background: #f5f5f5; border-radius: 8px;">
+                    <h3>Pronto para Simular</h3>
+                    <p>Os dados ao lado foram carregados automaticamente com base na média dos seus custos dos últimos 3 meses.</p>
+                    <p>Clique em <strong>CALCULAR</strong> para ver o resultado.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+</body>
+</html>
