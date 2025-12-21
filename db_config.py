@@ -2,6 +2,9 @@ import mysql.connector
 from mysql.connector import pooling, Error
 import os
 from dotenv import load_dotenv
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 load_dotenv()
 
@@ -18,7 +21,7 @@ db_settings = {
 
 connection_pool = None
 
-print("--- INICIANDO CONEXÃO COM O BANCO ---")
+logging.info("--- INICIANDO CONEXÃO COM O BANCO ---")
 try:
     # Tenta criar o Pool (Modo Rápido)
     connection_pool = mysql.connector.pooling.MySQLConnectionPool(
@@ -26,10 +29,10 @@ try:
         pool_size=5,
         **db_settings
     )
-    print("✅ Modo Rápido (Pool) ativado!")
+    logging.info("✅ Modo Rápido (Pool) ativado!")
 except Error as e:
-    print(f"⚠️ AVISO: Falha ao criar Pool. Usando modo de segurança.")
-    print(f"   Motivo: {e}")
+    logging.warning(f"⚠️ AVISO: Falha ao criar Pool. Usando modo de segurança.")
+    logging.warning(f"   Motivo: {e}")
     connection_pool = None
 
 def get_db_connection():
@@ -41,7 +44,7 @@ def get_db_connection():
             # Fallback: Se o pool não existe, conecta direto (Modo Lento mas Seguro)
             return mysql.connector.connect(**db_settings)
     except Error as e:
-        print(f"❌ ERRO CRÍTICO DE CONEXÃO: {e}")
+        logging.error(f"❌ ERRO CRÍTICO DE CONEXÃO: {e}")
         return None
 
 def close_db_connection(connection):

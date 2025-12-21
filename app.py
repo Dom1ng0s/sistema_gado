@@ -1,4 +1,5 @@
 import os
+import logging
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -7,13 +8,16 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 import math
 
+# ======================================================================
+# 0. CONFIGURAÇÃO DE LOGS (PROFISSIONALISMO)
+# ======================================================================
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # ======================================================================
 # 1. INICIALIZAÇÃO DO APP E CONFIGURAÇÃO DE SEGURANÇA
 # ======================================================================
 app = Flask(__name__)
-
-# Chave secreta usada para assinar cookies de sessão.
 app.secret_key = os.getenv('SECRET_KEY', 'chave_desenvolvimento_segura_123')
 
 # ======================================================================
@@ -34,17 +38,14 @@ class User(UserMixin):
 
     @staticmethod
     def get_user_id(user_id):
-        """Busca um usuário pelo ID no banco de dados."""
         conn = get_db_connection()
         if conn:
             try:
                 cursor = conn.cursor()
-                # Busca o usuário na tabela 'usuarios'
                 cursor.execute("SELECT id, username, password_hash FROM usuarios WHERE id = %s", (user_id,))
                 dados = cursor.fetchone()
                 cursor.close()
                 if dados:
-                    # Retorna uma instância da classe User
                     return User(dados[0], dados[1], dados[2])
             finally:
                 close_db_connection(conn)
@@ -52,13 +53,10 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Função obrigatória para recarregar o objeto User a partir do ID de sessão."""
     return User.get_user_id(user_id)
 
 # ======================================================================
 # 4. CONTEXT MANAGER PARA CONEXÃO COM O BANCO DE DADOS
-# Otimização: Garante que a conexão seja aberta e fechada corretamente
-# em cada rota, reduzindo a repetição de código.
 # ======================================================================
 @contextmanager
 def get_db_cursor():
@@ -68,9 +66,9 @@ def get_db_cursor():
     try:
         cursor = conn.cursor()
         yield cursor
-        conn.commit() # Commit automático para operações de escrita
+        conn.commit() 
     except Exception as e:
-        conn.rollback() # Rollback em caso de erro
+        conn.rollback() 
         raise e
     finally:
         close_db_connection(conn)
@@ -81,14 +79,12 @@ def get_db_cursor():
 
 @app.route('/')
 def index():
-    """Redireciona para o painel se logado, ou para o login se deslogado."""
     if current_user.is_authenticated:
         return redirect('/painel')
     return redirect('/login')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """Processa o formulário de login e autentica o usuário."""
     if current_user.is_authenticated:
         return redirect('/painel')
 
@@ -98,20 +94,18 @@ def login():
         
         try:
             with get_db_cursor() as cursor:
-                # Busca o usuário pelo nome
                 cursor.execute("SELECT id, username, password_hash FROM usuarios WHERE username = %s", (username,))
                 dados = cursor.fetchone()
                 
                 if dados:
                     user_obj = User(dados[0], dados[1], dados[2])
-                    # Verifica o hash da senha usando werkzeug.security
                     if check_password_hash(user_obj.password_hash, password):
                         login_user(user_obj)
                         return redirect('/painel')
         except ConnectionError:
             return render_template('login.html', mensagem="Erro de conexão com o banco de dados.")
         except Exception as e:
-            print(f"Erro no login: {e}")
+            logger.error(f"Erro no login: {e}", exc_info=True)
         
         return render_template('login.html', mensagem="Usuário ou senha incorretos")
     
@@ -120,13 +114,11 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
-    """Desloga o usuário e o redireciona para a página de login."""
     logout_user()
     return redirect('/login')
 
 @app.route('/novo_usuario', methods=['GET', 'POST'])
 def novo_usuario():
-    """Permite a criação de novos usuários (apenas por usuários já logados)."""
     mensagem = None
     if request.method == 'POST':
         novo_user = request.form['username'].strip()
@@ -137,12 +129,10 @@ def novo_usuario():
 
         try:
             with get_db_cursor() as cursor:
-                # Verifica se o usuário já existe
                 cursor.execute("SELECT id FROM usuarios WHERE username = %s", (novo_user,))
                 if cursor.fetchone():
                     mensagem = f"Erro: Usuário '{novo_user}' já existe."
                 else:
-                    # Gera o hash seguro da senha
                     hash_senha = generate_password_hash(nova_senha)
                     cursor.execute("INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)", (novo_user, hash_senha))
                     mensagem = f"Sucesso! Usuário '{novo_user}' criado."
@@ -150,11 +140,12 @@ def novo_usuario():
             mensagem = "Erro de conexão com o banco de dados."
         except Exception as e:
             mensagem = f"Erro: {e}"
+            logger.error(f"Erro ao criar usuário: {e}", exc_info=True)
             
     return render_template('novo_usuario.html', mensagem=mensagem)
 
 # ======================================================================
-# 6. ROTAS PRINCIPAIS DA APLICAÇÃO (PROTEGIDAS E FILTRADAS POR USUÁRIO)
+# 6. ROTAS PRINCIPAIS DA APLICAÇÃO
 # ======================================================================
 
 @app.route('/painel')
@@ -162,9 +153,8 @@ def novo_usuario():
 def painel():
     animais = []
     termo_busca = request.args.get('busca', '')
-    filtro_status = request.args.get('status', 'todos') # Padrão: 'todos'
+    filtro_status = request.args.get('status', 'todos') 
     
-    # Configuração da Paginação
     pagina_atual = request.args.get('page', 1, type=int)
     itens_por_pagina = 20
     offset = (pagina_atual - 1) * itens_por_pagina
@@ -175,78 +165,52 @@ def painel():
     try:
         with get_db_cursor() as cursor:
             colunas = "id, brinco, sexo, data_compra, preco_compra, data_venda, preco_venda"
-            
-            # --- CONSTRUÇÃO DINÂMICA DA QUERY ---
             condicoes = ["user_id = %s"]
             parametros = [current_user.id]
 
-            # 1. Filtro de Busca (Texto)
             if termo_busca:
                 condicoes.append("brinco LIKE %s")
-                parametros.append(f"{termo_busca}%") # Busca Otimizada (Prefixo)
+                parametros.append(f"{termo_busca}%")
 
-            # 2. Filtro de Status (Ativos/Vendidos)
             if filtro_status == 'ativos':
                 condicoes.append("data_venda IS NULL")
             elif filtro_status == 'vendidos':
                 condicoes.append("data_venda IS NOT NULL")
             
-            # Monta a cláusula WHERE
             where_clause = " WHERE " + " AND ".join(condicoes)
 
-            # --- EXECUÇÃO ---
-            
-            # A. Conta total (para paginação)
             sql_count = f"SELECT COUNT(*) FROM animais {where_clause}"
             cursor.execute(sql_count, tuple(parametros))
             total_animais = cursor.fetchone()[0]
 
-            # B. Busca dados (com limite)
-            # Ordena pelo TAMANHO do texto primeiro, depois pelo texto.
-# Isso faz '9' (tamanho 1) vir antes de '10' (tamanho 2).
             sql_data = f"SELECT {colunas} FROM animais {where_clause} ORDER BY LENGTH(brinco) ASC, brinco ASC LIMIT %s OFFSET %s"
-            # Adiciona params de paginação à lista existente
             params_data = parametros + [itens_por_pagina, offset] 
             
             cursor.execute(sql_data, tuple(params_data))
             animais = cursor.fetchall()
             
-            # Calcula total de páginas
             if total_animais > 0:
                 total_paginas = math.ceil(total_animais / itens_por_pagina)
             
     except ConnectionError:
-        pass # Tratar erro de conexão se necessário
+        pass 
     except Exception as e:
-        print(f"Erro no painel: {e}")
+        logger.error(f"Erro no painel: {e}", exc_info=True)
     
     return render_template("index.html", 
                            lista_animais=animais, 
                            pagina_atual=pagina_atual, 
                            total_paginas=total_paginas,
                            busca=termo_busca,
-                           status=filtro_status) # Passamos o status para o template manter o botão ativo
-
-
+                           status=filtro_status)
 
 def calcular_kpis_unificados(cursor, user_id):
-    """
-    Função Helper: Centraliza a lógica de custo para usar no
-    Painel Financeiro e no Simulador sem repetir código.
-    """
-    # 1. Valores Padrão
     dados = {
-        'qtd_animais': 0,
-        'gmd_medio': 0.0,
-        'custo_mensal_total': 0.0,
-        'custo_diaria': 0.0,
-        'custo_arroba': 0.0,
-        'dias_para_arroba': 0,
-        # Detalhes para o formulário
+        'qtd_animais': 0, 'gmd_medio': 0.0, 'custo_mensal_total': 0.0,
+        'custo_diaria': 0.0, 'custo_arroba': 0.0, 'dias_para_arroba': 0,
         'arrendamento': 0.0, 'suplementacao': 0.0, 'mao_obra': 0.0, 'extras': 0.0
     }
 
-    # 2. Busca QTD e GMD
     cursor.execute("SELECT COUNT(*) FROM animais WHERE user_id = %s AND data_venda IS NULL", (user_id,))
     dados['qtd_animais'] = cursor.fetchone()[0]
 
@@ -259,7 +223,6 @@ def calcular_kpis_unificados(cursor, user_id):
     if res_gmd and res_gmd[0]:
         dados['gmd_medio'] = float(res_gmd[0])
 
-    # 3. Busca Custos (Média 90 dias)
     data_limite = date.today() - timedelta(days=90)
     cursor.execute("""
         SELECT tipo_custo, SUM(valor) 
@@ -272,8 +235,6 @@ def calcular_kpis_unificados(cursor, user_id):
     for tipo, valor_total in cursor.fetchall():
         media_mensal = float(valor_total) / 3
         total_trimestre += media_mensal
-        
-        # Preenche categorias específicas
         if tipo == 'Arrendamento': dados['arrendamento'] += media_mensal
         elif tipo == 'Nutrição': dados['suplementacao'] += media_mensal
         elif tipo == 'Salário': dados['mao_obra'] += media_mensal
@@ -281,7 +242,6 @@ def calcular_kpis_unificados(cursor, user_id):
 
     dados['custo_mensal_total'] = total_trimestre
 
-    # 4. Cálculos Matemáticos Finais
     if dados['qtd_animais'] > 0:
         dados['custo_diaria'] = (dados['custo_mensal_total'] / dados['qtd_animais']) / 30
     
@@ -291,20 +251,16 @@ def calcular_kpis_unificados(cursor, user_id):
 
     return dados
 
-
-
 @app.route('/financeiro')
 @login_required
 def financeiro():
     ano_atual = date.today().year
     ano_selecionado = request.args.get('ano', default=ano_atual, type=int)
     
-    # Estrutura base visual
     view_data = {
         'valor_rebanho': 0, 'saldo_total_operacao': 0, 'classe_saldo': 'bg-verde',
         'entradas_ano': 0, 'saidas_ano': 0, 'reposicao_ano': 0, 
         'custos_op_ano': 0, 'med_ano': 0, 'balanco_ano': 0,
-        # KPIs vêm da função unificada agora
         'custo_diaria': "---", 'custo_arroba': "---"
     }
     
@@ -315,7 +271,6 @@ def financeiro():
         with get_db_cursor() as cursor:
             uid = current_user.id
             
-            # 1. Lógica Padrão Financeira (Fluxo de Caixa)
             cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE data_venda IS NULL AND user_id = %s", (uid,))
             res_rebanho = cursor.fetchone()
             if res_rebanho and res_rebanho[0]:
@@ -332,7 +287,6 @@ def financeiro():
                 view_data['saldo_total_operacao'] = f"{saldo:,.2f}"
                 view_data['classe_saldo'] = 'bg-verde' if saldo >= 0 else 'bg-vermelho'
                 
-                # Dados do Ano Específico
                 dados_ano = next((row for row in historico if row[0] == ano_selecionado), None)
                 if dados_ano:
                     _, ent, comp, med, ops = dados_ano
@@ -343,13 +297,11 @@ def financeiro():
                     view_data['saidas_ano'] = f"{(comp + med + ops):,.2f}"
                     view_data['balanco_ano'] = f"{(ent - (comp + med + ops)):,.2f}"
 
-            # 2. [OTIMIZAÇÃO] CHAMA A FUNÇÃO UNIFICADA PARA OS KPIs
             kpis = calcular_kpis_unificados(cursor, uid)
             if kpis['custo_arroba'] > 0:
                 view_data['custo_diaria'] = f"{kpis['custo_diaria']:.2f}"
                 view_data['custo_arroba'] = f"{kpis['custo_arroba']:.2f}"
 
-            # 3. Lista detalhada
             cursor.execute("""
                 SELECT data_custo, categoria, tipo_custo, valor, descricao 
                 FROM custos_operacionais 
@@ -359,36 +311,27 @@ def financeiro():
             lista_custos_detalhada = cursor.fetchall()
 
     except Exception as e:
-        print(f"Erro financeiro: {e}")
+        logger.error(f"Erro financeiro: {e}", exc_info=True)
 
     return render_template('financeiro.html', financeiro=view_data, ano_selecionado=ano_selecionado, anos=anos_disponiveis, detalhes_custos=lista_custos_detalhada)
 
-# ======================================================================
-# ROTA: SIMULADOR DE CUSTO PRO (Automatizado)
-# ======================================================================
 @app.route('/simulador-custo', methods=['GET', 'POST'])
 @login_required
 def simulador_custo():
     resultados = None
-    
-    # 1. Carrega dados via Função Unificada (GET)
-    # Valores iniciais zerados para garantir estrutura
     sugestoes = {'qtd_animais': 0, 'gmd_medio': 0.0, 'arrendamento': 0.0, 'suplementacao': 0.0, 'mao_obra': 0.0, 'extras': 0.0}
     
     try:
-        # Apenas leitura inicial para sugestão
         if request.method == 'GET':
             with get_db_cursor() as cursor:
                 kpis = calcular_kpis_unificados(cursor, current_user.id)
-                sugestoes = kpis # O dicionário já bate com o que o template espera (chaves iguais)
+                sugestoes = kpis 
 
     except Exception as e:
-        print(f"Erro sugestão simulador: {e}")
+        logger.error(f"Erro sugestão simulador: {e}", exc_info=True)
 
-    # 2. Processa Cálculo Manual (POST)
     if request.method == 'POST':
         try:
-            # Captura do Form
             qtd = int(request.form.get('qtd_animais', 1))
             gmd = float(request.form.get('gmd', '0').replace(',', '.'))
             c_arrendamento = float(request.form.get('custo_arrendamento', '0').replace(',', '.'))
@@ -396,14 +339,12 @@ def simulador_custo():
             c_mao_obra = float(request.form.get('custo_mao_obra', '0').replace(',', '.'))
             c_extras = float(request.form.get('custos_extras', '0').replace(',', '.'))
 
-            # Atualiza sugestões para re-renderizar a tela com o que foi digitado
             sugestoes.update({
                 'qtd_animais': qtd, 'gmd_medio': gmd,
                 'arrendamento': c_arrendamento, 'suplementacao': c_suple, 
                 'mao_obra': c_mao_obra, 'extras': c_extras
             })
 
-            # Recálculo Matemático (Lógica local pois depende do input do usuário, não do banco)
             custo_mensal = c_arrendamento + c_suple + c_mao_obra + c_extras
             custo_diaria = 0
             if qtd > 0: custo_diaria = (custo_mensal / qtd) / 30
@@ -425,35 +366,21 @@ def simulador_custo():
 
     return render_template('simulador_custo.html', sugestoes=sugestoes, resultados=resultados)
 
-    
-
-
-# ======================================================================
-# ROTA 1: ENTREGAR A PÁGINA (Visual)
-# ======================================================================
 @app.route('/graficos')
 @login_required
 def graficos():
-    """Apenas carrega o arquivo HTML. O JavaScript da página buscará os dados depois."""
     return render_template('graficos.html')
 
-
-# ======================================================================
-# ROTA 2: ENTREGAR OS DADOS (API / JSON)
-# ======================================================================
 @app.route('/dados-graficos')
 @login_required
 def dados_graficos_api():
-    """API de métricas: Sexo, Peso e GMD Médio (KPI)."""
     try:
         with get_db_cursor() as cursor:
             uid = current_user.id
             
-            # 1. Sexo
             cursor.execute("SELECT sexo, COUNT(*) FROM animais WHERE user_id = %s AND data_venda IS NULL GROUP BY sexo", (uid,))
             dados_sexo = {sexo: qtd for sexo, qtd in cursor.fetchall()}
             
-            # 2. Peso
             cursor.execute("""
                 SELECT p.peso 
                 FROM pesagens p
@@ -473,9 +400,6 @@ def dados_graficos_api():
                 elif 15 <= peso_arroba < 20: cat_peso['15@ a 20@'] += 1
                 else: cat_peso['Mais de 20@'] += 1
 
-            # 3. GMD MÉDIO (Cálculo Direto no Banco)
-            # A view v_gmd_analitico já tem o GMD calculado por animal. 
-            # Fazemos a média apenas dos ativos.
             cursor.execute("""
                 SELECT AVG(v.gmd) 
                 FROM v_gmd_analitico v
@@ -486,24 +410,23 @@ def dados_graficos_api():
             media_result = cursor.fetchone()[0]
             gmd_medio_val = float(media_result) if media_result else 0.0
 
+            # CORREÇÃO FASE 1: Retorno explícito do Status 200
             return jsonify({
                 'sexo': dados_sexo, 
                 'peso': cat_peso, 
-                'gmd_medio': gmd_medio_val # Retorna número único
-            })
+                'gmd_medio': gmd_medio_val 
+            }), 200
 
     except Exception as e:
-        print(f"Erro na API de gráficos: {e}")
+        logger.error(f"Erro na API de gráficos: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @app.route("/cadastro", methods=["GET", "POST"])
 @login_required
 def cadastro():
-    """Permite o cadastro de um novo animal, vinculando-o ao usuário logado."""
     mensagem = None
     if request.method == "POST":
         try:
-            # Validação e Limpeza
             brinco = request.form["brinco"].strip()
             sexo = request.form["sexo"]
             data = request.form["data_compra"]
@@ -514,7 +437,6 @@ def cadastro():
             except ValueError:
                 return render_template("cadastro.html", mensagem="Erro: Peso e Valor devem ser números.")
 
-            # Validações de negócio
             if peso <= 0 or valor_arroba <= 0:
                 return render_template("cadastro.html", mensagem="Erro: Valores devem ser positivos.")
             if not brinco:
@@ -523,18 +445,15 @@ def cadastro():
             preco_calc = (peso / 30) * valor_arroba
 
             with get_db_cursor() as cursor:
-                # Verifica se brinco já existe PARA ESTE USUÁRIO (Multi-Tenant Check)
                 cursor.execute("SELECT id FROM animais WHERE brinco = %s AND user_id = %s", (brinco, current_user.id))
                 if cursor.fetchone():
                      return render_template("cadastro.html", mensagem=f"Erro: O brinco {brinco} já existe no seu rebanho.")
 
-                # Insere o animal, vinculando-o ao usuário logado (current_user.id)
                 sql = "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) VALUES (%s, %s, %s, %s, %s)"
                 val = (brinco, sexo, data, preco_calc, current_user.id)
                 cursor.execute(sql, val)
                 id_animal = cursor.lastrowid
                 
-                # Registra peso inicial
                 cursor.execute("INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)", (id_animal, data, peso))
                 
                 mensagem = f"Sucesso! Animal {brinco} cadastrado."
@@ -543,6 +462,7 @@ def cadastro():
             mensagem = "Erro de conexão com o banco de dados."
         except Exception as e:
             mensagem = f"Erro Inesperado: {e}"
+            logger.error(f"Erro no cadastro: {e}", exc_info=True)
     
     return render_template("cadastro.html", mensagem=mensagem)
 
@@ -550,23 +470,18 @@ def cadastro():
 @login_required
 def custos_operacionais():
     mensagem = None
-    
     if request.method == 'POST':
         try:
-            # 1. Captura a categoria (Fixo ou Variável)
             categoria = request.form.get('categoria')
-            
-            # 2. Decide qual campo de "tipo" ler baseado na categoria
             if categoria == 'Fixo':
-                tipo = request.form.get('tipo_fixo') # Vem do Dropdown
+                tipo = request.form.get('tipo_fixo')
             else:
-                tipo = request.form.get('tipo_variavel') # Vem do campo de texto manual
+                tipo = request.form.get('tipo_variavel')
             
             valor = float(request.form.get('valor'))
             data = request.form.get('data')
             desc = request.form.get('descricao')
 
-            # 3. Salva no banco (incluindo a categoria)
             with get_db_cursor() as cursor:
                 sql = "INSERT INTO custos_operacionais (user_id, categoria, tipo_custo, valor, data_custo, descricao) VALUES (%s, %s, %s, %s, %s, %s)"
                 cursor.execute(sql, (current_user.id, categoria, tipo, valor, data, desc))
@@ -574,45 +489,28 @@ def custos_operacionais():
 
         except Exception as e:
             mensagem = f"Erro ao salvar: {e}"
-
-    # Para o GET: Buscar custos para exibir na tabela abaixo do formulário
-    
+            logger.error(f"Erro em custos: {e}", exc_info=True)
 
     return render_template('custos_operacionais.html', mensagem=mensagem)
 
 @app.route('/animal/<int:id_animal>')
 @login_required
 def detalhes(id_animal):
-    """
-    Exibe os detalhes consumindo a VIEW INTELIGENTE do banco (v_gmd_analitico).
-    """
     animal, pesagens, medicacoes = None, [], []
-    # KPIs padrão caso o animal não tenha dados suficientes na View (ex: só 1 pesagem)
-    kpis = {
-        'peso_atual': 0, 
-        'ganho_total': 0, 
-        'gmd': "0.000", 
-        'dias': 0, 
-        'custo_total': "0.00"
-    }
+    kpis = {'peso_atual': 0, 'ganho_total': 0, 'gmd': "0.000", 'dias': 0, 'custo_total': "0.00"}
 
     try:
         with get_db_cursor() as cursor:
-            
-            # 1. Validação de Segurança (Dono do Animal)
             cursor.execute("SELECT * FROM animais WHERE id = %s AND user_id = %s", (id_animal, current_user.id))
             animal = cursor.fetchone()
             
             if animal:
-                # 2. Históricos (Mantidos para as tabelas visuais)
                 cursor.execute("SELECT * FROM pesagens WHERE animal_id = %s ORDER BY data_pesagem DESC", (id_animal,))
                 pesagens = cursor.fetchall()
                 
                 cursor.execute("SELECT * FROM medicacoes WHERE animal_id = %s", (id_animal,))
                 medicacoes = cursor.fetchall()
                 
-                # 3. USO DA VIEW (Inteligência do Banco)
-                # A view só retorna dados se houver pelo menos 2 pesagens (diferença de tempo)
                 cursor.execute("""
                     SELECT peso_final, ganho_total, dias, gmd 
                     FROM v_gmd_analitico 
@@ -625,28 +523,25 @@ def detalhes(id_animal):
                     kpis['peso_atual'] = dados_view[0]
                     kpis['ganho_total'] = dados_view[1]
                     kpis['dias'] = dados_view[2]
-                    kpis['gmd'] = "{:.3f}".format(dados_view[3]) # Formata GMD com 3 casas
+                    kpis['gmd'] = "{:.3f}".format(dados_view[3]) 
                 elif pesagens:
-                    # Fallback: Se tiver apenas 1 pesagem, o peso atual é a única pesagem
                     kpis['peso_atual'] = pesagens[0][3]
 
     except Exception as e:
-        print(f"Erro nos detalhes: {e}")
+        logger.error(f"Erro nos detalhes: {e}", exc_info=True)
 
     if not animal:
         return redirect('/painel')
 
-    # Cálculo de Custos (Mantido no Python pois soma tabelas distintas)
     custo_compra = float(animal[4]) if animal[4] else 0.0
     custo_sanitario = sum(float(m[4]) for m in medicacoes if m[4])
     kpis['custo_total'] = f"{custo_compra + custo_sanitario:.2f}"
 
     return render_template("detalhes.html", animal=animal, historico_peso=pesagens, historico_med=medicacoes, indicadores=kpis)
+
 @app.route('/vender/<int:id_animal>', methods=['GET', 'POST'])
 @login_required
 def vender(id_animal):
-    """Processa a venda de um animal, atualizando o registro e registrando o peso final."""
-    
     if request.method == 'POST':
         try:
             data_venda = request.form['data_venda']
@@ -655,45 +550,37 @@ def vender(id_animal):
             preco_final = (peso_venda / 30) * valor_arroba
 
             with get_db_cursor() as cursor:
-                # 1. Verifica se o animal pertence ao usuário logado (segurança)
                 cursor.execute("SELECT id FROM animais WHERE id = %s AND user_id = %s", (id_animal, current_user.id))
                 if not cursor.fetchone():
-                    return redirect('/painel') # Não é do usuário
+                    return redirect('/painel') 
 
-                # 2. Atualiza o animal (filtro user_id no UPDATE)
                 sql = "UPDATE animais SET data_venda = %s, preco_venda = %s WHERE id = %s AND user_id = %s"
                 cursor.execute(sql, (data_venda, preco_final, id_animal, current_user.id))
                 
-                # 3. Registra peso final
                 cursor.execute("INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)", (id_animal, data_venda, peso_venda))
                 
             return redirect(f"/animal/{id_animal}")
         
         except ConnectionError:
-            # Em um cenário real, você retornaria uma mensagem de erro ao usuário
-            print("Erro de conexão ao vender animal.")
+            logger.error("Erro de conexão ao vender animal.", exc_info=True)
             return redirect(f"/animal/{id_animal}")
         except Exception as e:
-            print(f"Erro ao vender animal: {e}")
+            logger.error(f"Erro ao vender animal: {e}", exc_info=True)
             return redirect(f"/animal/{id_animal}")
 
-    # GET: Verifica a propriedade antes de renderizar o formulário
     try:
         with get_db_cursor() as cursor:
             cursor.execute("SELECT id FROM animais WHERE id = %s AND user_id = %s", (id_animal, current_user.id))
             if not cursor.fetchone():
                 return redirect('/painel')
     except:
-        return redirect('/painel') # Falha na conexão ou erro
+        return redirect('/painel')
 
     return render_template('vender.html', id_animal=id_animal)
 
 @app.route('/medicar/<int:id_animal>', methods=['GET', 'POST'])
 @login_required
 def medicar(id_animal):
-    """Registra a aplicação de medicamento em um animal."""
-    
-    # Valida dono (segurança) - Otimização: Faz a validação apenas uma vez no GET e no POST
     don_exists = False
     try:
         with get_db_cursor() as cursor:
@@ -701,7 +588,7 @@ def medicar(id_animal):
             if cursor.fetchone():
                 don_exists = True
     except:
-        return redirect('/painel') # Falha na conexão ou erro
+        return redirect('/painel')
 
     if not don_exists:
         return redirect('/painel')
@@ -714,10 +601,10 @@ def medicar(id_animal):
                 cursor.execute(sql, val)
             return redirect(f"/animal/{id_animal}")
         except ConnectionError:
-            print("Erro de conexão ao medicar animal.")
+            logger.error("Erro de conexão ao medicar animal.", exc_info=True)
             return redirect(f"/animal/{id_animal}")
         except Exception as e:
-            print(f"Erro ao medicar animal: {e}")
+            logger.error(f"Erro ao medicar animal: {e}", exc_info=True)
             return redirect(f"/animal/{id_animal}")
 
     return render_template('medicar.html', id_animal=id_animal)
@@ -725,9 +612,6 @@ def medicar(id_animal):
 @app.route('/pesar/<int:id_animal>', methods=['GET', 'POST'])
 @login_required
 def nova_pesagem(id_animal):
-    """Registra uma nova pesagem para um animal."""
-    
-    # Valida dono (segurança) - Otimização: Faz a validação apenas uma vez no GET e no POST
     don_exists = False
     try:
         with get_db_cursor() as cursor:
@@ -735,7 +619,7 @@ def nova_pesagem(id_animal):
             if cursor.fetchone():
                 don_exists = True
     except:
-        return redirect('/painel') # Falha na conexão ou erro
+        return redirect('/painel') 
 
     if not don_exists:
         return redirect('/painel')
@@ -746,49 +630,37 @@ def nova_pesagem(id_animal):
                 cursor.execute("INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)", (id_animal, request.form['data_pesagem'], request.form['peso']))
             return redirect(f"/animal/{id_animal}")
         except ConnectionError:
-            print("Erro de conexão ao pesar animal.")
+            logger.error("Erro de conexão ao pesar animal.", exc_info=True)
             return redirect(f"/animal/{id_animal}")
         except Exception as e:
-            print(f"Erro ao pesar animal: {e}")
+            logger.error(f"Erro ao pesar animal: {e}", exc_info=True)
             return redirect(f"/animal/{id_animal}")
 
     return render_template('nova_pesagem.html', id_animal=id_animal)
 
-# ======================================================================
-# 7. ROTAS DE MANUTENÇÃO/EXCLUSÃO
-# ======================================================================
-
 @app.route('/excluir_animal/<int:id_animal>')
 @login_required
 def excluir_animal(id_animal):
-    """Exclui um animal e todos os seus registros associados (pesagens e medicações)."""
     try:
         with get_db_cursor() as cursor:
-            # CRÍTICO: Verifica se o animal pertence ao usuário antes de apagar
             cursor.execute("SELECT id FROM animais WHERE id = %s AND user_id = %s", (id_animal, current_user.id))
             if cursor.fetchone():
-                # Exclui registros filhos primeiro (pesagens e medicações)
-                # Otimização: O MySQL deve ter FOREIGN KEY ON DELETE CASCADE, mas manter o DELETE explícito é mais seguro
                 cursor.execute("DELETE FROM pesagens WHERE animal_id = %s", (id_animal,))
                 cursor.execute("DELETE FROM medicacoes WHERE animal_id = %s", (id_animal,))
-                # Exclui o animal
                 cursor.execute("DELETE FROM animais WHERE id = %s", (id_animal,))
     except ConnectionError:
-        print("Erro de conexão ao excluir animal.")
+        logger.error("Erro de conexão ao excluir animal.", exc_info=True)
     except Exception as e:
-        print(f"Erro ao excluir animal: {e}")
+        logger.error(f"Erro ao excluir animal: {e}", exc_info=True)
         
     return redirect("/painel")
 
 @app.route('/excluir_pesagem/<int:id_pesagem>')
 @login_required
 def excluir_pesagem(id_pesagem):
-    """Exclui uma pesagem específica, verificando a propriedade do animal."""
     animal_id = None
     try:
         with get_db_cursor() as cursor:
-            
-            # CRÍTICO: JOIN para verificar se a pesagem pertence a um animal que é do usuário logado
             sql_check = """
                 SELECT p.animal_id FROM pesagens p
                 JOIN animais a ON p.animal_id = a.id
@@ -802,17 +674,13 @@ def excluir_pesagem(id_pesagem):
                 cursor.execute("DELETE FROM pesagens WHERE id = %s", (id_pesagem,))
             
     except ConnectionError:
-        print("Erro de conexão ao excluir pesagem.")
+        logger.error("Erro de conexão ao excluir pesagem.", exc_info=True)
     except Exception as e:
-        print(f"Erro ao excluir pesagem: {e}")
+        logger.error(f"Erro ao excluir pesagem: {e}", exc_info=True)
         
     if animal_id:
         return redirect(f"/animal/{animal_id}")
     return redirect("/painel")
 
-# ======================================================================
-# 8. EXECUÇÃO PRINCIPAL
-# ======================================================================
 if __name__ == '__main__':
-    # Roda o servidor de desenvolvimento. O debug é controlado por variável de ambiente.
     app.run(debug=os.getenv('FLASK_DEBUG', 'False') == 'True')
