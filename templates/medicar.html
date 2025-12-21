@@ -2,30 +2,37 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Aplicar Medicação</title>
+    <title>Medicação</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Nova Medicação / Vacina</h1>
-    
-    <form method="POST" action="/medicar/{{ id_animal }}">
-        
-        <label>Data da Aplicação:</label><br>
-        <input type="date" name="data_aplicacao" required><br><br>
+    <h1>Adicionar Medicação / Vacina</h1>
 
-        <label>Nome do Medicamento/Vacina:</label><br>
-        <input type="text" name="nome" placeholder="Ex: Ivermectina" required><br><br>
+    <form action="{{ url_for('operacional.medicar', id_animal=id_animal) }}" method="POST" class="form-container">
+        <div class="form-group">
+            <label>Data da Aplicação:</label>
+            <input type="date" name="data_aplicacao" required>
+        </div>
 
-        <label>Custo da Dose (R$):</label><br>
-        <input type="number" step="0.01" name="custo" placeholder="0.00"><br><br>
+        <div class="form-group">
+            <label>Nome do Medicamento:</label>
+            <input type="text" name="nome" required placeholder="Ex: Ivermectina">
+        </div>
 
-        <label>Observações:</label><br>
-        <textarea name="obs"></textarea><br><br>
+        <div class="form-group">
+            <label>Custo (R$):</label>
+            <input type="number" step="0.01" name="custo" required placeholder="0.00">
+        </div>
 
-        <button type="submit">Registrar Aplicação</button>
+        <div class="form-group">
+            <label>Observações:</label>
+            <input type="text" name="obs" placeholder="Motivo, dosagem, carência...">
+        </div>
+
+        <button type="submit" class="btn-salvar">Salvar Registro</button>
     </form>
     
     <br>
-    <a href="/animal/{{ id_animal }}">Cancelar</a>
+    <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}" class="btn btn-voltar">Voltar</a>
 </body>
 </html>

@@ -4,30 +4,38 @@
     <meta charset="UTF-8">
     <title>Novo Usuário</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f6f8; }
+        .card { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 10px; background: #2e7d32; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .alert { background: #e8f5e9; color: #2e7d32; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
+    </style>
 </head>
 <body>
-    <div style="max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-        <h2 style="text-align: center; color: #333;">👤 Criar Novo Acesso</h2>
+    <div class="card">
+        <h2>Crie sua Conta</h2>
         
         {% if mensagem %}
-            <div style="background-color: #e3f2fd; color: #0d47a1; padding: 10px; border-radius: 5px; margin-bottom: 20px; text-align: center;">
-                {{ mensagem }}
-            </div>
+            <div class="alert">{{ mensagem }}</div>
         {% endif %}
 
-        <form method="POST" action="/novo_usuario">
-            <label>Nome de Usuário (Login):</label>
-            <input type="text" name="username" required placeholder="Sem espaços (ex: joao)">
-
-            <label>Senha de Acesso:</label>
-            <input type="password" name="password" required placeholder="******">
-
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">Salvar Usuário</button>
+        <form action="{{ url_for('auth.novo_usuario') }}" method="POST">
+            <label style="display:block; text-align:left; margin-bottom:5px;">Usuário</label>
+            <input type="text" name="username" required>
+            
+            <label style="display:block; text-align:left; margin-bottom:5px;">Senha</label>
+            <input type="password" name="password" required>
+            
+            <button type="submit" class="btn">CRIAR CONTA</button>
         </form>
         
-        <div style="text-align: center; margin-top: 20px;">
-            <a href="/painel" style="color: #666;">Cancelar e Voltar</a>
-        </div>
+        <br>
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('operacional.painel') }}" style="color: #666;">Voltar ao Painel</a>
+        {% else %}
+            <a href="{{ url_for('auth.login') }}" style="color: #666;">Já tem conta? Faça Login</a>
+        {% endif %}
     </div>
 </body>
 </html>

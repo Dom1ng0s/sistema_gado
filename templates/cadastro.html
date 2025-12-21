@@ -1,52 +1,50 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Cadastro de Animal</title>
+    <title>Novo Animal</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
-    <h1>Novo Animal</h1>
+    <h1>Cadastrar Novo Animal</h1>
     
     {% if mensagem %}
-        <div class="alert">{{ mensagem }}</div>
+        <div class="alert-erro">{{ mensagem }}</div>
     {% endif %}
 
-    <form method="POST" action="/cadastro">
-        
-        <label>Número do Brinco:</label>
-        <input type="text" name="brinco" required placeholder="Ex: A-100">
+    <form action="{{ url_for('operacional.cadastro') }}" method="POST" class="form-container">
+        <div class="form-group">
+            <label>Número do Brinco:</label>
+            <input type="text" name="brinco" required>
+        </div>
 
-        <label>Sexo:</label>
-        <select name="sexo" required>
-            <option value="M">Macho</option>
-            <option value="F">Fêmea</option>
-        </select>
+        <div class="form-group">
+            <label>Sexo:</label>
+            <select name="sexo">
+                <option value="M">Macho</option>
+                <option value="F">Fêmea</option>
+            </select>
+        </div>
 
-        <label>Data de Compra/Nascimento:</label>
-        <input type="date" name="data_compra" required>
+        <div class="form-group">
+            <label>Data da Compra:</label>
+            <input type="date" name="data_compra" required>
+        </div>
 
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-        <h3 style="text-align: center; font-size: 1rem; color: #777; margin-bottom: 0;">Dados para Cálculo (@)</h3>
+        <div class="form-group">
+            <label>Peso de Entrada (kg):</label>
+            <input type="number" step="0.01" name="peso_compra" required>
+        </div>
 
-        <label>Peso Inicial (Kg):</label>
-        <input type="number" step="0.01" name="peso_compra" required placeholder="Ex: 300">
+        <div class="form-group">
+            <label>Valor da Arroba na Compra (R$):</label>
+            <input type="number" step="0.01" name="valor_arroba" required>
+        </div>
 
-        <label>Valor da Arroba (R$):</label>
-        <input type="number" step="0.01" name="valor_arroba" required placeholder="Ex: 290.00">
-        
-        <small style="color: #666; display: block; margin-top: 5px;">
-            * O sistema calculará o preço total automaticamente (Regra: 1@ = 30kg).
-        </small>
-
-        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">Salvar Animal</button>
+        <button type="submit" class="btn-salvar">Salvar Animal</button>
     </form>
     
-    <div style="text-align: center; margin-top: 20px;">
-        <a href="/">Voltar ao Menu Principal</a>
-    </div>
-
+    <br>
+    <a href="{{ url_for('operacional.painel') }}" class="btn btn-voltar">Voltar</a>
 </body>
 </html>

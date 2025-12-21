@@ -24,7 +24,7 @@
             <div class="alert-erro">{{ mensagem }}</div>
         {% endif %}
 
-        <form method="POST" action="/login">
+        <form method="POST" action="{{ url_for('auth.login') }}">
             <div class="form-group">
                 <label>Usuário</label>
                 <input type="text" name="username" required placeholder="Digite seu usuário">
@@ -34,7 +34,7 @@
                 <input type="password" name="password" required placeholder="Digite sua senha">
             </div>
             <button type="submit" class="btn-entrar">ENTRAR NO SISTEMA</button>
-            <a href="/novo_usuario" class="btn btn-secondary">👤 Não Tenho Conta</a>
+            <a href="{{ url_for('auth.novo_usuario') }}" class="btn btn-secondary">👤 Não Tenho Conta</a>
         </form>
     </div>
 </body>

@@ -6,17 +6,23 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Registrar Peso</h1>
-    <form method="POST" action="/pesar/{{ id_animal }}">
-        <label>Data:</label><br>
-        <input type="date" name="data_pesagem" required><br><br>
+    <h1>Registrar Pesagem</h1>
 
-        <label>Novo Peso (kg):</label><br>
-        <input type="number" step="0.01" name="peso" required><br><br>
+    <form action="{{ url_for('operacional.nova_pesagem', id_animal=id_animal) }}" method="POST" class="form-container">
+        <div class="form-group">
+            <label>Data da Pesagem:</label>
+            <input type="date" name="data_pesagem" required>
+        </div>
 
-        <button type="submit">Salvar Peso</button>
+        <div class="form-group">
+            <label>Peso (kg):</label>
+            <input type="number" step="0.01" name="peso" required placeholder="Ex: 350.5">
+        </div>
+
+        <button type="submit" class="btn-salvar">Salvar Peso</button>
     </form>
+    
     <br>
-    <a href="/animal/{{ id_animal }}">Cancelar</a>
+    <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}" class="btn btn-voltar">Voltar</a>
 </body>
 </html>
