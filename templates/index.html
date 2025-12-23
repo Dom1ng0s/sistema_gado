@@ -18,6 +18,7 @@
         <a href="{{ url_for('operacional.cadastro') }}" class="btn btn-novo">+ Novo Animal</a>
         <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-novo">$ Financeiro</a>
         <a href="{{ url_for('api.graficos_page') }}" class="btn btn-novo">Meu Rebanho</a>
+        <a href="{{ url_for('operacional.vacinacao_coletiva') }}" class="btn" style="background-color: #0288d1;">💉 Vacina em Lote</a>
     </div>
 
     <form action="{{ url_for('operacional.painel') }}" method="GET" class="search-bar">

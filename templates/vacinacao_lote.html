@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Vacinação Coletiva</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .grid-animais {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 15px;
+            background: #fff;
+            border-radius: 8px;
+        }
+        .item-animal {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f9f9f9;
+            padding: 8px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .item-animal:hover { background-color: #e3f2fd; border-color: #2196F3; }
+        .barra-fixa {
+            background: #e8f5e9; padding: 20px; border-radius: 8px; border: 1px solid #c8e6c9; margin-bottom: 20px;
+        }
+    </style>
+    <script>
+        function selecionarTodos(source) {
+            checkboxes = document.getElementsByName('animais_ids');
+            for(var i=0, n=checkboxes.length;i<n;i++) {
+                checkboxes[i].checked = source.checked;
+            }
+        }
+    </script>
+</head>
+<body>
+    <div style="max-width: 900px; margin: 0 auto;">
+        <h1 style="border-bottom: 2px solid #2e7d32; padding-bottom: 10px;">💉 Manejo Sanitário em Lote</h1>
+
+        <form action="{{ url_for('operacional.vacinacao_coletiva') }}" method="POST">
+            
+            <div class="barra-fixa">
+                <h3 style="margin-top: 0; color: #2e7d32;">1. Dados da Aplicação</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Data:</label>
+                        <input type="date" name="data_aplicacao" required style="width: 100%; padding: 8px;">
+                    </div>
+                    <div>
+                        <label>Medicamento / Vacina:</label>
+                        <input type="text" name="nome" required placeholder="Ex: Febre Aftosa" style="width: 100%; padding: 8px;">
+                    </div>
+                    <div>
+                        <label>Custo por Cabeça (R$):</label>
+                        <input type="number" step="0.01" name="custo" required placeholder="0.00" style="width: 100%; padding: 8px;">
+                    </div>
+                    <div>
+                        <label>Observação:</label>
+                        <input type="text" name="obs" placeholder="Motivo ou lote da vacina" style="width: 100%; padding: 8px;">
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="color: #555;">2. Selecione os Animais</h3>
+            <div style="margin-bottom: 10px;">
+                <label style="font-weight: bold; color: #2e7d32; cursor: pointer; font-size: 1.1em;">
+                    <input type="checkbox" onClick="selecionarTodos(this)"> ✅ MARCAR/DESMARCAR TODOS
+                </label>
+            </div>
+
+            <div class="grid-animais">
+                {% for animal in animais %}
+                <div class="item-animal">
+                    <input type="checkbox" name="animais_ids" value="{{ animal[0] }}" id="boi_{{ animal[0] }}">
+                    <label for="boi_{{ animal[0] }}" style="cursor: pointer; width: 100%;">{{ animal[1] }}</label>
+                </div>
+                {% else %}
+                    <p style="grid-column: 1/-1; text-align: center;">Nenhum animal ativo encontrado.</p>
+                {% endfor %}
+            </div>
+
+            <br>
+            <button type="submit" class="btn-salvar" style="width: 100%; font-size: 1.2em; padding: 15px; background-color: #2e7d32;">💾 CONFIRMAR APLICAÇÃO EM MASSA</button>
+        </form>
+
+        <br>
+        <div style="text-align: center;">
+            <a href="{{ url_for('operacional.painel') }}" class="btn btn-voltar">Cancelar e Voltar</a>
+        </div>
+    </div>
+</body>
+</html>

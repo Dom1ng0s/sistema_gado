@@ -158,3 +158,57 @@ def excluir_pesagem(id_pesagem):
         logger.error(f"Erro excluir pesagem: {e}", exc_info=True)
     if aid: return redirect(url_for('operacional.detalhes', id_animal=aid))
     return redirect(url_for('operacional.painel'))
+
+    # Adicione isso em routes/operacional.py
+
+@operacional_bp.route('/vacinacao-coletiva', methods=['GET', 'POST'])
+@login_required
+def vacinacao_coletiva():
+    # 1. PROCESSAMENTO DO FORMULÁRIO (SALVAR)
+    if request.method == 'POST':
+        try:
+            # Pega os dados comuns a todos
+            dt = request.form['data_aplicacao']
+            nome = request.form['nome']
+            custo = request.form['custo']
+            obs = request.form['obs']
+            
+            # Pega a LISTA de animais selecionados (Checkboxes)
+            animais_ids = request.form.getlist('animais_ids') 
+
+            if not animais_ids:
+                return render_template('vacinacao_lote.html', erro="Nenhum animal selecionado!", animais=[])
+
+            with get_db_cursor() as cursor:
+                # Loop para inserir um registro para cada animal marcado
+                sql = """
+                    INSERT INTO medicacoes (animal_id, data_aplicacao, nome_medicamento, custo, observacoes) 
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                for animal_id in animais_ids:
+                    cursor.execute(sql, (animal_id, dt, nome, custo, obs))
+            
+            # Sucesso: volta para o painel
+            return redirect(url_for('operacional.painel'))
+
+        except Exception as e:
+            logger.error(f"Erro vacinacao lote: {e}", exc_info=True)
+            return "Erro ao processar vacinação."
+
+    # 2. EXIBIÇÃO DA TELA (CARREGAR LISTA)
+    try:
+        with get_db_cursor() as cursor:
+            # Busca apenas animais ATIVOS (que estão no pasto)
+            cursor.execute("""
+                SELECT id, brinco 
+                FROM animais 
+                WHERE user_id = %s AND data_venda IS NULL 
+                ORDER BY brinco ASC
+            """, (current_user.id,))
+            lista_animais = cursor.fetchall()
+            
+        return render_template('vacinacao_lote.html', animais=lista_animais)
+    
+    except Exception as e:
+        logger.error(f"Erro carregar lote: {e}", exc_info=True)
+        return redirect(url_for('operacional.painel'))
