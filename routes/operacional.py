@@ -44,6 +44,60 @@ def painel():
     
     return render_template("index.html", lista_animais=animais, pagina_atual=pg, total_paginas=total_pg, busca=termo, status=status)
 
+@operacional_bp.route('/lixeira')
+@login_required
+def lixeira():
+    animais = []
+    termo = request.args.get('busca', '')
+    pg = request.args.get('page', 1, type=int)
+    limit, offset = 20, (pg - 1) * 20
+    total_pg = 1
+
+    try:
+        with get_db_cursor() as cursor:
+            # FILTRO FIXO: Traz apenas o que tem data de exclusão (deleted_at IS NOT NULL)
+            conds, params = ["user_id = %s", "deleted_at IS NOT NULL"], [current_user.id]
+            
+            if termo:
+                conds.append("brinco LIKE %s")
+                params.append(f"{termo}%")
+            
+            where = " WHERE " + " AND ".join(conds)
+            
+            # Paginação
+            cursor.execute(f"SELECT COUNT(*) FROM animais {where}", tuple(params))
+            total = cursor.fetchone()[0]
+            
+            # Busca os dados (Note que trazemos deleted_at para mostrar na tela)
+            cursor.execute(f"""
+                SELECT id, brinco, sexo, deleted_at 
+                FROM animais {where} 
+                ORDER BY deleted_at DESC 
+                LIMIT %s OFFSET %s
+            """, tuple(params + [limit, offset]))
+            
+            animais = cursor.fetchall()
+            if total > 0: total_pg = math.ceil(total / limit)
+            
+    except Exception as e:
+        logger.error(f"Erro lixeira: {e}", exc_info=True)
+    
+    return render_template("lixeira.html", lista_animais=animais, pagina_atual=pg, total_paginas=total_pg, busca=termo)
+
+# 2. ATUALIZE A ROTA DE RESTAURAR (Para voltar para a lixeira)
+@operacional_bp.route('/restaurar_animal/<int:id_animal>')
+@login_required
+def restaurar_animal(id_animal):
+    try:
+        with get_db_cursor() as cursor:
+            # Remove a data de exclusão (NULL), trazendo o animal de volta à vida
+            cursor.execute("UPDATE animais SET deleted_at = NULL WHERE id=%s AND user_id=%s", (id_animal, current_user.id))
+    except Exception as e:
+        logger.error(f"Erro restaurar: {e}", exc_info=True)
+    
+    # Redireciona para a lixeira para o usuário ver que o item sumiu de lá (foi restaurado)
+    return redirect(url_for('operacional.lixeira'))
+
 @operacional_bp.route("/cadastro", methods=["GET", "POST"])
 @login_required
 def cadastro():

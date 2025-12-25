@@ -36,6 +36,8 @@
         <a href="{{ url_for('operacional.painel', status='todos', busca=busca) }}" class="btn {% if status == 'todos' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding: 5px 15px; font-size: 13px;">Todos</a>
         <a href="{{ url_for('operacional.painel', status='ativos', busca=busca) }}" class="btn {% if status == 'ativos' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding: 5px 15px; font-size: 13px;">Apenas Ativos</a>
         <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca) }}" class="btn {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding: 5px 15px; font-size: 13px;">Apenas Vendidos</a>
+
+        <a href="{{ url_for('operacional.lixeira') }}" class="btn" style="background-color: #d32f2f; margin-left: 15px; padding: 5px 15px; font-size: 13px;" title="Ver animais excluídos">🗑️ Lixeira</a>
     </div>
 
     <table>
@@ -55,8 +57,7 @@
                 <td>{{ animal[2] }}</td>
                 <td>{{ animal[3] }}</td>
                 <td>
-                    {% if animal[5] %} 
-                        <span class="tag-vendido">VENDIDO</span>
+                    {% if animal[5] %} <span class="tag-vendido">VENDIDO</span>
                     {% else %} 
                         <span class="tag-ativo">ATIVO</span>
                     {% endif %}

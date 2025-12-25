@@ -1,3 +1,16 @@
+from flask import Blueprint, jsonify, render_template
+from flask_login import login_required, current_user
+from db_config import get_db_cursor
+import logging
+
+api_bp = Blueprint('api', __name__)
+logger = logging.getLogger(__name__)
+
+@api_bp.route('/graficos')
+@login_required
+def graficos_page():
+    return render_template('graficos.html')
+
 @api_bp.route('/dados-graficos')
 @login_required
 def dados_graficos_api():
@@ -32,8 +45,7 @@ def dados_graficos_api():
                 elif 15 <= p_arr < 20: cat_peso['15@ a 20@'] += 1
                 else: cat_peso['Mais de 20@'] += 1
             
-            # 3. GMD Médio: A View v_gmd_analitico já filtra deletados (conforme init_db.py), 
-            # mas reforçamos no JOIN com animais por segurança.
+            # 3. GMD Médio: A View v_gmd_analitico já filtra deletados, reforçamos no JOIN
             cursor.execute("""
                 SELECT AVG(v.gmd) 
                 FROM v_gmd_analitico v 

@@ -132,6 +132,7 @@ def custos_operacionais():
             desc = request.form.get('descricao')
             
             with get_db_cursor() as cursor:
+                # Inserção sem deleted_at (será NULL por padrão)
                 cursor.execute("INSERT INTO custos_operacionais (user_id, categoria, tipo_custo, valor, data_custo, descricao) VALUES (%s, %s, %s, %s, %s, %s)", (current_user.id, cat, tipo, val, dt, desc))
                 msg = "Custo registrado!"
         except Exception as e:
