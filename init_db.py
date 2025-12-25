@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 # Carrega variáveis de ambiente
 load_dotenv()
 
-print("\n--- 🚀 INICIANDO SETUP COMPLETO DO BANCO DE DADOS ---")
+print("\n--- 🚀 INICIANDO SETUP COMPLETO DO BANCO DE DADOS (COM SOFT DELETE) ---")
 
 try:
     # 1. Conexão
@@ -45,7 +45,7 @@ try:
         else:
             raise err
 
-    # 1.3 Tabela ANIMAIS
+    # 1.3 Tabela ANIMAIS (Atualizada com deleted_at)
     print("🔨 [2/6] Criando tabela 'animais'...")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS animais (
@@ -57,12 +57,13 @@ try:
         data_venda DATE,
         preco_venda DECIMAL(10, 2),
         user_id INT NOT NULL,
+        deleted_at DATETIME NULL DEFAULT NULL,
         FOREIGN KEY (user_id) REFERENCES usuarios(id),
         UNIQUE KEY idx_brinco_user (brinco, user_id)
     );
     """)
 
-    # 1.4 Tabelas Satélites (Pesagens, Medicações, Custos)
+    # 1.4 Tabelas Satélites (Atualizadas com deleted_at)
     print("🔨 [3/6] Criando tabelas satélites (pesagens, medicacoes, custos)...")
     
     cursor.execute("""
@@ -71,6 +72,7 @@ try:
         animal_id INT NOT NULL,
         data_pesagem DATE NOT NULL,
         peso DECIMAL(10, 2) NOT NULL,
+        deleted_at DATETIME NULL DEFAULT NULL,
         FOREIGN KEY (animal_id) REFERENCES animais(id)
     );
     """)
@@ -83,6 +85,7 @@ try:
         nome_medicamento VARCHAR(100) NOT NULL,
         custo DECIMAL(10, 2),
         observacoes TEXT,
+        deleted_at DATETIME NULL DEFAULT NULL,
         FOREIGN KEY (animal_id) REFERENCES animais(id)
     );
     """)
@@ -96,6 +99,7 @@ try:
         valor DECIMAL(10, 2) NOT NULL,
         data_custo DATE NOT NULL,
         descricao TEXT,
+        deleted_at DATETIME NULL DEFAULT NULL,
         FOREIGN KEY (user_id) REFERENCES usuarios(id)
     );
     """)
@@ -110,21 +114,23 @@ try:
         ("idx_pesagens_max", "CREATE INDEX idx_pesagens_max ON pesagens (animal_id, id DESC)"),
         ("idx_custos_busca", "CREATE INDEX idx_custos_busca ON custos_operacionais (user_id, data_custo)"),
         ("idx_med_busca", "CREATE INDEX idx_med_busca ON medicacoes (animal_id, data_aplicacao)"),
-        ("idx_animais_venda", "CREATE INDEX idx_animais_venda ON animais (user_id, data_venda)")
+        ("idx_animais_venda", "CREATE INDEX idx_animais_venda ON animais (user_id, data_venda)"),
+        # NOVO ÍNDICE PARA SOFT DELETE
+        ("idx_animais_ativo", "CREATE INDEX idx_animais_ativo ON animais (user_id, deleted_at)")
     ]
 
     for nome_idx, sql in indices_sql:
         try:
             cursor.execute(sql)
-            print(f"   -> Índice '{nome_idx}' criado com sucesso.")
+            print(f"   -> Índice '{nome_idx}' verificado/criado.")
         except mysql.connector.Error as err:
-            if err.errno == 1061:  # Código 1061 = Duplicate key name
-                print(f"   -> Índice '{nome_idx}' já existe (ignorado).")
+            if err.errno == 1061:  # Duplicate key name
+                print(f"   -> Índice '{nome_idx}' já existe.")
             else:
                 print(f"   ⚠️  Erro ao criar '{nome_idx}': {err}")
 
     # ==============================================================================
-    # ETAPA 2: INTELIGÊNCIA DE DADOS (VIEWS)
+    # ETAPA 2: INTELIGÊNCIA DE DADOS (VIEWS ATUALIZADAS PARA SOFT DELETE)
     # ==============================================================================
 
     # 2.1 View de GMD (Ganho Médio Diário)
@@ -137,6 +143,7 @@ try:
             ROW_NUMBER() OVER(PARTITION BY animal_id ORDER BY data_pesagem ASC) as rn_asc,
             ROW_NUMBER() OVER(PARTITION BY animal_id ORDER BY data_pesagem DESC) as rn_desc
         FROM pesagens
+        WHERE deleted_at IS NULL
     ),
     PrimeiraUltima AS (
         SELECT 
@@ -160,7 +167,8 @@ try:
         END as gmd
     FROM PrimeiraUltima p
     JOIN animais a ON p.animal_id = a.id
-    WHERE p.data_inicial <> p.data_final;
+    WHERE p.data_inicial <> p.data_final
+      AND a.deleted_at IS NULL;
     """)
 
     # 2.2 View Financeira (Fluxo de Caixa)
@@ -176,16 +184,16 @@ try:
         SUM(despesa_ops) as total_ops
     FROM (
         SELECT user_id, YEAR(data_venda) as ano, preco_venda as receita, 0 as despesa_compra, 0 as despesa_med, 0 as despesa_ops
-        FROM animais WHERE data_venda IS NOT NULL
+        FROM animais WHERE data_venda IS NOT NULL AND deleted_at IS NULL
         UNION ALL
         SELECT user_id, YEAR(data_compra) as ano, 0, preco_compra, 0, 0
-        FROM animais
+        FROM animais WHERE deleted_at IS NULL
         UNION ALL
         SELECT a.user_id, YEAR(m.data_aplicacao) as ano, 0, 0, m.custo, 0
-        FROM medicacoes m JOIN animais a ON m.animal_id = a.id
+        FROM medicacoes m JOIN animais a ON m.animal_id = a.id WHERE m.deleted_at IS NULL AND a.deleted_at IS NULL
         UNION ALL
         SELECT user_id, YEAR(data_custo) as ano, 0, 0, 0, valor
-        FROM custos_operacionais
+        FROM custos_operacionais WHERE deleted_at IS NULL
     ) as uniao_geral
     GROUP BY user_id, ano;
     """)
@@ -196,8 +204,7 @@ try:
     conn.commit()
     cursor.close()
     conn.close()
-    print("\n✅ [6/6] SUCESSO! Banco de dados atualizado e pronto para produção.")
+    print("\n✅ [6/6] SUCESSO! Banco de dados atualizado para SOFT DELETE.")
 
 except Exception as e:
     print(f"\n❌ ERRO FATAL: {e}")
-    print("Dica: Verifique se o IP está liberado ou se as credenciais no .env estão corretas.")

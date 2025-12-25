@@ -12,8 +12,8 @@ from routes.api import api_bp
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
-# Pega a chave do .env ou usa uma padrão se não encontrar
-app.secret_key = os.getenv('SECRET_KEY', 'chave_padrao_desenvolvimento')
+# Pega a chave do .env 
+app.secret_key = os.getenv('SECRET_KEY')
 
 # Configuração do Login
 login_manager = LoginManager()

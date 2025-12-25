@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from db_config import get_db_cursor
 import math
 import logging
+from datetime import datetime
 
 operacional_bp = Blueprint('operacional', __name__)
 logger = logging.getLogger(__name__)
@@ -17,12 +18,21 @@ def painel():
 
     try:
         with get_db_cursor() as cursor:
-            conds, params = ["user_id = %s"], [current_user.id]
-            if termo: conds.append("brinco LIKE %s"); params.append(f"{termo}%")
-            if status == 'ativos': conds.append("data_venda IS NULL")
-            elif status == 'vendidos': conds.append("data_venda IS NOT NULL")
+            # ADICIONAMOS 'deleted_at IS NULL' COMO REGRA PADRÃO
+            conds, params = ["user_id = %s", "deleted_at IS NULL"], [current_user.id] # <--- MUDANÇA AQUI
+            
+            if termo: 
+                conds.append("brinco LIKE %s")
+                params.append(f"{termo}%")
+            
+            if status == 'ativos': 
+                conds.append("data_venda IS NULL")
+            elif status == 'vendidos': 
+                conds.append("data_venda IS NOT NULL")
             
             where = " WHERE " + " AND ".join(conds)
+            
+            # O resto continua igual...
             cursor.execute(f"SELECT COUNT(*) FROM animais {where}", tuple(params))
             total = cursor.fetchone()[0]
             
@@ -134,11 +144,13 @@ def nova_pesagem(id_animal):
 def excluir_animal(id_animal):
     try:
         with get_db_cursor() as cursor:
+            # Verifica se o animal é do usuário antes de "apagar"
             cursor.execute("SELECT id FROM animais WHERE id=%s AND user_id=%s", (id_animal, current_user.id))
             if cursor.fetchone():
-                cursor.execute("DELETE FROM pesagens WHERE animal_id=%s", (id_animal,))
-                cursor.execute("DELETE FROM medicacoes WHERE animal_id=%s", (id_animal,))
-                cursor.execute("DELETE FROM animais WHERE id=%s", (id_animal,))
+                # SOFT DELETE: Marcamos a data e hora atual
+                now = datetime.now()
+                cursor.execute("UPDATE animais SET deleted_at=%s WHERE id=%s", (now, id_animal))
+                
     except Exception as e:
         logger.error(f"Erro excluir: {e}", exc_info=True)
     return redirect(url_for('operacional.painel'))
@@ -149,17 +161,18 @@ def excluir_pesagem(id_pesagem):
     aid = None
     try:
         with get_db_cursor() as cursor:
+            # Busca o animal_id para poder redirecionar de volta para a ficha certa
             cursor.execute("SELECT p.animal_id FROM pesagens p JOIN animais a ON p.animal_id=a.id WHERE p.id=%s AND a.user_id=%s", (id_pesagem, current_user.id))
             res = cursor.fetchone()
             if res:
                 aid = res[0]
-                cursor.execute("DELETE FROM pesagens WHERE id=%s", (id_pesagem,))
+                # SOFT DELETE NA PESAGEM
+                cursor.execute("UPDATE pesagens SET deleted_at=%s WHERE id=%s", (datetime.now(), id_pesagem))
     except Exception as e:
         logger.error(f"Erro excluir pesagem: {e}", exc_info=True)
+        
     if aid: return redirect(url_for('operacional.detalhes', id_animal=aid))
     return redirect(url_for('operacional.painel'))
-
-    # Adicione isso em routes/operacional.py
 
 @operacional_bp.route('/vacinacao-coletiva', methods=['GET', 'POST'])
 @login_required

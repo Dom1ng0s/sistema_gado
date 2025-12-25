@@ -14,15 +14,18 @@ def calcular_kpis_unificados(cursor, user_id):
         'arrendamento': 0.0, 'suplementacao': 0.0, 'mao_obra': 0.0, 'extras': 0.0
     }
     
-    cursor.execute("SELECT COUNT(*) FROM animais WHERE user_id = %s AND data_venda IS NULL", (user_id,))
+    # Filtra animais deletados na contagem
+    cursor.execute("SELECT COUNT(*) FROM animais WHERE user_id = %s AND data_venda IS NULL AND deleted_at IS NULL", (user_id,))
     dados['qtd_animais'] = cursor.fetchone()[0]
     
-    cursor.execute("SELECT AVG(v.gmd) FROM v_gmd_analitico v JOIN animais a ON v.animal_id = a.id WHERE v.user_id = %s AND a.data_venda IS NULL", (user_id,))
+    # Filtra deletados no cálculo de GMD
+    cursor.execute("SELECT AVG(v.gmd) FROM v_gmd_analitico v JOIN animais a ON v.animal_id = a.id WHERE v.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL", (user_id,))
     res_gmd = cursor.fetchone()
     if res_gmd and res_gmd[0]: dados['gmd_medio'] = float(res_gmd[0])
 
+    # Filtra custos deletados
     dt_lim = date.today() - timedelta(days=90)
-    cursor.execute("SELECT tipo_custo, SUM(valor) FROM custos_operacionais WHERE user_id = %s AND data_custo >= %s GROUP BY tipo_custo", (user_id, dt_lim))
+    cursor.execute("SELECT tipo_custo, SUM(valor) FROM custos_operacionais WHERE user_id = %s AND data_custo >= %s AND deleted_at IS NULL GROUP BY tipo_custo", (user_id, dt_lim))
     tot_tri = 0.0
     for tipo, val in cursor.fetchall():
         m_mensal = float(val)/3
@@ -50,10 +53,13 @@ def financeiro():
     try:
         with get_db_cursor() as cursor:
             uid = current_user.id
-            cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE data_venda IS NULL AND user_id = %s", (uid,))
+            
+            # 1. Valor do Rebanho: Apenas ativos e não deletados
+            cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE data_venda IS NULL AND user_id = %s AND deleted_at IS NULL", (uid,))
             res_reb = cursor.fetchone()
             if res_reb and res_reb[0]: view_data['valor_rebanho'] = f"{res_reb[0]:,.2f}"
 
+            # 2. Fluxo de Caixa: A View v_fluxo_caixa JÁ FILTRA deletados (conforme init_db.py)
             cursor.execute("SELECT ano, total_entradas, total_compras, total_med, total_ops FROM v_fluxo_caixa WHERE user_id = %s ORDER BY ano DESC", (uid,))
             hist = cursor.fetchall()
             if hist:
@@ -72,7 +78,8 @@ def financeiro():
                 view_data['custo_diaria'] = f"{kpis['custo_diaria']:.2f}"
                 view_data['custo_arroba'] = f"{kpis['custo_arroba']:.2f}"
 
-            cursor.execute("SELECT data_custo, categoria, tipo_custo, valor, descricao FROM custos_operacionais WHERE user_id = %s AND YEAR(data_custo) = %s ORDER BY data_custo DESC", (uid, ano_sel))
+            # 3. Lista de Custos: Filtra deletados
+            cursor.execute("SELECT data_custo, categoria, tipo_custo, valor, descricao FROM custos_operacionais WHERE user_id = %s AND YEAR(data_custo) = %s AND deleted_at IS NULL ORDER BY data_custo DESC", (uid, ano_sel))
             lista_custos = cursor.fetchall()
     except Exception as e:
         logger.error(f"Erro financeiro: {e}", exc_info=True)
