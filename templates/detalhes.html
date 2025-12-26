@@ -88,12 +88,12 @@
     <br><br><br>
     
     <div style="border: 2px solid red; padding: 20px; border-radius: 8px; background-color: #ffe6e6;">
-        <h3 style="color: red; margin-top: 0;">Zona de Perigo</h3>
-        <p>Ações irreversíveis.</p>
+        <h3 style="color: red; margin-top: 0;">Excluir Animal</h3>
+        <p>O animal irá para a Lixeira</p>
         <a href="{{ url_for('operacional.excluir_animal', id_animal=animal[0]) }}" 
            style="background-color: red; color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;"
-           onclick="return confirm('ATENÇÃO: Tem a certeza absoluta? Esta ação apagará o animal e TODO o seu histórico para sempre.');">
-           🗑️ EXCLUIR ANIMAL PERMANENTEMENTE
+           onclick="return confirm('ATENÇÃO: o animal excluido irá para a lixeira');">
+           🗑️ EXCLUIR ANIMAL 
         </a>
     </div>
 
