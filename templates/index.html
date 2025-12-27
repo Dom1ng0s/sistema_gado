@@ -7,11 +7,14 @@
 </head>
 <body>
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-bottom: 20px;">
-        <h1 style="border: none; margin: 0; padding: 0;">Meu Rebanho</h1>
-        <div>
-            <span style="margin-right: 15px; color: #555;">Olá, <strong>{{ current_user.username }}</strong></span>
-            <a href="{{ url_for('auth.logout') }}" class="btn btn-danger" style="padding: 5px 15px; font-size: 12px;">Sair</a>
-        </div>
+        <h1 style="border: none; margin: 0; padding: 0;">{{ nome_fazenda_header }}</h1>
+        <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="margin-right: 10px; color: #555;">Olá, <strong>{{ current_user.username }}</strong></span>
+            <a href="{{ url_for('configuracoes.settings') }}" title="Configurações da Fazenda" style="text-decoration: none; font-size: 1.2rem; cursor: pointer;">
+                ⚙️
+            </a>
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-danger" style="padding: 5px 15px; font-size: 12px;">Sair</a>
+    </div>
     </div>
     
     <div class="menu-bar">

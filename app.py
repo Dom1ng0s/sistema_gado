@@ -7,6 +7,8 @@ from routes.auth import auth_bp
 from routes.financeiro import financeiro_bp
 from routes.operacional import operacional_bp
 from routes.api import api_bp
+from routes.configuracoes import config_bp
+from db_config import get_db_cursor # Necessário para o Context Processor
 
 # Configuração de Logs
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -28,7 +30,26 @@ def load_user(user_id):
 app.register_blueprint(auth_bp)
 app.register_blueprint(financeiro_bp)
 app.register_blueprint(operacional_bp)
+app.register_blueprint(config_bp)
 app.register_blueprint(api_bp)
+
+@app.context_processor
+def inject_user_info():
+    # Valor padrão caso não tenha nada configurado
+    site_name = "Meu Rebanho"
+
+    if current_user.is_authenticated:
+        try:
+            # Busca rápida apenas do nome para o cabeçalho
+            with get_db_cursor() as cursor:
+                cursor.execute("SELECT nome_fazenda FROM configuracoes WHERE user_id = %s", (current_user.id,))
+                res = cursor.fetchone()
+                if res and res[0]: # Se achou e não está vazio
+                    site_name = res[0]
+        except Exception:
+            pass # Em caso de erro, mantém o padrão silenciosamente
+
+    return {'nome_fazenda_header': site_name}
 
 # Rota Principal (Redirecionamento Inteligente)
 @app.route('/')

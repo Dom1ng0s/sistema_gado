@@ -104,6 +104,19 @@ try:
     );
     """)
 
+    # 1.4.1 Tabela CONFIGURAÇÕES (NOVO)
+    print("🔨 [Extra] Criando tabela 'configuracoes'...")
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS configuracoes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL UNIQUE,
+        nome_fazenda VARCHAR(100),
+        cidade_estado VARCHAR(100),
+        area_total DECIMAL(10, 2),
+        FOREIGN KEY (user_id) REFERENCES usuarios(id)
+    );
+    """)
+
     # ==============================================================================
     # ETAPA 1.5: ÍNDICES DE PERFORMANCE (OTIMIZAÇÃO)
     # ==============================================================================
@@ -128,6 +141,9 @@ try:
                 print(f"   -> Índice '{nome_idx}' já existe.")
             else:
                 print(f"   ⚠️  Erro ao criar '{nome_idx}': {err}")
+
+
+    
 
     # ==============================================================================
     # ETAPA 2: INTELIGÊNCIA DE DADOS (VIEWS ATUALIZADAS PARA SOFT DELETE)

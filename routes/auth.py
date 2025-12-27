@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from db_config import get_db_cursor
@@ -44,20 +44,41 @@ def novo_usuario():
     mensagem = None
     if request.method == 'POST':
         try:
+            # 1. Coleta Dados do Formulário
             novo_user = request.form['username'].strip()
             nova_senha = request.form['password'].strip()
+            
+            nome_fazenda = request.form.get('nome_fazenda', '').strip()
+            cidade = request.form.get('cidade_estado', '').strip()
+            area = request.form.get('area_total')
+            if not area: area = 0
+
             if not novo_user or not nova_senha:
-                 return render_template('novo_usuario.html', mensagem="Preencha tudo.")
+                 return render_template('novo_usuario.html', mensagem="Usuário e Senha são obrigatórios.")
 
             with get_db_cursor() as cursor:
+                # 2. Verifica se usuário já existe
                 cursor.execute("SELECT id FROM usuarios WHERE username = %s", (novo_user,))
                 if cursor.fetchone():
                     mensagem = f"Erro: Usuário '{novo_user}' já existe."
                 else:
+                    # 3. Cria o Usuário
                     hash_s = generate_password_hash(nova_senha)
                     cursor.execute("INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)", (novo_user, hash_s))
-                    mensagem = f"Sucesso! Usuário '{novo_user}' criado."
+                    user_id = cursor.lastrowid
+                    
+                    # 4. Cria a Configuração da Fazenda vinculada
+                    sql_config = """
+                        INSERT INTO configuracoes (user_id, nome_fazenda, cidade_estado, area_total)
+                        VALUES (%s, %s, %s, %s)
+                    """
+                    cursor.execute(sql_config, (user_id, nome_fazenda, cidade, area))
+                    
+                    # Sucesso: Redireciona para login
+                    return redirect(url_for('auth.login'))
+                    
         except Exception as e:
             logger.error(f"Erro novo_usuario: {e}", exc_info=True)
-            mensagem = f"Erro: {e}"
+            mensagem = f"Erro ao criar conta: {e}"
+            
     return render_template('novo_usuario.html', mensagem=mensagem)
