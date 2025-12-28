@@ -80,3 +80,98 @@ def proxy_cidades():
     except Exception as e:
         logger.error(f"Erro proxy: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/cotacoes-regionais')
+@login_required
+def cotacoes_regionais():
+    """
+    1. Pega o estado (UF) do usuário.
+    2. Baixa o JSON do Gado-Scraper (GitHub).
+    3. Filtra as cotações do estado correspondente.
+    """
+    try:
+        # 1. BUSCAR LOCALIZAÇÃO DO USUÁRIO
+        uf_usuario = None
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT cidade_estado FROM configuracoes WHERE user_id = %s", (current_user.id,))
+            res = cursor.fetchone()
+            if res and res[0]:
+                # Formato esperado: "Cidade - UF" (ex: "Uberaba - MG")
+                partes = res[0].split('-')
+                if len(partes) > 1:
+                    uf_usuario = partes[-1].strip().upper() # Pega o "MG"
+        
+        if not uf_usuario:
+            return jsonify({'erro': 'Localização não configurada'}), 404
+
+        # 2. DEFINIR URLs DOS DADOS (Substitua pelo seu USER/REPO corretos)
+        base_url = "https://raw.githubusercontent.com/dom1ng0s/gado-scraper/main"
+        url_boi = f"{base_url}/cotacoes_boi_hoje.json"
+        url_novilha = f"{base_url}/cotacoes_novilha_hoje.json"
+
+        # 3. FUNÇÃO AUXILIAR DE BUSCA E FILTRO
+        def buscar_e_filtrar(url, uf):
+            try:
+                resp = requests.get(url, timeout=5)
+                if resp.status_code != 200: return []
+                
+                dados = resp.json()
+                resultados = []
+                
+                # Mapeamento para casos onde o JSON usa nome completo
+                mapa_estados = {'AC': 'Acre', 'AL': 'Alagoas', 'RR': 'Roraima'}
+                nome_completo = mapa_estados.get(uf, '')
+
+                for item in dados:
+                    praca = item.get('praca', '').upper()
+                    # Verifica se a praça começa com a UF (ex: "SP Barretos") 
+                    # ou se é o nome exato (ex: "ALAGOAS", "SC")
+                    if praca.startswith(uf) or praca == uf or (nome_completo and praca == nome_completo.upper()):
+                        resultados.append(item)
+                
+                return resultados
+            except Exception as e:
+                logger.error(f"Erro ao ler JSON {url}: {e}")
+                return []
+
+        # 4. EXECUTAR
+        cotacoes_boi = buscar_e_filtrar(url_boi, uf_usuario)
+        cotacoes_novilha = buscar_e_filtrar(url_novilha, uf_usuario)
+
+        return jsonify({
+            'uf': uf_usuario,
+            'boi': cotacoes_boi,
+            'novilha': cotacoes_novilha
+        })
+
+    except Exception as e:
+        logger.error(f"Erro cotacoes: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# --- NOVA ROTA: TODAS AS COTAÇÕES (PARA O MODAL) ---
+@api_bp.route('/cotacoes-brasil')
+@login_required
+def cotacoes_brasil():
+    """Retorna a lista completa de cotações (Boi e Novilha) de todas as praças."""
+    try:
+        # URLs do GitHub (Mesmas da rota regional)
+        base_url = "https://raw.githubusercontent.com/dom1ng0s/gado-scraper/main"
+        
+        # Função interna para buscar JSON cru
+        def buscar_dados(endpoint):
+            try:
+                resp = requests.get(f"{base_url}/{endpoint}", timeout=5)
+                return resp.json() if resp.status_code == 200 else []
+            except:
+                return []
+
+        boi = buscar_dados("cotacoes_boi_hoje.json")
+        novilha = buscar_dados("cotacoes_novilha_hoje.json")
+        
+        return jsonify({'boi': boi, 'novilha': novilha})
+
+    except Exception as e:
+        logger.error(f"Erro cotacoes brasil: {e}")
+        return jsonify({'error': str(e)}), 500

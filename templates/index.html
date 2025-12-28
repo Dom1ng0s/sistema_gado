@@ -4,34 +4,104 @@
     <meta charset="UTF-8">
     <title>Gestão de Rebanho</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* --- ESTILO DO WIDGET --- */
+        .mini-cotacao {
+            background-color: #e8f5e9;
+            border: 1px solid #a5d6a7;
+            color: #2e7d32;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .mini-cotacao strong { font-weight: 800; }
+        .divisor { color: #c8e6c9; }
+        .btn-ver-brasil {
+            color: #1b5e20;
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: bold;
+            background: rgba(255,255,255,0.5);
+            padding: 2px 8px;
+            border-radius: 10px;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+        .btn-ver-brasil:hover { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+        /* --- ESTILO DO MODAL (JANELA FLUTUANTE) --- */
+        .modal-overlay {
+            display: none; /* Oculto por padrão */
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .btn-fechar {
+            position: absolute; top: 15px; right: 20px;
+            font-size: 1.5rem; cursor: pointer; color: #666;
+        }
+        .tabela-cotacao { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
+        .tabela-cotacao th { background: #2e7d32; color: white; padding: 10px; text-align: left; position: sticky; top: 0; }
+        .tabela-cotacao td { padding: 8px; border-bottom: 1px solid #eee; }
+        .tabela-cotacao tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
 </head>
 <body>
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-bottom: 20px;">
-        <h1 style="border: none; margin: 0; padding: 0;">{{ nome_fazenda_header }}</h1>
-        <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="margin-right: 10px; color: #555;">Olá, <strong>{{ current_user.username }}</strong></span>
-            <a href="{{ url_for('configuracoes.settings') }}" title="Configurações da Fazenda" style="text-decoration: none; font-size: 1.2rem; cursor: pointer;">
-                ⚙️
-            </a>
-        <a href="{{ url_for('auth.logout') }}" class="btn btn-danger" style="padding: 5px 15px; font-size: 12px;">Sair</a>
-    </div>
-    </div>
     
-    <div class="menu-bar">
-        <a href="{{ url_for('operacional.cadastro') }}" class="btn btn-novo">+ Novo Animal</a>
-        <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-novo">$ Financeiro</a>
-        <a href="{{ url_for('api.graficos_page') }}" class="btn btn-novo">Meu Rebanho</a>
-        <a href="{{ url_for('operacional.vacinacao_coletiva') }}" class="btn" style="background-color: #0288d1;">💉 Vacina em Lote</a>
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 15px; margin-bottom: 20px;">
+        <h1 style="border: none; margin: 0; padding: 0;">{{ nome_fazenda_header if nome_fazenda_header else 'Meu Rebanho' }}</h1>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span style="color: #555; font-size: 1rem;">Olá, <strong>{{ current_user.username }}</strong></span>
+            <a href="{{ url_for('configuracoes.settings') }}" title="Configurações" style="text-decoration: none; font-size: 1.3rem; margin-top: 3px;">⚙️</a>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-danger" style="padding: 6px 15px; font-size: 0.85rem; margin: 0;">Sair</a>
+        </div>
     </div>
 
-    <form action="{{ url_for('operacional.painel') }}" method="GET" class="search-bar">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; margin-bottom: 25px;">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="{{ url_for('operacional.cadastro') }}" class="btn btn-novo" style="margin: 0;">+ Novo Animal</a>
+            <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-novo" style="margin: 0;">$ Financeiro</a>
+            <a href="{{ url_for('api.graficos_page') }}" class="btn btn-novo" style="margin: 0;">Meu Rebanho</a>
+            <a href="{{ url_for('operacional.vacinacao_coletiva') }}" class="btn" style="background-color: #0288d1; margin: 0;">💉 Vacina em Lote</a>
+        </div>
+
+        <div id="mini-widget" class="mini-cotacao" style="display: none;">
+            <span id="lbl-uf" style="text-transform: uppercase; font-weight: 800;">--</span>
+            <span class="divisor">|</span>
+            <span>🐂 Boi <strong id="preco-boi">--</strong></span>
+            <span class="divisor">|</span>
+            <span>🐄 Novilha <strong id="preco-novilha">--</strong></span>
+            <span class="divisor">|</span>
+            
+            <span class="btn-ver-brasil" onclick="abrirModalBrasil()">🇧🇷 Ver Brasil</span>
+        </div>
+    </div>
+
+    <form action="{{ url_for('operacional.painel') }}" method="GET" class="search-bar" style="max-width: 600px; margin: 0 auto 20px auto;">
         <input type="hidden" name="status" value="{{ status }}">
         <input type="text" name="busca" class="input-busca" placeholder="Digite o número do brinco..." value="{{ busca }}">
         <button type="submit" class="btn-buscar">🔍 Buscar</button>
-        
-        {% if busca or status != 'todos' %}
-            <a href="{{ url_for('operacional.painel') }}" class="btn-limpar">Limpar</a>
-        {% endif %}
+        {% if busca or status != 'todos' %}<a href="{{ url_for('operacional.painel') }}" class="btn-limpar">Limpar</a>{% endif %}
     </form>
 
     <div style="text-align: center; margin-bottom: 20px;">
@@ -39,19 +109,12 @@
         <a href="{{ url_for('operacional.painel', status='todos', busca=busca) }}" class="btn {% if status == 'todos' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding: 5px 15px; font-size: 13px;">Todos</a>
         <a href="{{ url_for('operacional.painel', status='ativos', busca=busca) }}" class="btn {% if status == 'ativos' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding: 5px 15px; font-size: 13px;">Apenas Ativos</a>
         <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca) }}" class="btn {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}" style="padding: 5px 15px; font-size: 13px;">Apenas Vendidos</a>
-
         <a href="{{ url_for('operacional.lixeira') }}" class="btn" style="background-color: #d32f2f; margin-left: 15px; padding: 5px 15px; font-size: 13px;" title="Ver animais excluídos">🗑️ Lixeira</a>
     </div>
 
     <table>
         <thead>
-            <tr>
-                <th>Brinco</th>
-                <th>Sexo</th>
-                <th>Data Compra</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
+            <tr><th>Brinco</th><th>Sexo</th><th>Data Compra</th><th>Status</th><th>Ações</th></tr>
         </thead>
         <tbody>
             {% for animal in lista_animais %}
@@ -59,46 +122,119 @@
                 <td style="font-weight: bold;">{{ animal[1] }}</td> 
                 <td>{{ animal[2] }}</td>
                 <td>{{ animal[3] }}</td>
-                <td>
-                    {% if animal[5] %} <span class="tag-vendido">VENDIDO</span>
-                    {% else %} 
-                        <span class="tag-ativo">ATIVO</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="{{ url_for('operacional.detalhes', id_animal=animal[0]) }}" style="color: #007bff; text-decoration: none; font-weight: bold;">Ver Ficha &rarr;</a>
-                </td>
+                <td>{% if animal[5] %}<span class="tag-vendido">VENDIDO</span>{% else %}<span class="tag-ativo">ATIVO</span>{% endif %}</td>
+                <td><a href="{{ url_for('operacional.detalhes', id_animal=animal[0]) }}" style="color: #007bff; text-decoration: none; font-weight: bold;">Ver Ficha &rarr;</a></td>
             </tr>
             {% else %}
-            <tr>
-                <td colspan="5" style="text-align: center; padding: 30px; color: #777;">
-                    {% if busca or status != 'todos' %}
-                        Nenhum animal encontrado com estes filtros.
-                    {% else %}
-                        Seu rebanho está vazio.<br>
-                        <a href="{{ url_for('operacional.cadastro') }}" style="font-weight: bold;">Cadastre seu primeiro animal agora!</a>
-                    {% endif %}
-                </td>
-            </tr>
+            <tr><td colspan="5" style="text-align: center; padding: 30px; color: #777;">Seu rebanho está vazio ou nenhum animal encontrado.</td></tr>
             {% endfor %}
         </tbody>
     </table>
 
     <div style="display: flex; justify-content: center; margin-top: 20px; gap: 10px;">
-        {% if pagina_atual > 1 %}
-            <a href="{{ url_for('operacional.painel', page=pagina_atual-1, busca=busca, status=status) }}" class="btn btn-secondary">&laquo; Anterior</a>
-        {% else %}
-            <span class="btn btn-secondary" style="opacity: 0.5; cursor: not-allowed;">&laquo; Anterior</span>
-        {% endif %}
-
+        {% if pagina_atual > 1 %} <a href="{{ url_for('operacional.painel', page=pagina_atual-1, busca=busca, status=status) }}" class="btn btn-secondary">&laquo; Anterior</a> {% else %} <span class="btn btn-secondary" style="opacity: 0.5;">&laquo; Anterior</span> {% endif %}
         <span style="align-self: center; font-weight: bold;">Página {{ pagina_atual }} de {{ total_paginas }}</span>
-
-        {% if pagina_atual < total_paginas %}
-            <a href="{{ url_for('operacional.painel', page=pagina_atual+1, busca=busca, status=status) }}" class="btn btn-secondary">Próximo &raquo;</a>
-        {% else %}
-            <span class="btn btn-secondary" style="opacity: 0.5; cursor: not-allowed;">Próximo &raquo;</span>
-        {% endif %}
+        {% if pagina_atual < total_paginas %} <a href="{{ url_for('operacional.painel', page=pagina_atual+1, busca=busca, status=status) }}" class="btn btn-secondary">Próximo &raquo;</a> {% else %} <span class="btn btn-secondary" style="opacity: 0.5;">Próximo &raquo;</span> {% endif %}
     </div>
-    <br><br>
+
+    <div id="modalBrasil" class="modal-overlay" onclick="fecharModal(event)">
+        <div class="modal-content">
+            <span class="btn-fechar" onclick="document.getElementById('modalBrasil').style.display='none'">&times;</span>
+            <h2 style="color: #2e7d32; border-bottom: 2px solid #eee; padding-bottom: 10px;">🇧🇷 Cotações Nacionais</h2>
+            
+            <div id="loadingModal" style="text-align: center; padding: 20px; color: #666;">🔄 Carregando dados...</div>
+            
+            <table class="tabela-cotacao" id="tabelaModal" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Praça / Região</th>
+                        <th>Boi Gordo (Vista)</th>
+                        <th>Novilha (Vista)</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabelaBrasil">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 1. CARREGAMENTO INICIAL DO WIDGET (REGIONAL)
+        document.addEventListener("DOMContentLoaded", function() {
+            fetch("{{ url_for('api.cotacoes_regionais') }}")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error || (!data.boi.length && !data.novilha.length)) return;
+                    document.getElementById('lbl-uf').innerText = data.uf;
+                    if (data.boi.length > 0) document.getElementById('preco-boi').innerText = `R$ ${parseFloat(data.boi[0].preco_vista).toFixed(2).replace('.', ',')}`;
+                    if (data.novilha.length > 0) document.getElementById('preco-novilha').innerText = `R$ ${parseFloat(data.novilha[0].preco_vista).toFixed(2).replace('.', ',')}`;
+                    document.getElementById('mini-widget').style.display = 'inline-flex';
+                })
+                .catch(err => console.error(err));
+        });
+
+        // 2. LÓGICA DO MODAL (BRASIL)
+        function abrirModalBrasil() {
+            const modal = document.getElementById('modalBrasil');
+            const tbody = document.getElementById('corpoTabelaBrasil');
+            const loading = document.getElementById('loadingModal');
+            const tabela = document.getElementById('tabelaModal');
+
+            modal.style.display = 'flex'; // Exibe o modal
+            tbody.innerHTML = '';         // Limpa dados antigos
+            loading.style.display = 'block';
+            tabela.style.display = 'none';
+
+            // Busca os dados completos
+            fetch("{{ url_for('api.cotacoes_brasil') }}")
+                .then(res => res.json())
+                .then(data => {
+                    let html = '';
+                    
+                    // Une as listas de Boi e Novilha baseada na praça
+                    // (Assume que a ordem/nomes das praças são similares nos dois arquivos)
+                    const listaBoi = data.boi || [];
+                    const listaNovilha = data.novilha || [];
+
+                    // Cria um mapa para facilitar o cruzamento
+                    let mapaNovilha = {};
+                    listaNovilha.forEach(item => { mapaNovilha[item.praca] = item.preco_vista; });
+
+                    listaBoi.forEach(item => {
+                        const praca = item.praca;
+                        const precoBoi = parseFloat(item.preco_vista).toFixed(2).replace('.', ',');
+                        
+                        // Busca o preço da novilha correspondente (ou deixa traço se não achar)
+                        let precoNov = "---";
+                        if (mapaNovilha[praca]) {
+                            precoNov = parseFloat(mapaNovilha[praca]).toFixed(2).replace('.', ',');
+                        }
+
+                        html += `
+                            <tr>
+                                <td style="font-weight:bold; color:#555;">${praca}</td>
+                                <td style="color:#2e7d32; font-weight:bold;">R$ ${precoBoi}</td>
+                                <td style="color:#1565c0;">R$ ${precoNov}</td>
+                            </tr>
+                        `;
+                    });
+
+                    tbody.innerHTML = html;
+                    loading.style.display = 'none';
+                    tabela.style.display = 'table';
+                })
+                .catch(err => {
+                    console.error(err);
+                    loading.innerText = "Erro ao carregar dados.";
+                });
+        }
+
+        // Fecha se clicar fora da janela branca
+        function fecharModal(e) {
+            if (e.target.id === 'modalBrasil') {
+                document.getElementById('modalBrasil').style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>

@@ -157,3 +157,56 @@ tr:hover { background-color: #e8f5e9; } /* Efeito hover nas linhas */
     font-weight: bold;
     color: var(--primary-color);
 }
+
+/* --- WIDGET DE COTAÇÕES --- */
+.card-cotacao {
+    background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%); /* Verde Profissional */
+    color: white;
+    padding: 15px 25px;
+    border-radius: 12px;
+    margin: 20px 0;
+    box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
+    
+    /* Layout Flex para alinhar itens */
+    display: flex; 
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.cotacao-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.icone-boi { font-size: 2.5rem; background: rgba(255,255,255,0.2); padding: 5px; border-radius: 50%; }
+.cotacao-header h3 { margin: 0; color: white; font-size: 1.2rem; border: none; }
+.cotacao-header small { color: rgba(255,255,255,0.8); font-size: 0.8rem; }
+
+.cotacao-valores {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    background: rgba(0,0,0,0.1);
+    padding: 10px 20px;
+    border-radius: 8px;
+}
+
+.valor-item { text-align: right; }
+.valor-item .label { display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; }
+.valor-item .preco { display: block; font-size: 1.5rem; font-weight: bold; color: #ffeb3b; /* Amarelo destaque */ }
+
+.separador-vertical {
+    width: 1px;
+    height: 30px;
+    background-color: rgba(255,255,255,0.3);
+}
+
+/* Responsividade para Celular */
+@media (max-width: 600px) {
+    .card-cotacao { flex-direction: column; text-align: center; }
+    .cotacao-valores { width: 100%; justify-content: space-around; }
+    .separador-vertical { display: none; }
+}
