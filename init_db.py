@@ -2,10 +2,9 @@ import mysql.connector
 import os
 from dotenv import load_dotenv
 
-# Carrega variáveis de ambiente
 load_dotenv()
 
-print("\n--- 🚀 INICIANDO SETUP COMPLETO DO BANCO DE DADOS (COM SOFT DELETE) ---")
+print("\n---  INICIANDO SETUP COMPLETO DO BANCO DE DADOS ---")
 
 try:
     # 1. Conexão
@@ -24,7 +23,7 @@ try:
     # ==============================================================================
     
     # 1.1 Tabela USUÁRIOS
-    print("🔨 [1/6] Criando tabela 'usuarios'...")
+    print(" [1/6] Criando tabela 'usuarios'...")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -34,7 +33,7 @@ try:
     """)
 
     # 1.2 Inserção do ADMIN Padrão
-    print("👤 Verificando usuário 'admin'...")
+    print(" Verificando usuário 'admin'...")
     hash_admin = 'scrypt:32768:8:1$kXp5C5q9Zz8s$6e28d45f348043653131707572706854199c07172551061919864273347072557766858172970635489708764835940561570198038755030800008853755355'
     try:
         cursor.execute("INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)", ('admin', hash_admin))
@@ -45,8 +44,8 @@ try:
         else:
             raise err
 
-    # 1.3 Tabela ANIMAIS (Atualizada com deleted_at)
-    print("🔨 [2/6] Criando tabela 'animais'...")
+    # 1.3 Tabela ANIMAIS 
+    print(" [2/6] Criando tabela 'animais'...")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS animais (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -63,8 +62,8 @@ try:
     );
     """)
 
-    # 1.4 Tabelas Satélites (Atualizadas com deleted_at)
-    print("🔨 [3/6] Criando tabelas satélites (pesagens, medicacoes, custos)...")
+    # 1.4 Tabelas Satélites 
+    print(" [3/6] Criando tabelas satélites (pesagens, medicacoes, custos)...")
     
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS pesagens (
@@ -104,8 +103,8 @@ try:
     );
     """)
 
-    # 1.4.1 Tabela CONFIGURAÇÕES (NOVO)
-    print("🔨 [Extra] Criando tabela 'configuracoes'...")
+    # 1.4 Tabela CONFIGURAÇÕES 
+    print("  Criando tabela 'configuracoes'...")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS configuracoes (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -117,10 +116,42 @@ try:
     );
     """)
 
+    print("  Criando tabela 'financial_schedule'...")
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS financial_schedule (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        descricao VARCHAR(255) NOT NULL,
+        valor DECIMAL(10, 2) NOT NULL,
+        vencimento DATE NOT NULL,
+        status VARCHAR(20) DEFAULT 'pendente',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_at DATETIME NULL DEFAULT NULL,
+        FOREIGN KEY (user_id) REFERENCES usuarios(id)
+    );
+    """)
+    print("Criando tabela 'cost_centers'...")
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cost_centers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nome VARCHAR(50) NOT NULL,
+        categoria VARCHAR(20) NOT NULL,
+        UNIQUE KEY idx_nome_cat (nome, categoria)
+    );
+    """)
+
+    # 1.4 SEEDER
+    print("Populando 'cost_centers'...")
+    dados = [
+        ('Arrendamento', 'Fixo'), ('Salário', 'Fixo'), ('Manutenção', 'Fixo'), ('Outros', 'Fixo'),
+        ('Nutrição', 'Variavel'), ('Sanitário', 'Variavel'), ('Frete', 'Variavel'), ('Outros', 'Variavel')
+    ]
+    cursor.executemany("INSERT IGNORE INTO cost_centers (nome, categoria) VALUES (%s, %s)", dados)
+
     # ==============================================================================
     # ETAPA 1.5: ÍNDICES DE PERFORMANCE (OTIMIZAÇÃO)
     # ==============================================================================
-    print("🚀 [Extra] Aplicando índices de performance...")
+    print(" Aplicando índices de performance...")
     
     indices_sql = [
         ("idx_pesagens_otimizada", "CREATE INDEX idx_pesagens_otimizada ON pesagens (animal_id, data_pesagem)"),
@@ -128,7 +159,6 @@ try:
         ("idx_custos_busca", "CREATE INDEX idx_custos_busca ON custos_operacionais (user_id, data_custo)"),
         ("idx_med_busca", "CREATE INDEX idx_med_busca ON medicacoes (animal_id, data_aplicacao)"),
         ("idx_animais_venda", "CREATE INDEX idx_animais_venda ON animais (user_id, data_venda)"),
-        # NOVO ÍNDICE PARA SOFT DELETE
         ("idx_animais_ativo", "CREATE INDEX idx_animais_ativo ON animais (user_id, deleted_at)")
     ]
 
@@ -137,7 +167,7 @@ try:
             cursor.execute(sql)
             print(f"   -> Índice '{nome_idx}' verificado/criado.")
         except mysql.connector.Error as err:
-            if err.errno == 1061:  # Duplicate key name
+            if err.errno == 1061:  
                 print(f"   -> Índice '{nome_idx}' já existe.")
             else:
                 print(f"   ⚠️  Erro ao criar '{nome_idx}': {err}")
@@ -146,11 +176,11 @@ try:
     
 
     # ==============================================================================
-    # ETAPA 2: INTELIGÊNCIA DE DADOS (VIEWS ATUALIZADAS PARA SOFT DELETE)
+    # ETAPA 2: INTELIGÊNCIA DE DADOS 
     # ==============================================================================
 
     # 2.1 View de GMD (Ganho Médio Diário)
-    print("🧠 [4/6] Atualizando View de Inteligência Zootécnica (GMD)...")
+    print(" [4/6] Atualizando View de Inteligência Zootécnica (GMD)...")
     cursor.execute("""
     CREATE OR REPLACE VIEW v_gmd_analitico AS
     WITH PesagensOrdenadas AS (
@@ -188,7 +218,7 @@ try:
     """)
 
     # 2.2 View Financeira (Fluxo de Caixa)
-    print("🧠 [5/6] Atualizando View de Inteligência Financeira (Fluxo de Caixa)...")
+    print(" [5/6] Atualizando View de Inteligência Financeira (Fluxo de Caixa)...")
     cursor.execute("""
     CREATE OR REPLACE VIEW v_fluxo_caixa AS
     SELECT 
@@ -214,13 +244,11 @@ try:
     GROUP BY user_id, ano;
     """)
 
-    # ==============================================================================
-    # CONCLUSÃO
-    # ==============================================================================
+
     conn.commit()
     cursor.close()
     conn.close()
-    print("\n✅ [6/6] SUCESSO! Banco de dados atualizado para SOFT DELETE.")
+    print("\n [6/6] SUCESSO! ")
 
 except Exception as e:
-    print(f"\n❌ ERRO FATAL: {e}")
+    print(f"\n ERRO FATAL: {e}")

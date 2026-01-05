@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, url_for
+from flask import Blueprint, render_template, request, url_for,redirect
 from flask_login import login_required, current_user
 from db_config import get_db_cursor
 from datetime import date, timedelta
@@ -54,12 +54,10 @@ def financeiro():
         with get_db_cursor() as cursor:
             uid = current_user.id
             
-            # 1. Valor do Rebanho: Apenas ativos e não deletados
             cursor.execute("SELECT SUM(preco_compra) FROM animais WHERE data_venda IS NULL AND user_id = %s AND deleted_at IS NULL", (uid,))
             res_reb = cursor.fetchone()
             if res_reb and res_reb[0]: view_data['valor_rebanho'] = f"{res_reb[0]:,.2f}"
 
-            # 2. Fluxo de Caixa: A View v_fluxo_caixa JÁ FILTRA deletados (conforme init_db.py)
             cursor.execute("SELECT ano, total_entradas, total_compras, total_med, total_ops FROM v_fluxo_caixa WHERE user_id = %s ORDER BY ano DESC", (uid,))
             hist = cursor.fetchall()
             if hist:
@@ -78,7 +76,6 @@ def financeiro():
                 view_data['custo_diaria'] = f"{kpis['custo_diaria']:.2f}"
                 view_data['custo_arroba'] = f"{kpis['custo_arroba']:.2f}"
 
-            # 3. Lista de Custos: Filtra deletados
             cursor.execute("SELECT data_custo, categoria, tipo_custo, valor, descricao FROM custos_operacionais WHERE user_id = %s AND YEAR(data_custo) = %s AND deleted_at IS NULL ORDER BY data_custo DESC", (uid, ano_sel))
             lista_custos = cursor.fetchall()
     except Exception as e:
@@ -132,10 +129,107 @@ def custos_operacionais():
             desc = request.form.get('descricao')
             
             with get_db_cursor() as cursor:
-                # Inserção sem deleted_at (será NULL por padrão)
                 cursor.execute("INSERT INTO custos_operacionais (user_id, categoria, tipo_custo, valor, data_custo, descricao) VALUES (%s, %s, %s, %s, %s, %s)", (current_user.id, cat, tipo, val, dt, desc))
-                msg = "Custo registrado!"
+                msg = "Custo registrado com sucesso."
         except Exception as e:
             logger.error(f"Erro custos: {e}", exc_info=True)
             msg = f"Erro: {e}"
-    return render_template('custos_operacionais.html', mensagem=msg)
+
+    cats_fixo = []
+    cats_variavel = []
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT nome, categoria FROM cost_centers ORDER BY nome")
+            for nome, cat in cursor.fetchall():
+                if cat == 'Fixo':
+                    cats_fixo.append(nome)
+                else:
+                    cats_variavel.append(nome)
+    except Exception as e:
+        logger.error(f"Erro ao carregar categorias: {e}", exc_info=True)
+
+    return render_template('custos_operacionais.html', mensagem=msg, fixos=cats_fixo, variaveis=cats_variavel)
+
+@financeiro_bp.route('/financeiro/agendamentos', methods=['GET', 'POST'])
+@login_required
+def agendamentos():
+    msg = None
+    hoje = date.today()
+    
+    if request.method == 'POST':
+        try:
+            descricao = request.form.get('descricao')
+            valor = float(request.form.get('valor'))
+            vencimento = request.form.get('vencimento')
+            
+            with get_db_cursor() as cursor:
+                sql = """
+                    INSERT INTO financial_schedule (user_id, descricao, valor, vencimento, status)
+                    VALUES (%s, %s, %s, %s, 'pendente')
+                """
+                cursor.execute(sql, (current_user.id, descricao, valor, vencimento))
+                msg = "✅ Agendamento salvo com sucesso!"
+        except Exception as e:
+            logger.error(f"Erro ao agendar: {e}", exc_info=True)
+            msg = f"❌ Erro ao salvar: {e}"
+
+    contas = []
+    try:
+        with get_db_cursor() as cursor:
+            sql_get = """
+                SELECT id, descricao, valor, vencimento, status 
+                FROM financial_schedule 
+                WHERE user_id = %s AND deleted_at IS NULL 
+                ORDER BY vencimento ASC
+            """
+            cursor.execute(sql_get, (current_user.id,))
+            contas = cursor.fetchall()
+    except Exception as e:
+        logger.error(f"Erro lista agendamentos: {e}", exc_info=True)
+
+    return render_template('agendamentos.html', agendamentos=contas, mensagem=msg, hoje=hoje) 
+
+
+
+@financeiro_bp.route('/financeiro/baixar/<int:id_agendamento>')
+@login_required
+def baixar_agendamento(id_agendamento):
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("""
+                SELECT descricao, valor 
+                FROM financial_schedule 
+                WHERE id = %s AND user_id = %s AND status = 'pendente'
+            """, (id_agendamento, current_user.id))
+            
+            item = cursor.fetchone()
+
+            if item:
+                descricao_origem = item[0]
+                valor_pagamento = item[1]
+                data_hoje = date.today()
+
+                cursor.execute("""
+                    UPDATE financial_schedule 
+                    SET status = 'pago' 
+                    WHERE id = %s
+                """, (id_agendamento,))
+
+                sql_ponte = """
+                    INSERT INTO custos_operacionais 
+                    (user_id, categoria, tipo_custo, valor, data_custo, descricao) 
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """
+                cursor.execute(sql_ponte, (
+                    current_user.id, 
+                    'Financeiro',        
+                    'Agendamento',      
+                    valor_pagamento, 
+                    data_hoje,          
+                    f"{descricao_origem} (Via Agendamento)"
+                ))
+
+    except Exception as e:
+        logger.error(f"Erro ao dar baixa: {e}", exc_info=True)
+
+    return redirect(url_for('financeiro.agendamentos'))   

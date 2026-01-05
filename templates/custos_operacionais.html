@@ -43,20 +43,18 @@
         <div class="form-group" id="div_fixo">
             <label>Tipo de Custo Fixo:</label>
             <select name="tipo_fixo">
-                <option value="Arrendamento">Arrendamento (Aluguel de Pasto)</option>
-                <option value="Salário">Mão de Obra / Salário</option>
-                <option value="Manutenção">Manutenção de Estrutura</option>
-                <option value="Outros">Outros Fixos</option>
+                {% for item in fixos %}
+                <option value="{{ item }}">{{ item }}</option>
+                {% endfor %}
             </select>
         </div>
 
         <div class="form-group" id="div_variavel" style="display: none;">
             <label>Tipo de Custo Variável:</label>
             <select name="tipo_variavel">
-                <option value="Nutrição">Sal Mineral / Ração</option>
-                <option value="Sanitário">Vacinas e Remédios (Geral)</option>
-                <option value="Frete">Frete / Transporte</option>
-                <option value="Outros">Outros Variáveis</option>
+                {% for item in variaveis %}
+                <option value="{{ item }}">{{ item }}</option>
+                {% endfor %}
             </select>
         </div>
 
