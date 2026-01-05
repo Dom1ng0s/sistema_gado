@@ -103,7 +103,6 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 
-/* --- SIMULADOR DE CUSTO --- */
 .res-box {
     background: #e3f2fd;
     padding: 15px;
@@ -122,7 +121,6 @@ input:checked + .slider:before { transform: translateX(20px); }
 @media (max-width: 600px) { .grid-sim { grid-template-columns: 1fr; } }
 
 
-/* --- CONFIGURAÇÕES --- */
 .config-card {
     background: white;
     padding: 40px;
