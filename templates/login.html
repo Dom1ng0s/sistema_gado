@@ -4,24 +4,14 @@
     <meta charset="UTF-8">
     <title>Login - Sistema Gado</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        body { display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f6f8; }
-        .login-card { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
-        .login-card h2 { color: #2e7d32; margin-bottom: 20px; }
-        .form-group { margin-bottom: 15px; text-align: left; }
-        .form-group label { display: block; margin-bottom: 5px; color: #666; }
-        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        .btn-entrar { width: 100%; padding: 12px; background-color: #2e7d32; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
-        .btn-entrar:hover { background-color: #1b5e20; }
-        .alert-erro { background: #ffebee; color: #c62828; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 14px; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
 </head>
 <body>
-    <div class="login-card">
+    <div class="auth-card login-mode">
         <h2>🤠 Acesso ao Rebanho</h2>
         
         {% if mensagem %}
-            <div class="alert-erro">{{ mensagem }}</div>
+            <div class="alert-error">{{ mensagem }}</div>
         {% endif %}
 
         <form method="POST" action="{{ url_for('auth.login') }}">
@@ -33,8 +23,8 @@
                 <label>Senha</label>
                 <input type="password" name="password" required placeholder="Digite sua senha">
             </div>
-            <button type="submit" class="btn-entrar">ENTRAR NO SISTEMA</button>
-            <a href="{{ url_for('auth.novo_usuario') }}" class="btn btn-secondary">👤 Não Tenho Conta</a>
+            <button type="submit" class="btn-primary">ENTRAR NO SISTEMA</button>
+            <a href="{{ url_for('auth.novo_usuario') }}" class="btn btn-secondary" style="margin-top: 10px; display:block; text-align:center;">👤 Não Tenho Conta</a>
         </form>
     </div>
 </body>

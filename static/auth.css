@@ -1,0 +1,113 @@
+/* Configuração de Layout para Páginas de Autenticação */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f4f6f8;
+    margin: 0;
+    font-family: sans-serif; /* Fallback caso style.css falhe */
+}
+
+/* Card Principal */
+.auth-card {
+    background: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    width: 100%;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.auth-card.login-mode { max-width: 350px; }
+.auth-card.register-mode { max-width: 400px; }
+
+/* Tipografia */
+.auth-card h2 {
+    color: #2e7d32;
+    margin-bottom: 20px;
+    margin-top: 0;
+}
+
+.auth-card p.subtitle {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+/* Formulários */
+.form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    color: #666; /* Unificado #666 e #555 */
+    font-weight: bold; /* Unificado para bold */
+    text-align: left;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px; /* Unificado margem inferior */
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+/* Botões */
+.btn-primary {
+    width: 100%;
+    padding: 12px;
+    background-color: #2e7d32;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 16px;
+    transition: 0.3s;
+    text-decoration: none;
+    display: inline-block;
+    box-sizing: border-box;
+}
+
+.btn-primary:hover {
+    background-color: #1b5e20;
+}
+
+/* Alertas */
+.alert-error {
+    background: #ffebee;
+    color: #c62828;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    border: 1px solid #ef9a9a;
+}
+
+/* Elementos Utilitários */
+.separador {
+    margin: 20px 0;
+    border-top: 1px solid #eee;
+}
+
+.helper-text {
+    color: #888;
+    display: block;
+    text-align: left;
+    margin-top: -10px;
+    margin-bottom: 10px;
+    font-size: 0.85em;
+}
+
+.link-secondary {
+    color: #666;
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 10px;
+}

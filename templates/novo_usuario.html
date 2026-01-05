@@ -4,25 +4,15 @@
     <meta charset="UTF-8">
     <title>Criar Conta - Sistema Gado</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f6f8; padding: 20px; }
-        .card { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        label { display: block; text-align: left; margin-bottom: 5px; font-weight: bold; color: #555; }
-        .btn { width: 100%; padding: 12px; background: #2e7d32; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        .btn:hover { background: #1b5e20; }
-        .alert { background: #ffebee; color: #c62828; padding: 10px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #ef9a9a; }
-        .separador { margin: 20px 0; border-top: 1px solid #eee; }
-        small { color: #888; display: block; text-align: left; margin-top: -10px; margin-bottom: 10px; font-size: 0.85em; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
 </head>
 <body>
-    <div class="card">
-        <h2 style="color: #2e7d32;">Crie sua Conta</h2>
-        <p style="color: #666; margin-bottom: 20px;">Configure sua fazenda para começar.</p>
+    <div class="auth-card register-mode">
+        <h2>Crie sua Conta</h2>
+        <p class="subtitle">Configure sua fazenda para começar.</p>
         
         {% if mensagem %}
-            <div class="alert">{{ mensagem }}</div>
+            <div class="alert-error">{{ mensagem }}</div>
         {% endif %}
 
         <form action="{{ url_for('auth.novo_usuario') }}" method="POST">
@@ -40,16 +30,16 @@
             <label>Localização (Cidade - UF)</label>
             <input type="text" name="cidade_estado" id="inputCidade" list="listaCidades" required placeholder="Carregando cidades..." autocomplete="off">
             <datalist id="listaCidades"></datalist>
-            <small id="statusIBGE">🔄 Conectando ao IBGE...</small>
+            <small id="statusIBGE" class="helper-text">🔄 Conectando ao IBGE...</small>
 
             <label>Área Total (Hectares)</label>
             <input type="number" step="0.01" name="area_total" placeholder="0.00">
             
-            <button type="submit" class="btn">FINALIZAR CADASTRO</button>
+            <button type="submit" class="btn-primary">FINALIZAR CADASTRO</button>
         </form>
         
         <br>
-        <a href="{{ url_for('auth.login') }}" style="color: #666; text-decoration: none;">Já tem conta? Faça Login</a>
+        <a href="{{ url_for('auth.login') }}" class="link-secondary">Já tem conta? Faça Login</a>
     </div>
 
     <script>
@@ -71,7 +61,7 @@
                     });
                     
                     dataList.innerHTML = options;
-                    statusMsg.innerText = ""; // Limpa msg de carregando
+                    statusMsg.innerText = ""; 
                     inputCidade.placeholder = "Digite sua cidade...";
                 })
                 .catch(err => {

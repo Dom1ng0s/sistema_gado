@@ -4,33 +4,7 @@
     <meta charset="UTF-8">
     <title>Vacinação Coletiva</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        .grid-animais {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 15px;
-            background: #fff;
-            border-radius: 8px;
-        }
-        .item-animal {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: #f9f9f9;
-            padding: 8px;
-            border: 1px solid #eee;
-            border-radius: 4px;
-        }
-        .item-animal:hover { background-color: #e3f2fd; border-color: #2196F3; }
-        .barra-fixa {
-            background: #e8f5e9; padding: 20px; border-radius: 8px; border: 1px solid #c8e6c9; margin-bottom: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
     <script>
         function selecionarTodos(source) {
             checkboxes = document.getElementsByName('animais_ids');

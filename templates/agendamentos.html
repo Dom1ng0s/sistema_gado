@@ -4,12 +4,7 @@
     <meta charset="UTF-8">
     <title>Agendamentos - Sistema Gado</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold; }
-        .pendente { background-color: #fff3e0; color: #ef6c00; }
-        .pago { background-color: #e8f5e9; color: #2e7d32; }
-        .vencido { color: #d32f2f; font-weight: bold; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
 </head>
 <body>
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-bottom: 20px;">
@@ -57,7 +52,7 @@
         <tbody>
             {% for conta in agendamentos %}
             <tr>
-                <td class="{% if conta[3] < hoje and conta[4] == 'pendente' %}vencido{% endif %}">
+                <td class="{% if conta[3] < hoje and conta[4] == 'pendente' %}texto-vencido{% endif %}">
                     {{ conta[3].strftime('%d/%m/%Y') }}
                 </td>
                 <td>{{ conta[1] }}</td>
