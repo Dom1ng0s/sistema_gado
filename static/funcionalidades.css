@@ -131,3 +131,65 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 .info-ibge { font-size: 0.8em; color: #666; margin-top: 5px; }
+
+
+.grade-container {
+    margin-top: 20px;
+    overflow-x: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+.tabela-input {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.tabela-input th {
+    background-color: #f5f5f5;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    padding: 10px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.tabela-input td {
+    border: 1px solid #eee;
+    padding: 0; 
+}
+
+.tabela-input input, 
+.tabela-input select {
+    width: 100%;
+    border: none;
+    padding: 10px;
+    box-sizing: border-box;
+    background: transparent;
+    font-family: inherit;
+    outline: none; 
+}
+
+.tabela-input input:focus,
+.tabela-input select:focus {
+    background-color: #e3f2fd; 
+    font-weight: bold;
+    box-shadow: inset 0 0 0 2px #2196f3; 
+}
+
+.btn-remove-linha {
+    background: none;
+    border: none;
+    color: #d32f2f;
+    cursor: pointer;
+    font-weight: bold;
+    padding: 5px 10px;
+    transition: color 0.2s;
+}
+
+.btn-remove-linha:hover {
+    color: #b71c1c;
+    background-color: #ffebee;
+    border-radius: 4px;
+}

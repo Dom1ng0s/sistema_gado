@@ -279,3 +279,64 @@ def vacinacao_coletiva():
     except Exception as e:
         logger.error(f"Erro carregar lote: {e}", exc_info=True)
         return redirect(url_for('operacional.painel'))
+
+@operacional_bp.route("/cadastro-lote", methods=["GET", "POST"])
+@login_required
+def cadastro_lote():
+    msg = None
+    if request.method == "POST":
+        try:
+            # 1. Dados do Cabeçalho (LOTE)
+            codigo_lote = request.form["codigo_lote"].strip()
+            descricao = request.form["descricao"]
+            data_compra = request.form["data_compra"]
+            valor_arroba = float(request.form["valor_arroba"])
+            
+            # 2. Listas de Dados Individuais (Arrays do HTML)
+            brincos = request.form.getlist('brincos[]')
+            sexos = request.form.getlist('sexos[]')
+            pesos_str = request.form.getlist('pesos[]')
+
+            # Validação básica
+            if not brincos or len(brincos) == 0:
+                return render_template("cadastro_lote.html", mensagem="Erro: A tabela de animais está vazia.")
+
+            with get_db_cursor() as cursor:
+                # A. Cria o Lote
+                # Calculamos o custo total do lote somando os animais depois, 
+                # ou podemos deixar custo_medio_cabeca como NULL inicialmente.
+                sql_lote = """
+                    INSERT INTO lotes (user_id, codigo_lote, descricao, data_aquisicao)
+                    VALUES (%s, %s, %s, %s)
+                """
+                cursor.execute(sql_lote, (current_user.id, codigo_lote, descricao, data_compra))
+                lote_id = cursor.lastrowid
+
+                # B. Prepara Queries
+                sql_animal = """
+                    INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id, lote_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """
+                sql_peso = "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)"
+
+                # C. Itera sobre as listas zipadas (Brinco, Sexo, Peso)
+                for brinco, sexo, peso_txt in zip(brincos, sexos, pesos_str):
+                    peso = float(peso_txt)
+                    
+                    # Cálculo individual do custo: (Peso / 30) * Valor da @ do Lote
+                    custo_animal = (peso / 30) * valor_arroba
+                    
+                    # Insere Animal
+                    cursor.execute(sql_animal, (brinco, sexo, data_compra, custo_animal, current_user.id, lote_id))
+                    animal_id = cursor.lastrowid
+                    
+                    # Insere Pesagem
+                    cursor.execute(sql_peso, (animal_id, data_compra, peso))
+
+                msg = f"✅ Lote '{codigo_lote}' salvo com {len(brincos)} animais e pesos individuais!"
+
+        except Exception as e:
+            logger.error(f"Erro cadastro lote: {e}", exc_info=True)
+            msg = f" Erro ao processar lote: {e}"
+
+    return render_template("cadastro_lote.html", mensagem=msg)

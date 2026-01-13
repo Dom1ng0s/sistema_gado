@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Entrada de Lote (Pesagem Individual)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
+    
+    <script>
+        function gerarGrade() {
+            const qtd = parseInt(document.getElementById('qtdInput').value);
+            const prefixo = document.getElementById('prefixoInput').value.trim();
+            const tbody = document.getElementById('gradeBody');
+            
+            tbody.innerHTML = '';
+
+            if (!qtd || qtd <= 0) return;
+
+            for (let i = 1; i <= qtd; i++) {
+                const tr = document.createElement('tr');
+                const num = i.toString().padStart(2, '0');
+                const brincoSugerido = prefixo ? `${prefixo}-${num}` : '';
+
+                tr.innerHTML = `
+                    <td style="text-align:center; color:#777; background-color: #fafafa;">${i}</td>
+                    <td><input type="text" name="brincos[]" value="${brincoSugerido}" required autocomplete="off"></td>
+                    <td>
+                        <select name="sexos[]">
+                            <option value="M">Macho</option>
+                            <option value="F">Fêmea</option>
+                        </select>
+                    </td>
+                    <td><input type="number" step="0.01" name="pesos[]" placeholder="0.00" required></td>
+                    <td style="text-align:center;">
+                        <button type="button" class="btn-remove-linha" onclick="this.parentElement.parentElement.remove()" title="Remover animal">✕</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            }
+            document.getElementById('btnSalvar').style.display = 'block';
+            document.getElementById('avisoVazio').style.display = 'none';
+        }
+    </script>
+</head>
+<body>
+    <h1>📋 Entrada de Lote (Detalhada)</h1>
+    
+    {% if mensagem %}
+        {% if 'Erro' in mensagem or '❌' in mensagem %}
+            <div class="alert" style="background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a;">
+                {{ mensagem }}
+            </div>
+        {% else %}
+            <div class="alert" style="background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;">
+                {{ mensagem }}
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <form action="{{ url_for('operacional.cadastro_lote') }}" method="POST" class="form-container" style="max-width: 900px;">
+        
+        <h3 style="color: #2e7d32; border-bottom: 2px solid #eee;">1. Dados da Negociação</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Código do Lote:</label>
+                <input type="text" name="codigo_lote" id="prefixoInput" placeholder="Ex: COMPRA-JUN-24" required>
+            </div>
+            <div class="form-group">
+                <label>Data da Compra:</label>
+                <input type="date" name="data_compra" required>
+            </div>
+            <div class="form-group">
+                <label>Valor da Arroba Negociada (R$):</label>
+                <input type="number" step="0.01" name="valor_arroba" required placeholder="Ex: 240.00">
+                <small style="color: #666;">Define o custo base (R$ / @).</small>
+            </div>
+            <div class="form-group">
+                <label>Fornecedor / Descrição:</label>
+                <input type="text" name="descricao" placeholder="Opcional">
+            </div>
+        </div>
+
+        <h3 style="color: #2e7d32; border-bottom: 2px solid #eee; margin-top: 30px;">2. Animais Individuais</h3>
+        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; display: flex; align-items: flex-end; gap: 15px;">
+            <div style="flex: 1;">
+                <label>Quantos animais neste lote?</label>
+                <input type="number" id="qtdInput" min="1" max="200" value="10">
+            </div>
+            <button type="button" class="btn-primary" onclick="gerarGrade()" style="margin: 0;">GERAR TABELA</button>
+        </div>
+
+        <div class="grade-container">
+            <table class="tabela-input">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Brinco (Editável)</th>
+                        <th style="width: 100px;">Sexo</th>
+                        <th style="width: 120px;">Peso (kg)</th>
+                        <th style="width: 50px;">Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="gradeBody"></tbody>
+            </table>
+            <div style="padding: 30px; text-align: center; color: #999; font-style: italic;" id="avisoVazio">
+                Insira a quantidade acima e clique em "Gerar Tabela" para começar.
+            </div>
+        </div>
+
+        <button type="submit" id="btnSalvar" class="btn-salvar" style="margin-top: 20px; width: 100%; display: none; font-size: 1.1em; padding: 15px;">💾 SALVAR LOTE COMPLETO</button>
+    </form>
+
+    <br>
+    <div style="text-align: center; margin-bottom: 40px;">
+        <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Voltar ao Painel</a>
+    </div>
+
+</body>
+</html>

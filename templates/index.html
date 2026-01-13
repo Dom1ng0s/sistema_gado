@@ -20,6 +20,7 @@
     <div class="action-bar">
         <div class="action-buttons-group">
             <a href="{{ url_for('operacional.cadastro') }}" class="btn btn-novo btn-action">+ Novo Animal</a>
+            <a href="{{ url_for('operacional.cadastro_lote') }}" class="btn btn-novo btn-action">+ Lote de Animais</a>
             <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-novo btn-action">$ Financeiro</a>
             <a href="{{ url_for('api.graficos_page') }}" class="btn btn-novo btn-action">Meu Rebanho</a>
             <a href="{{ url_for('operacional.vacinacao_coletiva') }}" class="btn btn-vacina">💉 Vacina em Lote</a>
@@ -109,7 +110,6 @@
     </div>
 
     <script>
-        // 1. CARREGAMENTO INICIAL DO WIDGET (REGIONAL)
         document.addEventListener("DOMContentLoaded", function() {
             fetch("{{ url_for('api.cotacoes_regionais') }}")
                 .then(response => response.json())
@@ -123,7 +123,6 @@
                 .catch(err => console.error(err));
         });
 
-        // 2. LÓGICA DO MODAL (BRASIL)
         function abrirModalBrasil() {
             const modal = document.getElementById('modalBrasil');
             const tbody = document.getElementById('corpoTabelaBrasil');

@@ -16,7 +16,7 @@ try:
         port=int(os.getenv('DB_PORT', 3306))
     )
     cursor = conn.cursor()
-    print("✅ Conexão estabelecida.")
+    print(" Conexão estabelecida.")
 
     # ==============================================================================
     # ETAPA 1: TABELAS FUNDAMENTAIS (Ordem de Dependência: Usuários -> Outros)
@@ -75,6 +75,32 @@ try:
         FOREIGN KEY (animal_id) REFERENCES animais(id)
     );
     """)
+
+    print("Criando Tabela Lotes")
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS lotes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        codigo_lote VARCHAR(50) NOT NULL,
+        descricao VARCHAR(200),
+        data_aquisicao DATE NOT NULL,
+        custo_medio_cabeca DECIMAL(10, 2), 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_at DATETIME NULL DEFAULT NULL,
+        FOREIGN KEY (user_id) REFERENCES usuarios(id)
+    );
+    """)
+
+    print(" Verificando coluna 'lote_id' em 'animais'...")
+    try:
+        cursor.execute("ALTER TABLE animais ADD COLUMN lote_id INT NULL")
+        cursor.execute("ALTER TABLE animais ADD CONSTRAINT fk_animais_lote FOREIGN KEY (lote_id) REFERENCES lotes(id)")
+        print("   -> Coluna 'lote_id' adicionada com sucesso.")
+    except mysql.connector.Error as err:
+        if err.errno == 1060: 
+            print("   -> Coluna 'lote_id' já existe. Nenhuma alteração necessária.")
+        else:
+            print(f"    Alerta não crítico: {err}")
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS medicacoes (
@@ -170,7 +196,7 @@ try:
             if err.errno == 1061:  
                 print(f"   -> Índice '{nome_idx}' já existe.")
             else:
-                print(f"   ⚠️  Erro ao criar '{nome_idx}': {err}")
+                print(f"     Erro ao criar '{nome_idx}': {err}")
 
 
     
