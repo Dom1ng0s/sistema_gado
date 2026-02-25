@@ -1,137 +1,198 @@
-# 🐮 Sistema de Gestão de Gado (SGG) - High Performance Backend
+<div align="center">
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)
-![Flask](https://img.shields.io/badge/Flask-Framework-red?style=for-the-badge&logo=flask)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-orange?style=for-the-badge&logo=mysql)
-![Status](https://img.shields.io/badge/Status-Concluído-success?style=for-the-badge)
+# 🐮 Sistema de Gestão de Gado (SGG)
 
-> **Um ERP Zootécnico focado em performance, utilizando a inteligência do Banco de Dados para cálculos complexos.**
+**ERP Zootécnico de alta performance para o agronegócio**
 
-O **SGG** é uma solução web para resolver a dor de cabeça do pecuarista: o cálculo do GMD (Ganho Médio Diário) e o controle de Fluxo de Caixa real. Diferente de sistemas tradicionais que processam tudo no backend (Python), este projeto delega a lógica pesada para o **MySQL**, garantindo escalabilidade.
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-Framework-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://mysql.com)
+[![Status](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow?style=for-the-badge)](https://github.com/Dom1ng0s/sistema_gado)
 
----
+> Solução web para pecuaristas que precisam controlar rebanho, calcular **GMD (Ganho Médio Diário)** e acompanhar o **fluxo de caixa** da fazenda — tudo em um só lugar, com lógica de cálculo delegada ao banco de dados para máxima performance.
 
-## 📸 Visão Geral do Sistema
-
-### 1. Dashboard Financeiro (Fluxo de Caixa)
-*Visão consolidada de entradas, saídas e custos operacionais, calculados via View SQL.*
-![Dashboard Financeiro](photos/financeiro.png)
-
-### 2. Análise Zootécnica (GMD)
-*Cálculo automático de ganho de peso diário baseado no histórico de pesagens.*
-![Ficha do Animal](photos/animal.png)
-
-### 3. Analytics do Rebanho
-*Distribuição de peso e sexo do rebanho em tempo real.*
-![Analytics](photos/rebanho.png)
+</div>
 
 ---
 
-## 🚀 Diferenciais de Engenharia (Backend)
+## 📸 Capturas de Tela
 
-Este projeto foi desenhado com princípios de **Performance-First**. Abaixo, os destaques técnicos:
-
-### 🧠 1. Inteligência no Banco de Dados (Views SQL)
-Ao invés de carregar milhares de registros para o Python somar, criei **Views Otimizadas**. O banco entrega o dado pronto (O(1) para a aplicação).
-
-* **`v_gmd_analitico`**: Cruza a primeira e a última pesagem de cada animal para calcular o GMD exato, dias de cocho e ganho total.
-* **`v_fluxo_caixa`**: Unifica 4 tabelas (Vendas, Compras, Medicações, Custos Fixos) em uma única visão financeira anual.
-
-### ⚡ 2. Performance e Otimização
-* **Server-Side Pagination:** O painel principal carrega apenas o necessário (LIMIT/OFFSET), permitindo escalar para milhares de animais sem travar o navegador.
-* **Índices Estratégicos:** Criação de índices compostos (`idx_pesagens_otimizada`, `idx_custos_busca`) para garantir que as buscas e filtros sejam instantâneos.
-
-### 🛡️ 3. Segurança e Arquitetura
-* **MVC:** Separação clara entre Rotas, Templates e Banco de Dados.
-* **Hash de Senha:** Implementação de segurança com `Werkzeug Security`.
-* **Proteção de Rotas:** Decorators `@login_required` e validação de propriedade (Multi-tenant ready).
+| Dashboard Financeiro | Análise Zootécnica (GMD) | Analytics do Rebanho |
+|:---:|:---:|:---:|
+| ![Financeiro](photos/financeiro.png) | ![Animal](photos/animal.png) | ![Rebanho](photos/rebanho.png) |
+| *Fluxo de caixa consolidado via View SQL* | *GMD calculado a partir do histórico de pesagens* | *Distribuição de peso e sexo em tempo real* |
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## 💡 O Problema que Este Projeto Resolve
 
-* **Linguagem:** Python 3.10
-* **Framework Web:** Flask
-* **Banco de Dados:** MySQL 8.0 (com Connector/Python Pooling)
-* **Frontend:** HTML5, CSS3 (Responsivo), Chart.js
-* **Infra/Deploy:** Pronto para Docker/Nuvem (Aiven/AWS)
+Produtores rurais dependem de dois indicadores críticos que sistemas genéricos não calculam bem:
+
+- **GMD (Ganho Médio Diário):** quanto cada animal está ganhando de peso por dia. Calculado cruzando a primeira e a última pesagem do histórico — operação custosa se feita no Python, leve se feita no banco.
+- **Fluxo de Caixa Real:** receitas e despesas da fazenda unificadas (compra/venda de gado, medicações, custos fixos) em uma única visão financeira anual.
+
+O SGG resolve isso com uma abordagem **Performance-First**: a lógica pesada fica no MySQL, e o Python apenas serve o resultado.
 
 ---
 
-## ⚙️ Instalação e Execução
+## 🏗️ Arquitetura e Decisões Técnicas
+
+### 🧠 Inteligência no Banco de Dados (Views SQL)
+
+Em vez de trazer todos os registros para o Python calcular, o SGG usa **Views otimizadas** — o banco entrega o dado agregado pronto, com custo O(1) para a aplicação:
+
+```sql
+-- v_gmd_analitico: Calcula GMD cruzando primeira e última pesagem
+-- Resultado: dias em cocho, ganho total (kg) e GMD por animal
+
+-- v_fluxo_caixa: Unifica 4 tabelas (Vendas, Compras, Medicações, Custos Fixos)
+-- Resultado: visão financeira anual sem nenhuma agregação no Python
+```
+
+### ⚡ Escalabilidade sem Travar o Navegador
+
+- **Server-Side Pagination:** o painel principal usa `LIMIT/OFFSET` no banco — funciona mesmo com milhares de animais cadastrados.
+- **Índices Compostos:** `idx_pesagens_otimizada` e `idx_custos_busca` garantem buscas e filtros instantâneos à medida que o rebanho cresce.
+- **Connection Pooling:** uso do `mysql-connector-python` com pool de conexões para evitar overhead de reconexão a cada request.
+
+### 🛡️ Segurança e Boas Práticas
+
+- **Arquitetura MVC** com separação clara entre Rotas (`/routes`), Templates (`/templates`) e camada de dados (`models.py`, `db_config.py`).
+- **Hash de senha** com `Werkzeug Security` (`generate_password_hash` / `check_password_hash`).
+- **Proteção de rotas** via `@login_required` e validação de propriedade dos dados (multi-tenant ready).
+- **Variáveis sensíveis** isoladas em `.env` (nunca commitadas).
+- **Testes automatizados** com `pytest` e `conftest.py` para fixtures de banco.
+
+---
+
+## 🛠️ Stack Tecnológica
+
+| Camada | Tecnologia |
+|---|---|
+| **Linguagem** | Python 3.10+ |
+| **Framework Web** | Flask |
+| **Banco de Dados** | MySQL 8.0 |
+| **ORM / Queries** | MySQL Connector/Python (SQL puro + Views) |
+| **Frontend** | HTML5, CSS3 responsivo, Chart.js |
+| **Testes** | Pytest |
+| **Segurança** | Werkzeug Security |
+| **Config** | python-dotenv |
+
+---
+
+## ⚙️ Como Rodar Localmente
 
 ### Pré-requisitos
-* Python 3.10+
-* MySQL Server rodando localmente ou na nuvem.
 
-### 1. Clone e Prepare o Ambiente
+- Python 3.10+
+- MySQL Server (local ou na nuvem — testado no Aiven)
+
+### 1. Clone o repositório
+
 ```bash
-git clone [https://github.com/dom1ng0s/sistema_gado.git](https://github.com/dom1ng0s/sistema_gado.git)
+git clone https://github.com/Dom1ng0s/sistema_gado.git
 cd sistema_gado
+```
 
-# Criar ambiente virtual
+### 2. Crie e ative o ambiente virtual
+
+```bash
 python -m venv venv
-# Ativar (Windows)
-venv\Scripts\activate
-# Ativar (Linux/Mac)
-source venv/bin/activate
-````
 
-### 2\. Instale as Dependências
+# Windows
+venv\Scripts\activate
+
+# Linux / macOS
+source venv/bin/activate
+```
+
+### 3. Instale as dependências
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3\. Configuração (.env)
+### 4. Configure o ambiente
 
-Crie um arquivo `.env` na raiz com suas credenciais:
+Crie um arquivo `.env` na raiz do projeto baseado no `.env-example`:
 
-```ini
+```env
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=sua_senha
 DB_NAME=sistema_gado
 DB_PORT=3306
-SECRET_KEY=sua_chave_secreta
+SECRET_KEY=uma_chave_secreta_forte
 ```
 
-### 4\. Inicialização do Banco (Migrations)
+### 5. Inicialize o banco de dados
 
-Execute o script que cria as Tabelas, Views e Índices:
+Este script cria todas as tabelas, Views e índices automaticamente:
 
 ```bash
 python init_db.py
 ```
 
-### 5\. (Opcional) Popular com Dados de Teste
+### 6. (Opcional) Popule com dados de demonstração
 
-Para ver o dashboard bonito como nos prints, rode o script de seed que gera dados realistas:
+Para ver o dashboard com dados realistas:
 
 ```bash
 python seed_db.py
 ```
 
-### 6\. Execute
+### 7. Execute a aplicação
 
 ```bash
 python app.py
 ```
 
-Acesse: `http://localhost:5000`
-
------
-
-## 📞 Contato
-
-**Davi Domingos** - *Backend Developer*
-
-  * [LinkedIn](https://www.google.com/search?q=https://www.linkedin.com/in/davi-domingos-oli)
-  * [GitHub](https://www.google.com/search?q=https://github.com/dom1ng0s)
-  * Email: odomingosdavi@gmail.com
-
-<!-- end list -->
-
-````
+Acesse em: **http://localhost:5000**
 
 ---
+
+## 🧪 Executando os Testes
+
+```bash
+pytest tests/
+```
+
+---
+
+## 📁 Estrutura do Projeto
+
+```
+sistema_gado/
+├── app.py              # Ponto de entrada da aplicação Flask
+├── db_config.py        # Configuração e pool de conexões MySQL
+├── models.py           # Queries e lógica de acesso ao banco
+├── init_db.py          # Script de criação de tabelas, Views e índices
+├── seed_db.py          # Dados de demonstração realistas
+├── conftest.py         # Fixtures de teste (pytest)
+├── routes/             # Blueprints Flask por módulo (financeiro, animal, rebanho...)
+├── templates/          # Templates HTML (Jinja2)
+├── static/             # CSS, JS e assets
+├── tests/              # Testes automatizados
+├── photos/             # Screenshots do sistema
+└── .env-example        # Modelo de configuração de ambiente
+```
+
+---
+
+## 🗺️ Próximas Funcionalidades
+
+- [ ] API REST para integração com aplicativo mobile
+- [ ] Exportação de relatórios em PDF
+- [ ] Deploy com Docker + CI/CD via GitHub Actions
+- [ ] Dashboard de alertas (animais abaixo do GMD esperado)
+
+---
+
+## 👤 Autor
+
+**Davi Domingos de Oliveira**
+Estudante de Ciência da Computação — UFAL | Backend Developer
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/davidomingosdeoliveira/)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/Dom1ng0s)
+[![Email](https://img.shields.io/badge/Email-D14836?style=flat&logo=gmail&logoColor=white)](mailto:odomingosdavi@gmail.com)
