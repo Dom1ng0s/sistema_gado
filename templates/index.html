@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
 </head>
 <body>
-    
+
     <div class="dashboard-header">
         <h1>{{ nome_fazenda_header if nome_fazenda_header else 'Meu Rebanho' }}</h1>
         <div class="user-controls">
@@ -19,10 +19,10 @@
 
     <div class="action-bar">
         <div class="action-buttons-group">
-            <a href="{{ url_for('operacional.cadastro') }}" class="btn btn-novo btn-action">+ Novo Animal</a>
-            <a href="{{ url_for('operacional.cadastro_lote') }}" class="btn btn-novo btn-action">+ Lote de Animais</a>
-            <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-novo btn-action">$ Financeiro</a>
-            <a href="{{ url_for('api.graficos_page') }}" class="btn btn-novo btn-action">Meu Rebanho</a>
+            <a href="{{ url_for('operacional.cadastro') }}"          class="btn btn-primary btn-action">+ Novo Animal</a>
+            <a href="{{ url_for('operacional.cadastro_lote') }}"     class="btn btn-primary btn-action">+ Lote de Animais</a>
+            <a href="{{ url_for('financeiro.financeiro') }}"         class="btn btn-primary btn-action">$ Financeiro</a>
+            <a href="{{ url_for('api.graficos_page') }}"             class="btn btn-primary btn-action">Meu Rebanho</a>
             <a href="{{ url_for('operacional.vacinacao_coletiva') }}" class="btn btn-vacina">💉 Vacina em Lote</a>
         </div>
 
@@ -33,7 +33,6 @@
             <span class="divisor">|</span>
             <span>🐄 Novilha <strong id="preco-novilha">--</strong></span>
             <span class="divisor">|</span>
-            
             <span class="btn-ver-brasil" onclick="abrirModalBrasil()">🇧🇷 Ver Brasil</span>
         </div>
     </div>
@@ -42,13 +41,15 @@
         <input type="hidden" name="status" value="{{ status }}">
         <input type="text" name="busca" class="input-busca" placeholder="Digite o número do brinco..." value="{{ busca }}">
         <button type="submit" class="btn-buscar">🔍 Buscar</button>
-        {% if busca or status != 'todos' %}<a href="{{ url_for('operacional.painel') }}" class="btn-limpar">Limpar</a>{% endif %}
+        {% if busca or status != 'todos' %}
+            <a href="{{ url_for('operacional.painel') }}" class="btn-limpar">Limpar</a>
+        {% endif %}
     </form>
 
     <div class="filter-bar">
         <span class="filter-label">Exibir:</span>
-        <a href="{{ url_for('operacional.painel', status='todos', busca=busca) }}" class="btn btn-filter {% if status == 'todos' %}btn-primary{% else %}btn-secondary{% endif %}">Todos</a>
-        <a href="{{ url_for('operacional.painel', status='ativos', busca=busca) }}" class="btn btn-filter {% if status == 'ativos' %}btn-primary{% else %}btn-secondary{% endif %}">Apenas Ativos</a>
+        <a href="{{ url_for('operacional.painel', status='todos',    busca=busca) }}" class="btn btn-filter {% if status == 'todos'    %}btn-primary{% else %}btn-secondary{% endif %}">Todos</a>
+        <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca) }}" class="btn btn-filter {% if status == 'ativos'   %}btn-primary{% else %}btn-secondary{% endif %}">Apenas Ativos</a>
         <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca) }}" class="btn btn-filter {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}">Apenas Vendidos</a>
         <a href="{{ url_for('operacional.lixeira') }}" class="btn btn-lixeira" title="Ver animais excluídos">🗑️ Lixeira</a>
     </div>
@@ -60,10 +61,16 @@
         <tbody>
             {% for animal in lista_animais %}
             <tr>
-                <td class="animal-brinco">{{ animal[1] }}</td> 
+                <td class="animal-brinco">{{ animal[1] }}</td>
                 <td>{{ animal[2] }}</td>
                 <td>{{ animal[3] }}</td>
-                <td>{% if animal[5] %}<span class="tag-vendido">VENDIDO</span>{% else %}<span class="tag-ativo">ATIVO</span>{% endif %}</td>
+                <td>
+                    {% if animal[5] %}
+                        <span class="tag-vendido">VENDIDO</span>
+                    {% else %}
+                        <span class="tag-ativo">ATIVO</span>
+                    {% endif %}
+                </td>
                 <td><a href="{{ url_for('operacional.detalhes', id_animal=animal[0]) }}" class="link-detalhes">Ver Ficha &rarr;</a></td>
             </tr>
             {% else %}
@@ -73,28 +80,29 @@
     </table>
 
     <div class="pagination-container">
-        {% if pagina_atual > 1 %} 
-            <a href="{{ url_for('operacional.painel', page=pagina_atual-1, busca=busca, status=status) }}" class="btn btn-secondary">&laquo; Anterior</a> 
-        {% else %} 
-            <span class="btn btn-secondary btn-disabled">&laquo; Anterior</span> 
+        {% if pagina_atual > 1 %}
+            <a href="{{ url_for('operacional.painel', page=pagina_atual-1, busca=busca, status=status) }}" class="btn btn-secondary">&laquo; Anterior</a>
+        {% else %}
+            <span class="btn btn-secondary btn-disabled">&laquo; Anterior</span>
         {% endif %}
-        
+
         <span class="page-info">Página {{ pagina_atual }} de {{ total_paginas }}</span>
-        
-        {% if pagina_atual < total_paginas %} 
-            <a href="{{ url_for('operacional.painel', page=pagina_atual+1, busca=busca, status=status) }}" class="btn btn-secondary">Próximo &raquo;</a> 
-        {% else %} 
-            <span class="btn btn-secondary btn-disabled">Próximo &raquo;</span> 
+
+        {% if pagina_atual < total_paginas %}
+            <a href="{{ url_for('operacional.painel', page=pagina_atual+1, busca=busca, status=status) }}" class="btn btn-secondary">Próximo &raquo;</a>
+        {% else %}
+            <span class="btn btn-secondary btn-disabled">Próximo &raquo;</span>
         {% endif %}
     </div>
 
+    <!-- Modal Cotações Brasil -->
     <div id="modalBrasil" class="modal-overlay" onclick="fecharModal(event)">
         <div class="modal-content">
             <span class="btn-fechar" onclick="document.getElementById('modalBrasil').style.display='none'">&times;</span>
             <h2 class="modal-title">🇧🇷 Cotações Nacionais</h2>
-            
+
             <div id="loadingModal" class="modal-loading">🔄 Carregando dados...</div>
-            
+
             <table class="tabela-cotacao" id="tabelaModal" style="display: none;">
                 <thead>
                     <tr>
@@ -103,8 +111,7 @@
                         <th>Novilha (Vista)</th>
                     </tr>
                 </thead>
-                <tbody id="corpoTabelaBrasil">
-                </tbody>
+                <tbody id="corpoTabelaBrasil"></tbody>
             </table>
         </div>
     </div>
@@ -116,40 +123,41 @@
                 .then(data => {
                     if (data.error || (!data.boi.length && !data.novilha.length)) return;
                     document.getElementById('lbl-uf').innerText = data.uf;
-                    if (data.boi.length > 0) document.getElementById('preco-boi').innerText = `R$ ${parseFloat(data.boi[0].preco_vista).toFixed(2).replace('.', ',')}`;
-                    if (data.novilha.length > 0) document.getElementById('preco-novilha').innerText = `R$ ${parseFloat(data.novilha[0].preco_vista).toFixed(2).replace('.', ',')}`;
+                    if (data.boi.length > 0)
+                        document.getElementById('preco-boi').innerText = `R$ ${parseFloat(data.boi[0].preco_vista).toFixed(2).replace('.', ',')}`;
+                    if (data.novilha.length > 0)
+                        document.getElementById('preco-novilha').innerText = `R$ ${parseFloat(data.novilha[0].preco_vista).toFixed(2).replace('.', ',')}`;
                     document.getElementById('mini-widget').style.display = 'inline-flex';
                 })
                 .catch(err => console.error(err));
         });
 
         function abrirModalBrasil() {
-            const modal = document.getElementById('modalBrasil');
-            const tbody = document.getElementById('corpoTabelaBrasil');
+            const modal   = document.getElementById('modalBrasil');
+            const tbody   = document.getElementById('corpoTabelaBrasil');
             const loading = document.getElementById('loadingModal');
-            const tabela = document.getElementById('tabelaModal');
+            const tabela  = document.getElementById('tabelaModal');
 
             modal.style.display = 'flex';
             tbody.innerHTML = '';
             loading.style.display = 'block';
-            tabela.style.display = 'none';
+            tabela.style.display  = 'none';
 
             fetch("{{ url_for('api.cotacoes_brasil') }}")
                 .then(res => res.json())
                 .then(data => {
                     let html = '';
-                    const listaBoi = data.boi || [];
+                    const listaBoi     = data.boi     || [];
                     const listaNovilha = data.novilha || [];
                     let mapaNovilha = {};
                     listaNovilha.forEach(item => { mapaNovilha[item.praca] = item.preco_vista; });
 
                     listaBoi.forEach(item => {
-                        const praca = item.praca;
+                        const praca    = item.praca;
                         const precoBoi = parseFloat(item.preco_vista).toFixed(2).replace('.', ',');
-                        let precoNov = "---";
-                        if (mapaNovilha[praca]) {
-                            precoNov = parseFloat(mapaNovilha[praca]).toFixed(2).replace('.', ',');
-                        }
+                        const precoNov = mapaNovilha[praca]
+                            ? parseFloat(mapaNovilha[praca]).toFixed(2).replace('.', ',')
+                            : '---';
 
                         html += `
                             <tr>
@@ -162,7 +170,7 @@
 
                     tbody.innerHTML = html;
                     loading.style.display = 'none';
-                    tabela.style.display = 'table';
+                    tabela.style.display  = 'table';
                 })
                 .catch(err => {
                     console.error(err);
@@ -171,9 +179,8 @@
         }
 
         function fecharModal(e) {
-            if (e.target.id === 'modalBrasil') {
+            if (e.target.id === 'modalBrasil')
                 document.getElementById('modalBrasil').style.display = 'none';
-            }
         }
     </script>
 </body>

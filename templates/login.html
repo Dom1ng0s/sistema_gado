@@ -9,7 +9,7 @@
 <body>
     <div class="auth-card login-mode">
         <h2>🤠 Acesso ao Rebanho</h2>
-        
+
         {% if mensagem %}
             <div class="alert-error">{{ mensagem }}</div>
         {% endif %}
@@ -24,7 +24,9 @@
                 <input type="password" name="password" required placeholder="Digite sua senha">
             </div>
             <button type="submit" class="btn-primary">ENTRAR NO SISTEMA</button>
-            <a href="{{ url_for('auth.novo_usuario') }}" class="btn btn-secondary" style="margin-top: 10px; display:block; text-align:center;">👤 Não Tenho Conta</a>
+            <a href="{{ url_for('auth.novo_usuario') }}" class="btn btn-secondary" style="margin-top: 10px; display: block; text-align: center;">
+                👤 Não Tenho Conta
+            </a>
         </form>
     </div>
 </body>

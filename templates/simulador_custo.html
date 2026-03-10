@@ -21,7 +21,7 @@
                 <div class="form-group">
                     <label>GMD Projetado (kg/dia):</label>
                     <input type="text" name="gmd" value="{{ sugestoes.gmd_medio }}">
-                    <small>Ganho Médio Diário esperado</small>
+                    <small style="color: var(--color-musgo);">Ganho Médio Diário esperado</small>
                 </div>
             </div>
 
@@ -46,12 +46,14 @@
             </div>
         </div>
 
-        <button type="submit" class="btn-salvar" style="margin-top: 20px;">CALCULAR CUSTO DA ARROBA</button>
+        <button type="submit" class="btn btn-primary" style="margin-top: 20px;">CALCULAR CUSTO DA ARROBA</button>
     </form>
 
     {% if resultados %}
         {% if resultados.erro %}
-            <div class="alert-erro">{{ resultados.erro }}</div>
+            <div class="alert" style="background-color: #FDDCDA; color: var(--danger-color); border: 1px solid #F1A9A6;">
+                {{ resultados.erro }}
+            </div>
         {% else %}
             <div class="res-box">
                 <h2>Resultados da Simulação</h2>
@@ -71,6 +73,6 @@
     {% endif %}
 
     <br>
-    <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-voltar">Voltar ao Financeiro</a>
+    <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-secondary">Voltar ao Financeiro</a>
 </body>
 </html>

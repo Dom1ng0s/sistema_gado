@@ -6,9 +6,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div style="border: 2px solid #d32f2f; background-color: #ffebee; padding: 20px; border-radius: 10px; max-width: 500px; margin: 0 auto;">
-        <h2 style="color: #c62828;">Registrar Venda (Saída)</h2>
-        <p>Atenção: Ao confirmar, o animal sairá do estoque de ativos.</p>
+    <div style="border: 2px solid var(--danger-color); background-color: #FDDCDA; padding: 20px; border-radius: 10px; max-width: 500px; margin: 0 auto;">
+        <h2 style="color: var(--danger-color);">Registrar Venda (Saída)</h2>
+        <p style="color: var(--color-musgo);">Atenção: Ao confirmar, o animal sairá do estoque de ativos.</p>
 
         <form action="{{ url_for('operacional.vender', id_animal=id_animal) }}" method="POST">
             <div class="form-group">
@@ -26,13 +26,13 @@
                 <input type="number" step="0.01" name="valor_arroba" required placeholder="Ex: 280.00">
             </div>
 
-            <button type="submit" class="btn-salvar" style="background-color: #d32f2f;">CONFIRMAR VENDA</button>
+            <button type="submit" class="btn btn-danger">CONFIRMAR VENDA</button>
         </form>
     </div>
-    
+
     <br>
     <div style="text-align: center;">
-        <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}" class="btn btn-voltar">Cancelar</a>
+        <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}" class="btn btn-secondary">Cancelar</a>
     </div>
 </body>
 </html>

@@ -8,7 +8,7 @@
     <script>
         function selecionarTodos(source) {
             checkboxes = document.getElementsByName('animais_ids');
-            for(var i=0, n=checkboxes.length;i<n;i++) {
+            for (var i = 0, n = checkboxes.length; i < n; i++) {
                 checkboxes[i].checked = source.checked;
             }
         }
@@ -16,12 +16,12 @@
 </head>
 <body>
     <div style="max-width: 900px; margin: 0 auto;">
-        <h1 style="border-bottom: 2px solid #2e7d32; padding-bottom: 10px;">💉 Manejo Sanitário em Lote</h1>
+        <h1 style="border-bottom: 2px solid var(--primary-color); padding-bottom: 10px;">💉 Manejo Sanitário em Lote</h1>
 
         <form action="{{ url_for('operacional.vacinacao_coletiva') }}" method="POST">
-            
+
             <div class="barra-fixa">
-                <h3 style="margin-top: 0; color: #2e7d32;">1. Dados da Aplicação</h3>
+                <h3 style="margin-top: 0; color: var(--primary-color);">1. Dados da Aplicação</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div>
                         <label>Data:</label>
@@ -42,9 +42,9 @@
                 </div>
             </div>
 
-            <h3 style="color: #555;">2. Selecione os Animais</h3>
+            <h3 style="color: var(--color-musgo);">2. Selecione os Animais</h3>
             <div style="margin-bottom: 10px;">
-                <label style="font-weight: bold; color: #2e7d32; cursor: pointer; font-size: 1.1em;">
+                <label style="font-weight: bold; color: var(--primary-color); cursor: pointer; font-size: 1.1em;">
                     <input type="checkbox" onClick="selecionarTodos(this)"> ✅ MARCAR/DESMARCAR TODOS
                 </label>
             </div>
@@ -56,17 +56,19 @@
                     <label for="boi_{{ animal[0] }}" style="cursor: pointer; width: 100%;">{{ animal[1] }}</label>
                 </div>
                 {% else %}
-                    <p style="grid-column: 1/-1; text-align: center;">Nenhum animal ativo encontrado.</p>
+                    <p style="grid-column: 1/-1; text-align: center; color: var(--color-musgo);">Nenhum animal ativo encontrado.</p>
                 {% endfor %}
             </div>
 
             <br>
-            <button type="submit" class="btn-salvar" style="width: 100%; font-size: 1.2em; padding: 15px; background-color: #2e7d32;">💾 CONFIRMAR APLICAÇÃO EM MASSA</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.2em; padding: 15px;">
+                💾 CONFIRMAR APLICAÇÃO EM MASSA
+            </button>
         </form>
 
         <br>
         <div style="text-align: center;">
-            <a href="{{ url_for('operacional.painel') }}" class="btn btn-voltar">Cancelar e Voltar</a>
+            <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Cancelar e Voltar</a>
         </div>
     </div>
 </body>

@@ -7,9 +7,11 @@
 </head>
 <body>
     <h1>Cadastrar Novo Animal</h1>
-    
+
     {% if mensagem %}
-        <div class="alert-erro">{{ mensagem }}</div>
+        <div class="alert" style="background-color: #FDDCDA; color: var(--danger-color); border: 1px solid #F1A9A6;">
+            {{ mensagem }}
+        </div>
     {% endif %}
 
     <form action="{{ url_for('operacional.cadastro') }}" method="POST" class="form-container">
@@ -41,10 +43,10 @@
             <input type="number" step="0.01" name="valor_arroba" required>
         </div>
 
-        <button type="submit" class="btn-salvar">Salvar Animal</button>
+        <button type="submit" class="btn btn-primary">Salvar Animal</button>
     </form>
-    
+
     <br>
-    <a href="{{ url_for('operacional.painel') }}" class="btn btn-voltar">Voltar</a>
+    <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Voltar</a>
 </body>
 </html>

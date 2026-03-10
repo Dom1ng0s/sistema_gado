@@ -1,15 +1,13 @@
-/* Configuração de Layout para Páginas de Autenticação */
 body {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: #f4f6f8;
+    background-color: var(--bg-light);
     margin: 0;
-    font-family: sans-serif; /* Fallback caso style.css falhe */
+    font-family: sans-serif;
 }
 
-/* Card Principal */
 .auth-card {
     background: white;
     padding: 40px;
@@ -20,49 +18,43 @@ body {
     box-sizing: border-box;
 }
 
-.auth-card.login-mode { max-width: 350px; }
+.auth-card.login-mode    { max-width: 350px; }
 .auth-card.register-mode { max-width: 400px; }
 
-/* Tipografia */
 .auth-card h2 {
-    color: #2e7d32;
+    color: var(--primary-color);
     margin-bottom: 20px;
     margin-top: 0;
 }
 
 .auth-card p.subtitle {
-    color: #666;
+    color: var(--color-musgo);
     margin-bottom: 20px;
 }
 
-/* Formulários */
-.form-group {
-    margin-bottom: 15px;
-    text-align: left;
-}
+.form-group { margin-bottom: 15px; text-align: left; }
 
 label {
     display: block;
     margin-bottom: 5px;
-    color: #666; /* Unificado #666 e #555 */
-    font-weight: bold; /* Unificado para bold */
+    color: var(--color-musgo);
+    font-weight: bold;
     text-align: left;
 }
 
 input {
     width: 100%;
     padding: 10px;
-    margin-bottom: 15px; /* Unificado margem inferior */
-    border: 1px solid #ddd;
+    margin-bottom: 15px;
+    border: 1px solid var(--color-terra);
     border-radius: 5px;
     box-sizing: border-box;
 }
 
-/* Botões */
 .btn-primary {
     width: 100%;
     padding: 12px;
-    background-color: #2e7d32;
+    background-color: var(--primary-color);
     color: white;
     border: none;
     border-radius: 5px;
@@ -75,29 +67,22 @@ input {
     box-sizing: border-box;
 }
 
-.btn-primary:hover {
-    background-color: #1b5e20;
-}
+.btn-primary:hover { background-color: var(--secondary-color); }
 
-/* Alertas */
 .alert-error {
-    background: #ffebee;
-    color: #c62828;
+    background: #FDDCDA;
+    color: var(--danger-color);
     padding: 10px;
     border-radius: 5px;
     margin-bottom: 15px;
     font-size: 14px;
-    border: 1px solid #ef9a9a;
+    border: 1px solid #F1A9A6;
 }
 
-/* Elementos Utilitários */
-.separador {
-    margin: 20px 0;
-    border-top: 1px solid #eee;
-}
+.separador   { margin: 20px 0; border-top: 1px solid var(--color-palha); }
 
 .helper-text {
-    color: #888;
+    color: var(--color-musgo);
     display: block;
     text-align: left;
     margin-top: -10px;
@@ -106,7 +91,7 @@ input {
 }
 
 .link-secondary {
-    color: #666;
+    color: var(--color-musgo);
     text-decoration: none;
     display: inline-block;
     margin-top: 10px;

@@ -21,7 +21,7 @@
     <h1>Lançar Custo Operacional</h1>
 
     {% if mensagem %}
-        <div style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+        <div class="alert" style="background-color: #D6E8D0; color: var(--primary-color); border: 1px solid #B8D4B2;">
             {{ mensagem }}
         </div>
     {% endif %}
@@ -68,10 +68,10 @@
             <input type="text" name="descricao" placeholder="Ex: Compra de 5 sacos de sal">
         </div>
 
-        <button type="submit" class="btn-salvar">Registrar Custo</button>
+        <button type="submit" class="btn btn-primary">Registrar Custo</button>
     </form>
 
     <br>
-    <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-voltar">Voltar ao Financeiro</a>
+    <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-secondary">Voltar ao Financeiro</a>
 </body>
 </html>

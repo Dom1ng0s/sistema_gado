@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
 </head>
 <body>
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 20px;">
         <h1 style="border: none; margin: 0; padding: 0;">⚙️ Configurações</h1>
         <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Voltar ao Painel</a>
     </div>
@@ -20,33 +20,35 @@
 
     <div class="config-card">
         <form action="{{ url_for('configuracoes.settings') }}" method="POST">
-            
+
             <div class="form-group">
                 <label>Nome da Propriedade:</label>
-                <input type="text" name="nome_fazenda" 
-                       value="{{ config.nome if config.nome else '' }}" 
+                <input type="text" name="nome_fazenda"
+                       value="{{ config.nome if config.nome else '' }}"
                        placeholder="Ex: Fazenda Santa Fé" required>
             </div>
 
             <div class="form-group">
                 <label>Localização (Cidade - UF):</label>
                 <input type="text" name="cidade_estado" id="inputCidade" list="listaCidades"
-                       value="{{ config.cidade if config.cidade else '' }}" 
+                       value="{{ config.cidade if config.cidade else '' }}"
                        placeholder="Digite para buscar..." autocomplete="off">
-                
+
                 <datalist id="listaCidades"></datalist>
-                
+
                 <div class="info-ibge" id="statusIBGE">🔄 Carregando cidades do IBGE...</div>
             </div>
 
             <div class="form-group">
                 <label>Área Total (Hectares):</label>
-                <input type="number" step="0.01" name="area_total" 
-                       value="{{ config.area if config.area else '' }}" 
+                <input type="number" step="0.01" name="area_total"
+                       value="{{ config.area if config.area else '' }}"
                        placeholder="0.00">
             </div>
 
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px; font-size: 1.1em;">💾 SALVAR ALTERAÇÕES</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px; font-size: 1.1em;">
+                💾 SALVAR ALTERAÇÕES
+            </button>
         </form>
     </div>
 
@@ -55,7 +57,6 @@
             const dataList = document.getElementById('listaCidades');
             const statusMsg = document.getElementById('statusIBGE');
             const inputCidade = document.getElementById('inputCidade');
-
             const url = "{{ url_for('api.proxy_cidades') }}";
 
             statusMsg.innerText = "🌐 Consultando API de cidades...";
@@ -67,22 +68,22 @@
                 })
                 .then(cidades => {
                     if (cidades.error) throw new Error(cidades.error);
-                    
+
                     let options = '';
                     cidades.sort((a, b) => a.nome.localeCompare(b.nome));
                     cidades.forEach(c => {
                         options += `<option value="${c.nome} - ${c.uf}">`;
                     });
-                    
+
                     dataList.innerHTML = options;
                     statusMsg.innerHTML = "✅ API Conectada (Dados Atualizados)";
-                    statusMsg.style.color = "green";
+                    statusMsg.style.color = "var(--primary-color)";
                     inputCidade.placeholder = "Digite a cidade...";
                 })
                 .catch(err => {
                     console.error('Erro:', err);
                     statusMsg.innerText = "❌ Falha na API. Verifique a internet do servidor.";
-                    statusMsg.style.color = "red";
+                    statusMsg.style.color = "var(--danger-color)";
                 });
         });
     </script>

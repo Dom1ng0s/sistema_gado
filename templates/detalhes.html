@@ -10,25 +10,25 @@
         <h1>Ficha Técnica: Brinco {{ animal[1] }}</h1>
 
         <div class="dashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
-            <div class="kpi-box" style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center;">
-                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #1565c0;">Peso Atual</h3>
+            <div class="kpi-box" style="background-color: #EEF4EB; padding: 15px; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--secondary-color);">Peso Atual</h3>
                 <strong style="font-size: 24px;">{{ indicadores.peso_atual }} kg</strong>
             </div>
-            <div class="kpi-box" style="background-color: #f3e5f5; padding: 15px; border-radius: 8px; text-align: center;">
-                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #6a1b9a;">GMD (Média)</h3>
-                <strong style="font-size: 24px; color: #4a148c;">{{ indicadores.gmd }}</strong>
+            <div class="kpi-box" style="background-color: var(--color-palha); padding: 15px; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--secondary-color);">GMD (Média)</h3>
+                <strong style="font-size: 24px; color: var(--primary-color);">{{ indicadores.gmd }}</strong>
                 <br><small style="font-size: 11px;">kg/dia em {{ indicadores.dias }} dias</small>
             </div>
-            
-            {% set cor_ganho = 'green' if indicadores.ganho_total >= 0 else 'red' %}
-            <div class="kpi-box" style="background-color: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center;">
-                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #2e7d32;">Ganho Total</h3>
+
+            {% set cor_ganho = 'var(--primary-color)' if indicadores.ganho_total >= 0 else 'var(--danger-color)' %}
+            <div class="kpi-box" style="background-color: #EEF4EB; padding: 15px; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--secondary-color);">Ganho Total</h3>
                 <strong style="font-size: 24px; color: {{ cor_ganho }};">{{ indicadores.ganho_total }} kg</strong>
             </div>
 
-            <div class="kpi-box" style="background-color: #fff3e0; padding: 15px; border-radius: 8px; text-align: center;"> 
-                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #ef6c00;">Custo Total</h3>
-                <strong style="font-size: 24px; color: #e65100;">R$ {{ indicadores.custo_total }}</strong>
+            <div class="kpi-box" style="background-color: #FEF3E2; padding: 15px; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--accent-color);">Custo Total</h3>
+                <strong style="font-size: 24px; color: var(--accent-color);">R$ {{ indicadores.custo_total }}</strong>
             </div>
         </div>
 
@@ -40,8 +40,8 @@
         </div>
 
         <hr><h2>Evolução de Peso</h2>
-        <a href="{{ url_for('operacional.nova_pesagem', id_animal=animal[0]) }}" class="btn btn-peso">+ Nova Pesagem</a>
-        
+        <a href="{{ url_for('operacional.nova_pesagem', id_animal=animal[0]) }}" class="btn btn-primary">+ Nova Pesagem</a>
+
         <table>
             <thead><tr><th>Data da Pesagem</th><th>Peso (kg)</th><th>Ações</th></tr></thead>
             <tbody>
@@ -50,8 +50,8 @@
                     <td>{{ pesagem[2] }}</td>
                     <td>{{ pesagem[3] }} kg</td>
                     <td>
-                        <a href="{{ url_for('operacional.excluir_pesagem', id_pesagem=pesagem[0]) }}" 
-                           style="color: red; text-decoration: none; font-weight: bold;"
+                        <a href="{{ url_for('operacional.excluir_pesagem', id_pesagem=pesagem[0]) }}"
+                           style="color: var(--danger-color); text-decoration: none; font-weight: bold;"
                            onclick="return confirm('Tem certeza que deseja apagar este registro?');">
                            [X] Excluir
                         </a>
@@ -62,13 +62,13 @@
         </table>
 
         <br><hr><h2>Histórico Sanitário (Vacinas/Remédios)</h2>
-        <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}" class="btn btn-med">+ Adicionar Vacina/Remédio</a>
+        <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}" class="btn btn-primary">+ Adicionar Vacina/Remédio</a>
 
         <table>
             <thead><tr><th>Data</th><th>Medicamento</th><th>Custo</th><th>Obs</th></tr></thead>
             <tbody>
                 {% for med in historico_med %}
-                <tr><td>{{ med[2] }}</td> <td>{{ med[3] }}</td> <td>R$ {{ med[4] }}</td> <td>{{ med[5] }}</td></tr>
+                <tr><td>{{ med[2] }}</td><td>{{ med[3] }}</td><td>R$ {{ med[4] }}</td><td>{{ med[5] }}</td></tr>
                 {% else %}<tr><td colspan="4">Nenhuma medicação registrada.</td></tr>{% endfor %}
             </tbody>
         </table>
@@ -78,26 +78,29 @@
     <br>
     <div style="margin: 20px 0;">
         {% if not animal[6] %}
-            <a href="{{ url_for('operacional.vender', id_animal=animal[0]) }}" style="background-color: #d32f2f; color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;">💲 Registrar Venda (Baixa)</a>
+            <a href="{{ url_for('operacional.vender', id_animal=animal[0]) }}"
+               style="background-color: var(--danger-color); color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;">
+               💲 Registrar Venda (Baixa)
+            </a>
         {% else %}
-            <div style="background-color: #ffebee; color: #c62828; padding: 10px; border: 1px solid #ef9a9a; display: inline-block; border-radius: 5px;">
+            <div style="background-color: #FDDCDA; color: var(--danger-color); padding: 10px; border: 1px solid #F1A9A6; display: inline-block; border-radius: 5px;">
                 <strong>VENDIDO</strong> em {{ animal[5] }} por R$ {{ animal[6] }}
             </div>
         {% endif %}
     </div>
     <br><br><br>
-    
-    <div style="border: 2px solid red; padding: 20px; border-radius: 8px; background-color: #ffe6e6;">
-        <h3 style="color: red; margin-top: 0;">Excluir Animal</h3>
+
+    <div style="border: 2px solid var(--danger-color); padding: 20px; border-radius: 8px; background-color: #FDDCDA;">
+        <h3 style="color: var(--danger-color); margin-top: 0;">Excluir Animal</h3>
         <p>O animal irá para a Lixeira</p>
-        <a href="{{ url_for('operacional.excluir_animal', id_animal=animal[0]) }}" 
-           style="background-color: red; color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;"
+        <a href="{{ url_for('operacional.excluir_animal', id_animal=animal[0]) }}"
+           style="background-color: var(--danger-color); color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;"
            onclick="return confirm('ATENÇÃO: o animal excluido irá para a lixeira');">
-           🗑️ EXCLUIR ANIMAL 
+           🗑️ EXCLUIR ANIMAL
         </a>
     </div>
 
     <br><br>
-    <a href="{{ url_for('operacional.painel') }}" class="btn btn-voltar">Voltar ao Rebanho</a>
+    <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Voltar ao Rebanho</a>
 </body>
 </html>

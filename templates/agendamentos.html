@@ -2,86 +2,105 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Agendamentos - Sistema Gado</title>
+    <title>Ficha do Animal</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
 </head>
 <body>
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; margin-bottom: 20px;">
-        <h1 style="border: none; margin: 0;">📅 Contas a Pagar</h1>
-        <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-secondary">Voltar ao Financeiro</a>
-    </div>
+    {% if animal %}
+        <h1>Ficha Técnica: Brinco {{ animal[1] }}</h1>
 
-    {% if mensagem %}
-        <div class="alert">{{ mensagem }}</div>
-    {% endif %}
-
-    <div class="form-container">
-        <h3>Novo Agendamento</h3>
-        <form action="{{ url_for('financeiro.agendamentos') }}" method="POST">
-            <div class="form-group">
-                <label>Descrição:</label>
-                <input type="text" name="descricao" required placeholder="Ex: Parcela Ração 1/3">
+        <div class="dashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            <div class="kpi-box" style="background-color: #EEF4EB; padding: 15px; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--secondary-color);">Peso Atual</h3>
+                <strong style="font-size: 24px;">{{ indicadores.peso_atual }} kg</strong>
             </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <div class="form-group">
-                    <label>Valor (R$):</label>
-                    <input type="number" step="0.01" name="valor" required placeholder="0.00">
-                </div>
-                <div class="form-group">
-                    <label>Vencimento:</label>
-                    <input type="date" name="vencimento" required>
-                </div>
+            <div class="kpi-box" style="background-color: var(--color-palha); padding: 15px; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--secondary-color);">GMD (Média)</h3>
+                <strong style="font-size: 24px; color: var(--primary-color);">{{ indicadores.gmd }}</strong>
+                <br><small style="font-size: 11px;">kg/dia em {{ indicadores.dias }} dias</small>
             </div>
 
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">💾 AGENDAR PAGAMENTO</button>
-        </form>
-    </div>
+            {% set cor_ganho = 'var(--primary-color)' if indicadores.ganho_total >= 0 else 'var(--danger-color)' %}
+            <div class="kpi-box" style="background-color: #EEF4EB; padding: 15px; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--secondary-color);">Ganho Total</h3>
+                <strong style="font-size: 24px; color: {{ cor_ganho }};">{{ indicadores.ganho_total }} kg</strong>
+            </div>
 
-    <h3 style="margin-top: 30px; color: #555;">Próximos Vencimentos</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Vencimento</th>
-                <th>Descrição</th>
-                <th>Valor</th>
-                <th>Status</th>
-                <th style="text-align: center;">Ações</th> </tr>
-        </thead>
-        <tbody>
-            {% for conta in agendamentos %}
-            <tr>
-                <td class="{% if conta[3] < hoje and conta[4] == 'pendente' %}texto-vencido{% endif %}">
-                    {{ conta[3].strftime('%d/%m/%Y') }}
-                </td>
-                <td>{{ conta[1] }}</td>
-                <td>R$ {{ "%.2f"|format(conta[2]) }}</td>
-                <td>
-                    <span class="status-badge {{ conta[4] }}">{{ conta[4]|upper }}</span>
-                </td>
-                <td style="text-align: center;">
-                    {% if conta[4] == 'pendente' %}
-                        <a href="{{ url_for('financeiro.baixar_agendamento', id_agendamento=conta[0]) }}" 
-                           class="btn" 
-                           style="background-color: #2e7d32; color: white; padding: 5px 10px; font-size: 0.8em; text-decoration: none;"
-                           title="Confirmar Pagamento e Lançar no Caixa"
-                           onclick="return confirm('Confirma o pagamento de {{ conta[1] }}? Isso lançará o valor no Fluxo de Caixa.');">
-                           ✅ Pagar
+            <div class="kpi-box" style="background-color: #FEF3E2; padding: 15px; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--accent-color);">Custo Total</h3>
+                <strong style="font-size: 24px; color: var(--accent-color);">R$ {{ indicadores.custo_total }}</strong>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Dados Fixos</h3>
+            <p><strong>Sexo:</strong> {{ animal[2] }}</p>
+            <p><strong>Data de Compra/Nascimento:</strong> {{ animal[3] }}</p>
+            <p><strong>Preço de Compra:</strong> R$ {{ animal[4] }}</p>
+        </div>
+
+        <hr><h2>Evolução de Peso</h2>
+        <a href="{{ url_for('operacional.nova_pesagem', id_animal=animal[0]) }}" class="btn btn-primary">+ Nova Pesagem</a>
+
+        <table>
+            <thead><tr><th>Data da Pesagem</th><th>Peso (kg)</th><th>Ações</th></tr></thead>
+            <tbody>
+                {% for pesagem in historico_peso %}
+                <tr>
+                    <td>{{ pesagem[2] }}</td>
+                    <td>{{ pesagem[3] }} kg</td>
+                    <td>
+                        <a href="{{ url_for('operacional.excluir_pesagem', id_pesagem=pesagem[0]) }}"
+                           style="color: var(--danger-color); text-decoration: none; font-weight: bold;"
+                           onclick="return confirm('Tem certeza que deseja apagar este registro?');">
+                           [X] Excluir
                         </a>
-                    {% else %}
-                        <span style="color: #aaa; font-size: 0.8em;">--</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="5" style="text-align: center; padding: 20px; color: #777;">
-                    Nenhuma conta agendada.
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    </td>
+                </tr>
+                {% else %}<tr><td colspan="3">Nenhuma pesagem registrada.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+
+        <br><hr><h2>Histórico Sanitário (Vacinas/Remédios)</h2>
+        <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}" class="btn btn-primary">+ Adicionar Vacina/Remédio</a>
+
+        <table>
+            <thead><tr><th>Data</th><th>Medicamento</th><th>Custo</th><th>Obs</th></tr></thead>
+            <tbody>
+                {% for med in historico_med %}
+                <tr><td>{{ med[2] }}</td><td>{{ med[3] }}</td><td>R$ {{ med[4] }}</td><td>{{ med[5] }}</td></tr>
+                {% else %}<tr><td colspan="4">Nenhuma medicação registrada.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+
+    {% else %}<h1>Erro: Animal não encontrado.</h1>{% endif %}
+
+    <br>
+    <div style="margin: 20px 0;">
+        {% if not animal[6] %}
+            <a href="{{ url_for('operacional.vender', id_animal=animal[0]) }}"
+               style="background-color: var(--danger-color); color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;">
+               💲 Registrar Venda (Baixa)
+            </a>
+        {% else %}
+            <div style="background-color: #FDDCDA; color: var(--danger-color); padding: 10px; border: 1px solid #F1A9A6; display: inline-block; border-radius: 5px;">
+                <strong>VENDIDO</strong> em {{ animal[5] }} por R$ {{ animal[6] }}
+            </div>
+        {% endif %}
+    </div>
+    <br><br><br>
+
+    <div style="border: 2px solid var(--danger-color); padding: 20px; border-radius: 8px; background-color: #FDDCDA;">
+        <h3 style="color: var(--danger-color); margin-top: 0;">Excluir Animal</h3>
+        <p>O animal irá para a Lixeira</p>
+        <a href="{{ url_for('operacional.excluir_animal', id_animal=animal[0]) }}"
+           style="background-color: var(--danger-color); color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;"
+           onclick="return confirm('ATENÇÃO: o animal excluido irá para a lixeira');">
+           🗑️ EXCLUIR ANIMAL
+        </a>
+    </div>
+
+    <br><br>
+    <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Voltar ao Rebanho</a>
 </body>
 </html>
