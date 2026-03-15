@@ -53,39 +53,58 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const dataList = document.getElementById('listaCidades');
-            const statusMsg = document.getElementById('statusIBGE');
-            const inputCidade = document.getElementById('inputCidade');
-            const url = "{{ url_for('api.proxy_cidades') }}";
+    document.addEventListener("DOMContentLoaded", function() {
+        // LÓGICA EXISTENTE: API do IBGE
+        const dataList = document.getElementById('listaCidades');
+        const statusMsg = document.getElementById('statusIBGE');
+        const inputCidade = document.getElementById('inputCidade');
+        const url = "{{ url_for('api.proxy_cidades') }}";
 
-            statusMsg.innerText = "🌐 Consultando API de cidades...";
+        statusMsg.innerText = "🌐 Consultando API de cidades...";
 
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) throw new Error("Erro na comunicação com o servidor");
-                    return response.json();
-                })
-                .then(cidades => {
-                    if (cidades.error) throw new Error(cidades.error);
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error("Erro na comunicação com o servidor");
+                return response.json();
+            })
+            .then(cidades => {
+                if (cidades.error) throw new Error(cidades.error);
 
-                    let options = '';
-                    cidades.sort((a, b) => a.nome.localeCompare(b.nome));
-                    cidades.forEach(c => {
-                        options += `<option value="${c.nome} - ${c.uf}">`;
-                    });
-
-                    dataList.innerHTML = options;
-                    statusMsg.innerHTML = "✅ API Conectada (Dados Atualizados)";
-                    statusMsg.style.color = "var(--primary-color)";
-                    inputCidade.placeholder = "Digite a cidade...";
-                })
-                .catch(err => {
-                    console.error('Erro:', err);
-                    statusMsg.innerText = "❌ Falha na API. Verifique a internet do servidor.";
-                    statusMsg.style.color = "var(--danger-color)";
+                let options = '';
+                cidades.sort((a, b) => a.nome.localeCompare(b.nome));
+                cidades.forEach(c => {
+                    options += `<option value="${c.nome} - ${c.uf}">`;
                 });
+
+                dataList.innerHTML = options;
+                statusMsg.innerHTML = "✅ API Conectada (Dados Atualizados)";
+                statusMsg.style.color = "var(--primary-color)";
+                inputCidade.placeholder = "Digite a cidade...";
+            })
+            .catch(err => {
+                console.error('Erro:', err);
+                statusMsg.innerText = "❌ Falha na API. Verifique a internet do servidor.";
+                statusMsg.style.color = "var(--danger-color)";
+            });
+
+        // NOVA LÓGICA: Prevenção de duplo clique (Fase 1)
+        const formularios = document.querySelectorAll("form");
+        
+        formularios.forEach(form => {
+            form.addEventListener("submit", function(event) {
+                const botaoSubmit = form.querySelector("button[type='submit']");
+                
+                if (botaoSubmit) {
+                    if (botaoSubmit.classList.contains("btn-loading")) {
+                        event.preventDefault();
+                        return;
+                    }
+                    botaoSubmit.classList.add("btn-loading");
+                    botaoSubmit.setAttribute("disabled", "true");
+                }
+            });
         });
-    </script>
+    });
+</script>
 </body>
 </html>

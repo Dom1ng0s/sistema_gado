@@ -44,33 +44,50 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const dataList  = document.getElementById('listaCidades');
-            const statusMsg = document.getElementById('statusIBGE');
-            const inputCidade = document.getElementById('inputCidade');
-            const url = "{{ url_for('api.proxy_cidades') }}";
+    document.addEventListener("DOMContentLoaded", function() {
+        const dataList  = document.getElementById('listaCidades');
+        const statusMsg = document.getElementById('statusIBGE');
+        const inputCidade = document.getElementById('inputCidade');
+        const url = "{{ url_for('api.proxy_cidades') }}";
 
-            fetch(url)
-                .then(res => res.json())
-                .then(cidades => {
-                    if (cidades.error) throw new Error(cidades.error);
+        fetch(url)
+            .then(res => res.json())
+            .then(cidades => {
+                if (cidades.error) throw new Error(cidades.error);
 
-                    let options = '';
-                    cidades.sort((a, b) => a.nome.localeCompare(b.nome));
-                    cidades.forEach(c => {
-                        options += `<option value="${c.nome} - ${c.uf}">`;
-                    });
-
-                    dataList.innerHTML = options;
-                    statusMsg.innerText = '';
-                    inputCidade.placeholder = "Digite sua cidade...";
-                })
-                .catch(err => {
-                    console.error(err);
-                    statusMsg.innerText = "Erro ao carregar lista. Digite manualmente.";
-                    statusMsg.style.color = "var(--danger-color)";
+                let options = '';
+                cidades.sort((a, b) => a.nome.localeCompare(b.nome));
+                cidades.forEach(c => {
+                    options += `<option value="${c.nome} - ${c.uf}">`;
                 });
+
+                dataList.innerHTML = options;
+                statusMsg.innerText = '';
+                inputCidade.placeholder = "Digite sua cidade...";
+            })
+            .catch(err => {
+                console.error(err);
+                statusMsg.innerText = "Erro ao carregar lista. Digite manualmente.";
+                statusMsg.style.color = "var(--danger-color)";
+            });
+
+        const formularios = document.querySelectorAll("form");
+        
+        formularios.forEach(form => {
+            form.addEventListener("submit", function(event) {
+                const botaoSubmit = form.querySelector("button[type='submit']");
+                
+                if (botaoSubmit) {
+                    if (botaoSubmit.classList.contains("btn-loading")) {
+                        event.preventDefault();
+                        return;
+                    }
+                    botaoSubmit.classList.add("btn-loading");
+                    botaoSubmit.setAttribute("disabled", "true");
+                }
+            });
         });
-    </script>
+    });
+</script>
 </body>
 </html>

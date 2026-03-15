@@ -183,3 +183,31 @@ tr:hover { background-color: #EEF4EB; }
     .cotacao-valores { width: 100%; justify-content: space-around; }
     .separador-vertical { display: none; }
 }
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.btn-loading::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spinner 0.8s linear infinite;
+}
+
+@keyframes spinner {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

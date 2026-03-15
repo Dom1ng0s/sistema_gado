@@ -24,5 +24,25 @@
 
     <br>
     <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}" class="btn btn-secondary">Voltar</a>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const formularios = document.querySelectorAll("form");
+        
+        formularios.forEach(form => {
+            form.addEventListener("submit", function(event) {
+                const botaoSubmit = form.querySelector("button[type='submit']");
+                
+                if (botaoSubmit) {
+                    if (botaoSubmit.classList.contains("btn-loading")) {
+                        event.preventDefault();
+                        return;
+                    }
+                    botaoSubmit.classList.add("btn-loading");
+                    botaoSubmit.setAttribute("disabled", "true");
+                }
+            });
+        });
+    });
+</script>
 </body>
 </html>
