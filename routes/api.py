@@ -12,35 +12,48 @@ logger = logging.getLogger(__name__)
 def graficos_page():
     return render_template('graficos.html')
 
-@api_bp.route('/dados-graficos')
+@api_bp.route('/api/graficos/sexo')
 @login_required
-def dados_graficos_api():
+def graficos_sexo():
     try:
         with get_db_cursor() as cursor:
-            uid = current_user.id
-            # 1. Gráfico Sexo
-            cursor.execute("SELECT sexo, COUNT(*) FROM animais WHERE user_id = %s AND data_venda IS NULL AND deleted_at IS NULL GROUP BY sexo", (uid,))
-            dados_sexo = {sexo: qtd for sexo, qtd in cursor.fetchall()}
-            
-            # 2. Gráfico Peso
-            cursor.execute("SELECT p.peso FROM pesagens p INNER JOIN (SELECT animal_id, MAX(id) as m FROM pesagens GROUP BY animal_id) u ON p.id=u.m INNER JOIN animais a ON p.animal_id=a.id WHERE a.user_id=%s AND a.data_venda IS NULL AND a.deleted_at IS NULL", (uid,))
-            pesos = cursor.fetchall()
+            cursor.execute("SELECT sexo, COUNT(*) FROM animais WHERE user_id = %s AND data_venda IS NULL AND deleted_at IS NULL GROUP BY sexo", (current_user.id,))
+            return jsonify({sexo: qtd for sexo, qtd in cursor.fetchall()})
+    except Exception as e: 
+        logger.error(f"Erro Gráfico Sexo: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@api_bp.route('/api/graficos/peso')
+@login_required
+def graficos_peso():
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT p.peso FROM pesagens p INNER JOIN (SELECT animal_id, MAX(id) as m FROM pesagens GROUP BY animal_id) u ON p.id=u.m INNER JOIN animais a ON p.animal_id=a.id WHERE a.user_id=%s AND a.data_venda IS NULL AND a.deleted_at IS NULL", (current_user.id,))
             cat_peso = {'Menos de 10@': 0, '10@ a 15@': 0, '15@ a 20@': 0, 'Mais de 20@': 0}
-            for (p_kg,) in pesos:
+            for (p_kg,) in cursor.fetchall():
                 p_arr = float(p_kg)/30
                 if p_arr < 10: cat_peso['Menos de 10@'] += 1
                 elif 10 <= p_arr < 15: cat_peso['10@ a 15@'] += 1
                 elif 15 <= p_arr < 20: cat_peso['15@ a 20@'] += 1
                 else: cat_peso['Mais de 20@'] += 1
-            
-            # 3. GMD
-            cursor.execute("SELECT AVG(v.gmd) FROM v_gmd_analitico v JOIN animais a ON v.animal_id=a.id WHERE v.user_id=%s AND a.data_venda IS NULL AND a.deleted_at IS NULL", (uid,))
-            gmd = cursor.fetchone()[0]
-            
-            return jsonify({'sexo': dados_sexo, 'peso': cat_peso, 'gmd_medio': float(gmd) if gmd else 0.0}), 200
-    except Exception as e:
-        logger.error(f"Erro API: {e}", exc_info=True)
+            return jsonify(cat_peso)
+    except Exception as e: 
+        logger.error(f"Erro Gráfico Peso: {e}")
         return jsonify({'error': str(e)}), 500
+
+@api_bp.route('/api/graficos/gmd')
+@login_required
+def graficos_gmd():
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT AVG(v.gmd) FROM v_gmd_analitico v JOIN animais a ON v.animal_id=a.id WHERE v.user_id=%s AND a.data_venda IS NULL AND a.deleted_at IS NULL", (current_user.id,))
+            res = cursor.fetchone()[0]
+            return jsonify({'gmd_medio': float(res) if res else 0.0})
+    except Exception as e: 
+        logger.error(f"Erro Gráfico GMD: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# --- FIM DAS ROTAS DE GRÁFICOS ---
 
 @api_bp.route('/proxy-cidades')
 def proxy_cidades():
@@ -81,7 +94,6 @@ def proxy_cidades():
         logger.error(f"Erro proxy: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-
 @api_bp.route('/cotacoes-regionais')
 @login_required
 def cotacoes_regionais():
@@ -105,7 +117,7 @@ def cotacoes_regionais():
         if not uf_usuario:
             return jsonify({'erro': 'Localização não configurada'}), 404
 
-        # 2. DEFINIR URLs DOS DADOS (Substitua pelo seu USER/REPO corretos)
+        # 2. DEFINIR URLs DOS DADOS
         base_url = "https://raw.githubusercontent.com/dom1ng0s/gado-scraper/main"
         url_boi = f"{base_url}/cotacoes_boi_hoje.json"
         url_novilha = f"{base_url}/cotacoes_novilha_hoje.json"
@@ -125,8 +137,6 @@ def cotacoes_regionais():
 
                 for item in dados:
                     praca = item.get('praca', '').upper()
-                    # Verifica se a praça começa com a UF (ex: "SP Barretos") 
-                    # ou se é o nome exato (ex: "ALAGOAS", "SC")
                     if praca.startswith(uf) or praca == uf or (nome_completo and praca == nome_completo.upper()):
                         resultados.append(item)
                 
@@ -149,17 +159,13 @@ def cotacoes_regionais():
         logger.error(f"Erro cotacoes: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-
-# --- NOVA ROTA: TODAS AS COTAÇÕES (PARA O MODAL) ---
 @api_bp.route('/cotacoes-brasil')
 @login_required
 def cotacoes_brasil():
     """Retorna a lista completa de cotações (Boi e Novilha) de todas as praças."""
     try:
-        # URLs do GitHub (Mesmas da rota regional)
         base_url = "https://raw.githubusercontent.com/dom1ng0s/gado-scraper/main"
         
-        # Função interna para buscar JSON cru
         def buscar_dados(endpoint):
             try:
                 resp = requests.get(f"{base_url}/{endpoint}", timeout=5)

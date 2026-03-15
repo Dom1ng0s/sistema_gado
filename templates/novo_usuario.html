@@ -2,92 +2,156 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Criar Conta - Sistema Gado</title>
+    <title>Novo Usuário - Sistema Gado</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-    <div class="auth-card register-mode">
-        <h2>Crie sua Conta</h2>
-        <p class="subtitle">Configure sua fazenda para começar.</p>
+    <div class="form-container">
+        <h2 style="text-align: center; color: var(--primary-color);">Criar Conta</h2>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {{ 'alert-error' if category == 'error' else 'alert-success' }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-        {% if mensagem %}
-            <div class="alert-error">{{ mensagem }}</div>
-        {% endif %}
+        <form method="POST" action="{{ url_for('auth.novo_usuario') }}">
+            <div class="form-group">
+                <label for="username">Usuário</label>
+                <input type="text" id="username" name="username" required placeholder="Escolha um nome de usuário">
+            </div>
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="password" required placeholder="Crie uma senha forte">
+            </div>
+            
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
+            <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--color-musgo);">Dados da Propriedade</h3>
 
-        <form action="{{ url_for('auth.novo_usuario') }}" method="POST">
-            <label>Usuário (Login)</label>
-            <input type="text" name="username" required placeholder="Ex: fazenda123">
+            <div class="form-group">
+                <label for="nome_fazenda">Nome da Fazenda</label>
+                <input type="text" id="nome_fazenda" name="nome_fazenda" placeholder="Ex: Fazenda Boa Esperança">
+            </div>
+            <div class="form-group">
+                <label for="inputCidade">Cidade - UF</label>
+                <input type="text" id="inputCidade" name="cidade_estado" list="listaCidades" placeholder="Aguarde, carregando cidades...">
+                <datalist id="listaCidades"></datalist>
+                <small id="statusIBGE" style="color: #666; display: block; margin-top: 5px;">Buscando cidades...</small>
+            </div>
+            <div class="form-group">
+                <label for="area_total">Área Total (Hectares)</label>
+                <input type="number" step="0.01" id="area_total" name="area_total" placeholder="Ex: 150.5">
+            </div>
 
-            <label>Senha</label>
-            <input type="password" name="password" required placeholder="******">
-
-            <div class="separador"></div>
-
-            <label>Nome da Propriedade</label>
-            <input type="text" name="nome_fazenda" required placeholder="Ex: Fazenda Santa Fé">
-
-            <label>Localização (Cidade - UF)</label>
-            <input type="text" name="cidade_estado" id="inputCidade" list="listaCidades"
-                   required placeholder="Carregando cidades..." autocomplete="off">
-            <datalist id="listaCidades"></datalist>
-            <small id="statusIBGE" class="helper-text">🔄 Conectando ao IBGE...</small>
-
-            <label>Área Total (Hectares)</label>
-            <input type="number" step="0.01" name="area_total" placeholder="0.00">
-
-            <button type="submit" class="btn-primary">FINALIZAR CADASTRO</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Cadastrar</button>
         </form>
 
-        <br>
-        <a href="{{ url_for('auth.login') }}" class="link-secondary">Já tem conta? Faça Login</a>
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{{ url_for('auth.login') }}" style="color: var(--primary-color); text-decoration: none;">Já tem uma conta? Faça Login</a>
+        </div>
     </div>
 
     <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const dataList  = document.getElementById('listaCidades');
-        const statusMsg = document.getElementById('statusIBGE');
-        const inputCidade = document.getElementById('inputCidade');
-        const url = "{{ url_for('api.proxy_cidades') }}";
-
-        fetch(url)
-            .then(res => res.json())
-            .then(cidades => {
-                if (cidades.error) throw new Error(cidades.error);
-
-                let options = '';
-                cidades.sort((a, b) => a.nome.localeCompare(b.nome));
-                cidades.forEach(c => {
-                    options += `<option value="${c.nome} - ${c.uf}">`;
-                });
-
-                dataList.innerHTML = options;
-                statusMsg.innerText = '';
-                inputCidade.placeholder = "Digite sua cidade...";
-            })
-            .catch(err => {
-                console.error(err);
-                statusMsg.innerText = "Erro ao carregar lista. Digite manualmente.";
-                statusMsg.style.color = "var(--danger-color)";
-            });
-
-        const formularios = document.querySelectorAll("form");
-        
-        formularios.forEach(form => {
-            form.addEventListener("submit", function(event) {
-                const botaoSubmit = form.querySelector("button[type='submit']");
-                
-                if (botaoSubmit) {
-                    if (botaoSubmit.classList.contains("btn-loading")) {
-                        event.preventDefault();
-                        return;
-                    }
-                    botaoSubmit.classList.add("btn-loading");
-                    botaoSubmit.setAttribute("disabled", "true");
+        document.addEventListener("DOMContentLoaded", function() {
+            // --- 1. TOASTS (Notificações Flutuantes) ---
+            const alertas = document.querySelectorAll('.alert, .alert-error');
+            if (alertas.length > 0) {
+                let container = document.getElementById('toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'toast-container';
+                    document.body.appendChild(container);
                 }
+                alertas.forEach(alerta => {
+                    alerta.style.display = 'none';
+                    const isError = alerta.classList.contains('alert-error') || 
+                                   (alerta.style.color && alerta.style.color.includes('danger')) ||
+                                   alerta.innerText.includes('Erro') || alerta.innerText.includes('❌');
+                    const toast = document.createElement('div');
+                    toast.className = 'toast ' + (isError ? 'error' : 'success');
+                    toast.innerText = alerta.innerText.replace('❌', '').replace('✅', '').trim();
+                    container.appendChild(toast);
+                    setTimeout(() => {
+                        toast.style.animation = 'fadeOutToast 0.5s ease-out forwards';
+                        setTimeout(() => toast.remove(), 500);
+                    }, 4000);
+                });
+            }
+
+            // --- 2. PREVENÇÃO DE DUPLO CLIQUE ---
+            const formularios = document.querySelectorAll("form");
+            formularios.forEach(form => {
+                form.addEventListener("submit", function(event) {
+                    const botaoSubmit = form.querySelector("button[type='submit']");
+                    if (botaoSubmit) {
+                        if (botaoSubmit.classList.contains("btn-loading")) {
+                            event.preventDefault();
+                            return;
+                        }
+                        botaoSubmit.classList.add("btn-loading");
+                        botaoSubmit.setAttribute("disabled", "true");
+                        botaoSubmit.innerText = "Processando...";
+                    }
+                });
             });
+
+            // --- 3. CACHE LOCAL DO IBGE (30 DIAS) ---
+            const dataList = document.getElementById('listaCidades');
+            const statusMsg = document.getElementById('statusIBGE');
+            const inputCidade = document.getElementById('inputCidade');
+            const url_api = "{{ url_for('api.proxy_cidades') }}";
+            
+            const CACHE_KEY_CIDADES = 'cache_ibge_cidades';
+            const TEMPO_CACHE_CIDADES = 30 * 24 * 60 * 60 * 1000; 
+
+            if (dataList && statusMsg && inputCidade) {
+                function renderizarCidades(cidades) {
+                    let options = '';
+                    cidades.sort((a, b) => a.nome.localeCompare(b.nome));
+                    cidades.forEach(c => {
+                        options += `<option value="${c.nome} - ${c.uf}">`;
+                    });
+                    dataList.innerHTML = options;
+                    statusMsg.innerText = '';
+                    if (!inputCidade.value) {
+                        inputCidade.placeholder = "Digite sua cidade...";
+                    }
+                }
+
+                function carregarCidades() {
+                    const cacheSalvo = localStorage.getItem(CACHE_KEY_CIDADES);
+                    if (cacheSalvo) {
+                        const cache = JSON.parse(cacheSalvo);
+                        const tempoPassado = Date.now() - cache.timestamp;
+                        if (tempoPassado < TEMPO_CACHE_CIDADES) {
+                            console.log("⚡ Cidades carregadas do LocalStorage");
+                            renderizarCidades(cache.dados);
+                            return; 
+                        }
+                    }
+                    console.log("🌍 Buscando cidades no IBGE...");
+                    fetch(url_api)
+                        .then(res => res.json())
+                        .then(cidades => {
+                            if (cidades.error) throw new Error(cidades.error);
+                            localStorage.setItem(CACHE_KEY_CIDADES, JSON.stringify({
+                                timestamp: Date.now(),
+                                dados: cidades
+                            }));
+                            renderizarCidades(cidades);
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            statusMsg.innerText = "Erro ao carregar lista. Digite manualmente.";
+                            statusMsg.style.color = "var(--danger-color)";
+                        });
+                }
+                carregarCidades();
+            }
         });
-    });
-</script>
+    </script>
 </body>
 </html>

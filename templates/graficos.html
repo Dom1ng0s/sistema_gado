@@ -24,11 +24,19 @@
     </div>
 
     <div class="grafico-container">
-        <div class="grafico-box" style="display: block;"><h2>Composição (Sexo)</h2><canvas id="chartSexo"></canvas></div>
-        <div class="grafico-box" style="display: block;"><h2>Distribuição de Peso (@)</h2><canvas id="chartPeso"></canvas></div>
+        <div class="grafico-box" style="display: block;">
+            <h2>Composição (Sexo)</h2>
+            <div id="loadSexo" style="padding: 40px; color: var(--color-musgo);">🔄 Carregando dados...</div>
+            <canvas id="chartSexo" style="display:none;"></canvas>
+        </div>
+        <div class="grafico-box" style="display: block;">
+            <h2>Distribuição de Peso (@)</h2>
+            <div id="loadPeso" style="padding: 40px; color: var(--color-musgo);">🔄 Carregando dados...</div>
+            <canvas id="chartPeso" style="display:none;"></canvas>
+        </div>
         <div class="grafico-box">
             <h2>GMD Médio do Rebanho</h2>
-            <div class="kpi-valor" id="txtGMD">--</div>
+            <div class="kpi-valor" id="txtGMD">🔄</div>
             <div class="kpi-sub">kg/dia (Média Global)</div>
         </div>
     </div>
@@ -48,8 +56,14 @@
         function desenharGraficos(usarTexturas) {
             if (!dadosGlobais) return;
             const paleta = usarTexturas ? CORES_TEXTURA : CORES_PADRAO;
+            
             if (chartSexo) chartSexo.destroy();
             if (chartPeso) chartPeso.destroy();
+
+            document.getElementById('loadSexo').style.display = 'none';
+            document.getElementById('chartSexo').style.display = 'block';
+            document.getElementById('loadPeso').style.display = 'none';
+            document.getElementById('chartPeso').style.display = 'block';
 
             const ctxSexo = document.getElementById('chartSexo').getContext('2d');
             chartSexo = new Chart(ctxSexo, {
@@ -77,13 +91,59 @@
 
         function alternarCores() { desenharGraficos(document.getElementById('daltonicoSwitch').checked); }
 
-        fetch("{{ url_for('api.dados_graficos_api') }}")
-            .then(res => res.json())
-            .then(dados => {
-                if (dados.error) { alert("Erro: " + dados.error); }
-                else { dadosGlobais = dados; desenharGraficos(false); }
-            })
-            .catch(err => console.error(err));
+        // --- FASE 4: CACHE INTELIGENTE NO NAVEGADOR (LOCALSTORAGE) ---
+        const CACHE_KEY = 'cache_graficos_rebanho';
+        const TEMPO_CACHE_MS = 5 * 60 * 1000; // 5 minutos em milissegundos
+
+        function carregarDados() {
+            // 1. Tenta buscar do armazenamento do navegador
+            const cacheSalvo = localStorage.getItem(CACHE_KEY);
+            
+            if (cacheSalvo) {
+                const cache = JSON.parse(cacheSalvo);
+                const tempoPassado = Date.now() - cache.timestamp;
+                
+                // Se o cache tem menos de 5 minutos, usa ele e aborta o fetch!
+                if (tempoPassado < TEMPO_CACHE_MS) {
+                    console.log("⚡ Carregado instantaneamente do LocalStorage");
+                    dadosGlobais = cache.dados;
+                    desenharGraficos(false);
+                    return; 
+                }
+            }
+
+            // 2. Se não tem cache ou já passou de 5 min, busca no servidor paralelamente
+            console.log("🌍 Buscando dados atualizados no servidor...");
+            Promise.all([
+                fetch("{{ url_for('api.graficos_sexo') }}").then(res => res.json()),
+                fetch("{{ url_for('api.graficos_peso') }}").then(res => res.json()),
+                fetch("{{ url_for('api.graficos_gmd') }}").then(res => res.json())
+            ]).then(([dadosSexo, dadosPeso, dadosGmd]) => {
+                if (dadosSexo.error || dadosPeso.error || dadosGmd.error) throw new Error("Falha na API");
+                
+                dadosGlobais = { 
+                    sexo: dadosSexo, 
+                    peso: dadosPeso, 
+                    gmd_medio: dadosGmd.gmd_medio 
+                };
+
+                // 3. Salva a nova cópia no navegador com a hora exata
+                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                    timestamp: Date.now(),
+                    dados: dadosGlobais
+                }));
+
+                desenharGraficos(false);
+            }).catch(err => {
+                console.error(err);
+                document.getElementById('loadSexo').innerText = "Falha de conexão";
+                document.getElementById('loadPeso').innerText = "Falha de conexão";
+                document.getElementById('txtGMD').innerText = "--";
+            });
+        }
+
+        // Inicia o processo
+        carregarDados();
     </script>
 </body>
 </html>
