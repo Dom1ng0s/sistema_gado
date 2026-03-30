@@ -24,35 +24,7 @@ O SGG resolve isso com uma abordagem **Performance-First**: a lógica pesada fic
 
 #### 🏗️ Arquitetura e Decisões Técnicas
 
-```mermaid
-graph TD
-    subgraph Frontend
-        A["Navegador do Usuário <br> (HTML5, CSS3, Chart.js)"]
-    end
-
-    subgraph Backend MVC
-        B["Flask Controladores & Rotas <br> (Python)"]
-        C["Connection Pooling <br> (mysql-connector-python)"]
-        
-        B <--> C
-    end
-
-    subgraph Database Operations
-        D[("MySQL 8.0 <br> Tabelas Brutas")]
-        E["Views SQL Otimizadas <br> (GMD & Fluxo de Caixa)"]
-        F["Índices Compostos <br> (idx_pesagens_otimizada)"]
-
-        D -->|"Processamento Delegado"| E
-        F -.->|"Buscas instantâneas"| D
-    end
-
-    A <-->|"Requisições HTTP / Paginação"| B
-    C <-->|"Consultas Leves e Rápidas"| E
-
-    %% Estilização Básica
-    style E fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px
-    style C fill:#e8f5e9,stroke:#43a047,stroke-width:2px
-```
+![Arquitetura SGG](photos/SGG-Arch.png)
 
 ##### 🧠 Inteligência no Banco de Dados (Views SQL)
 Em vez de trazer todos os registros para o Python calcular, o SGG usa **Views otimizadas** — o banco entrega o dado agregado pronto, com custo O(1) para a aplicação:
