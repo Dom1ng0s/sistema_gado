@@ -44,14 +44,19 @@ def get_custos_por_tipo_trimestre(user_id, data_limite):
 
 
 def get_custos_por_ano(user_id, ano):
-    """Detalhes de custos operacionais de um ano específico."""
+    """Custos operacionais + medicações/vacinas de um ano, ordenados por data."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT data_custo, categoria, tipo_custo, valor, descricao "
-            "FROM custos_operacionais "
-            "WHERE user_id = %s AND YEAR(data_custo) = %s AND deleted_at IS NULL "
-            "ORDER BY data_custo DESC",
-            (user_id, ano)
+            "(SELECT data_custo, categoria, tipo_custo, valor, descricao "
+            " FROM custos_operacionais "
+            " WHERE user_id = %s AND YEAR(data_custo) = %s AND deleted_at IS NULL) "
+            "UNION ALL "
+            "(SELECT m.data_aplicacao, 'Sanitário', m.nome_medicamento, m.custo, m.observacoes "
+            " FROM medicacoes m JOIN animais a ON m.animal_id = a.id "
+            " WHERE a.user_id = %s AND YEAR(m.data_aplicacao) = %s "
+            "   AND m.deleted_at IS NULL AND a.deleted_at IS NULL) "
+            "ORDER BY 1 DESC",
+            (user_id, ano, user_id, ano)
         )
         return cursor.fetchall()
 

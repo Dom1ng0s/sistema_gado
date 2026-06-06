@@ -69,6 +69,7 @@ def db_setup():
             nome_medicamento VARCHAR(100) NOT NULL,
             custo DECIMAL(10, 2),
             observacoes TEXT,
+            deleted_at DATETIME NULL DEFAULT NULL,
             FOREIGN KEY (animal_id) REFERENCES animais(id)
         )""")
 
