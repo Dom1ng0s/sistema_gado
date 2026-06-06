@@ -2,6 +2,10 @@ from db_config import get_db_cursor
 from datetime import datetime
 
 
+# ATENÇÃO: `conds` deve conter apenas literais hardcoded (ex.: "deleted_at IS NULL").
+# Dados externos (usuário, banco, request) nunca devem ser interpolados em `conds` —
+# sempre vão para `params` e chegam ao banco via placeholder %s.
+# Adicionar um valor externo diretamente em `conds` introduz risco de SQL injection.
 def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False):
     conds = ["user_id = %s"]
     params = [user_id]
@@ -11,7 +15,7 @@ def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False):
         conds.append("deleted_at IS NULL")
     if termo:
         conds.append("brinco LIKE %s")
-        params.append(f"{termo}%")
+        params.append(termo + "%")
     if status == 'ativos':
         conds.append("data_venda IS NULL")
     elif status == 'vendidos':

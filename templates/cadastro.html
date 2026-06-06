@@ -15,6 +15,7 @@
     {% endif %}
 
     <form action="{{ url_for('operacional.cadastro') }}" method="POST" class="form-container">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label>Número do Brinco:</label>
             <input type="text" name="brinco" required>

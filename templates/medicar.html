@@ -9,6 +9,7 @@
     <h1>Adicionar Medicação / Vacina</h1>
 
     <form action="{{ url_for('operacional.medicar', id_animal=id_animal) }}" method="POST" class="form-container">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label>Data da Aplicação:</label>
             <input type="date" name="data_aplicacao" required>

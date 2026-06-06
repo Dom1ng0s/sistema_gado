@@ -19,6 +19,7 @@
         <h1 style="border-bottom: 2px solid var(--primary-color); padding-bottom: 10px;">💉 Manejo Sanitário em Lote</h1>
 
         <form action="{{ url_for('operacional.vacinacao_coletiva') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="barra-fixa">
                 <h3 style="margin-top: 0; color: var(--primary-color);">1. Dados da Aplicação</h3>

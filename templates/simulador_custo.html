@@ -11,6 +11,7 @@
     <p>Ajuste os valores abaixo para calcular o custo real da sua @ produzida.</p>
 
     <form action="{{ url_for('financeiro.simulador_custo') }}" method="POST" class="form-container" style="max-width: 800px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="grid-sim">
             <div>
                 <h3>Parâmetros Produtivos</h3>

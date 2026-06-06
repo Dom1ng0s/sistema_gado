@@ -23,6 +23,7 @@
         {% endwith %}
 
         <form method="POST" action="{{ url_for('configuracoes.settings') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="nome_fazenda">Nome da Fazenda</label>
                 <input type="text" id="nome_fazenda" name="nome_fazenda" value="{{ config.nome_fazenda if config else '' }}" placeholder="Ex: Fazenda Boa Esperança">

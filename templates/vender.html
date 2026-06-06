@@ -11,6 +11,7 @@
         <p style="color: var(--color-musgo);">Atenção: Ao confirmar, o animal sairá do estoque de ativos.</p>
 
         <form action="{{ url_for('operacional.vender', id_animal=id_animal) }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label>Data da Venda:</label>
                 <input type="date" name="data_venda" required>

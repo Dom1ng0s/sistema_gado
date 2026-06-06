@@ -19,6 +19,7 @@
         {% endwith %}
 
         <form method="POST" action="{{ url_for('auth.novo_usuario') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="username">Usuário</label>
                 <input type="text" id="username" name="username" required placeholder="Escolha um nome de usuário">

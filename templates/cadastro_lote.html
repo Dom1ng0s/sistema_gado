@@ -58,6 +58,7 @@
     {% endif %}
 
     <form action="{{ url_for('operacional.cadastro_lote') }}" method="POST" class="form-container" style="max-width: 900px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <h3 style="color: var(--primary-color); border-bottom: 2px solid var(--color-palha);">1. Dados da Negociação</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">

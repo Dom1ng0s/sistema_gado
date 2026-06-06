@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 import math
 import logging
 from repositories import animal_repository
+from routes.validators import validate
 
 operacional_bp = Blueprint('operacional', __name__)
 logger = logging.getLogger(__name__)
@@ -58,6 +59,15 @@ def restaurar_animal(id_animal):
 def cadastro():
     msg = None
     if request.method == "POST":
+        errors = validate(request.form, [
+            ('brinco',       {'required': True, 'type': 'str',   'max_len': 50,   'label': 'Brinco'}),
+            ('sexo',         {'required': True, 'choices': ['M', 'F'],             'label': 'Sexo'}),
+            ('data_compra',  {'required': True, 'type': 'date',                   'label': 'Data de compra'}),
+            ('peso_compra',  {'required': True, 'type': 'float', 'min_val': 0.1,  'max_val': 2000, 'label': 'Peso de compra'}),
+            ('valor_arroba', {'required': True, 'type': 'float', 'min_val': 0.01,                  'label': 'Valor da arroba'}),
+        ])
+        if errors:
+            return render_template("cadastro.html", mensagem=errors[0]), 400
         try:
             brinco = request.form["brinco"].strip()
             sexo = request.form["sexo"]
@@ -66,7 +76,7 @@ def cadastro():
             val_arr = float(request.form["valor_arroba"])
 
             if animal_repository.check_brinco_exists(brinco, current_user.id):
-                return render_template("cadastro.html", mensagem="Brinco já existe.")
+                return render_template("cadastro.html", mensagem="Brinco já existe."), 400
 
             animal_repository.cadastrar_animal(brinco, sexo, data, (peso / 30) * val_arr, peso, current_user.id)
             msg = f"Animal {brinco} cadastrado."
@@ -104,6 +114,13 @@ def detalhes(id_animal):
 @login_required
 def vender(id_animal):
     if request.method == 'POST':
+        errors = validate(request.form, [
+            ('data_venda',   {'required': True, 'type': 'date',                   'label': 'Data de venda'}),
+            ('peso_venda',   {'required': True, 'type': 'float', 'min_val': 0.1,  'max_val': 2000, 'label': 'Peso de venda'}),
+            ('valor_arroba', {'required': True, 'type': 'float', 'min_val': 0.01,                  'label': 'Valor da arroba'}),
+        ])
+        if errors:
+            return render_template('vender.html', id_animal=id_animal, mensagem=errors[0]), 400
         try:
             dt = request.form['data_venda']
             peso = float(request.form['peso_venda'])
@@ -118,6 +135,14 @@ def vender(id_animal):
 @login_required
 def medicar(id_animal):
     if request.method == 'POST':
+        errors = validate(request.form, [
+            ('data_aplicacao', {'required': True,  'type': 'date',                  'label': 'Data de aplicação'}),
+            ('nome',           {'required': True,  'type': 'str',  'max_len': 200,  'label': 'Nome do medicamento'}),
+            ('custo',          {'required': True,  'type': 'float','min_val': 0,    'label': 'Custo'}),
+            ('obs',            {'required': False, 'type': 'str',  'max_len': 500,  'label': 'Observação'}),
+        ])
+        if errors:
+            return render_template('medicar.html', id_animal=id_animal, mensagem=errors[0]), 400
         try:
             animal_repository.registrar_medicacao(
                 id_animal, current_user.id,
@@ -133,6 +158,12 @@ def medicar(id_animal):
 @login_required
 def nova_pesagem(id_animal):
     if request.method == 'POST':
+        errors = validate(request.form, [
+            ('data_pesagem', {'required': True, 'type': 'date',                  'label': 'Data da pesagem'}),
+            ('peso',         {'required': True, 'type': 'float','min_val': 0.1, 'max_val': 2000, 'label': 'Peso'}),
+        ])
+        if errors:
+            return render_template('nova_pesagem.html', id_animal=id_animal, mensagem=errors[0]), 400
         try:
             animal_repository.registrar_pesagem(
                 id_animal, current_user.id,
@@ -172,7 +203,17 @@ def vacinacao_coletiva():
         try:
             animais_ids = request.form.getlist('animais_ids')
             if not animais_ids:
-                return render_template('vacinacao_lote.html', erro="Nenhum animal selecionado!", animais=[])
+                return render_template('vacinacao_lote.html', erro="Nenhum animal selecionado!", animais=[]), 400
+
+            errors = validate(request.form, [
+                ('data_aplicacao', {'required': True,  'type': 'date',                  'label': 'Data de aplicação'}),
+                ('nome',           {'required': True,  'type': 'str',  'max_len': 200,  'label': 'Nome do produto'}),
+                ('custo',          {'required': True,  'type': 'float','min_val': 0,    'label': 'Custo'}),
+                ('obs',            {'required': False, 'type': 'str',  'max_len': 500,  'label': 'Observação'}),
+            ])
+            if errors:
+                lista_animais = animal_repository.get_animais_ativos(current_user.id)
+                return render_template('vacinacao_lote.html', erro=errors[0], animais=lista_animais), 400
 
             animal_repository.insert_medicacao_lote(
                 animais_ids,
@@ -198,18 +239,33 @@ def vacinacao_coletiva():
 def cadastro_lote():
     msg = None
     if request.method == "POST":
+        errors = validate(request.form, [
+            ('codigo_lote',  {'required': True,  'type': 'str',   'max_len': 100,  'label': 'Código do lote'}),
+            ('data_compra',  {'required': True,  'type': 'date',                   'label': 'Data de compra'}),
+            ('valor_arroba', {'required': True,  'type': 'float', 'min_val': 0.01, 'label': 'Valor da arroba'}),
+            ('descricao',    {'required': False, 'type': 'str',   'max_len': 500,  'label': 'Descrição'}),
+        ])
+        brincos = request.form.getlist('brincos[]')
+        pesos_str = request.form.getlist('pesos[]')
+        if not brincos:
+            errors.append("A tabela de animais está vazia.")
+        else:
+            if any(not b.strip() for b in brincos):
+                errors.append("Todos os brincos devem ser preenchidos.")
+            for i, p in enumerate(pesos_str, 1):
+                try:
+                    if float(p.replace(',', '.')) <= 0:
+                        errors.append(f"Peso do animal {i} deve ser maior que zero.")
+                except (ValueError, AttributeError):
+                    errors.append(f"Peso do animal {i} é inválido.")
+        if errors:
+            return render_template("cadastro_lote.html", mensagem=errors[0]), 400
         try:
             codigo_lote = request.form["codigo_lote"].strip()
             descricao = request.form["descricao"]
             data_compra = request.form["data_compra"]
             valor_arroba = float(request.form["valor_arroba"])
-
-            brincos = request.form.getlist('brincos[]')
             sexos = request.form.getlist('sexos[]')
-            pesos_str = request.form.getlist('pesos[]')
-
-            if not brincos:
-                return render_template("cadastro_lote.html", mensagem="Erro: A tabela de animais está vazia.")
 
             animais_data = [
                 (brinco, sexo, float(peso_txt), (float(peso_txt) / 30) * valor_arroba)

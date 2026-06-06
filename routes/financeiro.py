@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from datetime import date, timedelta
 import logging
 from repositories import animal_repository, financeiro_repository
+from routes.validators import validate
 
 financeiro_bp = Blueprint('financeiro', __name__)
 logger = logging.getLogger(__name__)
@@ -105,6 +106,17 @@ def simulador_custo():
         logger.error(f"Erro simulador: {e}", exc_info=True)
 
     if request.method == 'POST':
+        errors = validate(request.form, [
+            ('qtd_animais',        {'required': True, 'type': 'int',   'min_val': 1,    'max_val': 99999, 'label': 'Qtd. animais'}),
+            ('gmd',                {'required': True, 'type': 'float', 'min_val': 0,    'max_val': 10,    'label': 'GMD'}),
+            ('custo_arrendamento', {'required': True, 'type': 'float', 'min_val': 0,                      'label': 'Custo arrendamento'}),
+            ('custo_suplementacao',{'required': True, 'type': 'float', 'min_val': 0,                      'label': 'Custo suplementação'}),
+            ('custo_mao_obra',     {'required': True, 'type': 'float', 'min_val': 0,                      'label': 'Custo mão de obra'}),
+            ('custos_extras',      {'required': True, 'type': 'float', 'min_val': 0,                      'label': 'Custos extras'}),
+        ])
+        if errors:
+            return render_template('simulador_custo.html', sugestoes=sugestoes, resultados={'erro': errors[0]}), 400
+
         try:
             qtd = int(request.form.get('qtd_animais', 1))
             gmd = float(request.form.get('gmd', '0').replace(',', '.'))
@@ -138,18 +150,30 @@ def simulador_custo():
 def custos_operacionais():
     msg = None
     if request.method == 'POST':
-        try:
-            cat = request.form.get('categoria')
-            tipo = request.form.get('tipo_fixo') if cat == 'Fixo' else request.form.get('tipo_variavel')
-            val = float(request.form.get('valor'))
-            dt = request.form.get('data')
-            desc = request.form.get('descricao')
+        errors = validate(request.form, [
+            ('categoria', {'required': True,  'choices': ['Fixo', 'Variavel'],      'label': 'Categoria'}),
+            ('valor',     {'required': True,  'type': 'float', 'min_val': 0.01,     'label': 'Valor'}),
+            ('data',      {'required': True,  'type': 'date',                       'label': 'Data'}),
+            ('descricao', {'required': False, 'type': 'str',   'max_len': 500,      'label': 'Descrição'}),
+        ])
+        cat = request.form.get('categoria', '').strip()
+        tipo_field = 'tipo_fixo' if cat == 'Fixo' else 'tipo_variavel'
+        if not request.form.get(tipo_field, '').strip():
+            errors.append("'Tipo' é obrigatório.")
+        if errors:
+            msg = errors[0]
+        else:
+            try:
+                tipo = request.form.get(tipo_field)
+                val = float(request.form.get('valor'))
+                dt = request.form.get('data')
+                desc = request.form.get('descricao')
 
-            financeiro_repository.insert_custo_operacional(current_user.id, cat, tipo, val, dt, desc)
-            msg = "Custo registrado com sucesso."
-        except Exception as e:
-            logger.error(f"Erro custos: {e}", exc_info=True)
-            msg = f"Erro: {e}"
+                financeiro_repository.insert_custo_operacional(current_user.id, cat, tipo, val, dt, desc)
+                msg = "Custo registrado com sucesso."
+            except Exception as e:
+                logger.error(f"Erro custos: {e}", exc_info=True)
+                msg = f"Erro: {e}"
 
     cats_fixo, cats_variavel = [], []
     try:
@@ -171,17 +195,25 @@ def agendamentos():
     hoje = date.today()
 
     if request.method == 'POST':
-        try:
-            financeiro_repository.insert_agendamento(
-                current_user.id,
-                request.form.get('descricao'),
-                float(request.form.get('valor')),
-                request.form.get('vencimento'),
-            )
-            msg = "Agendamento salvo com sucesso!"
-        except Exception as e:
-            logger.error(f"Erro ao agendar: {e}", exc_info=True)
-            msg = f"Erro ao salvar: {e}"
+        errors = validate(request.form, [
+            ('descricao',  {'required': True, 'type': 'str',   'max_len': 500, 'label': 'Descrição'}),
+            ('valor',      {'required': True, 'type': 'float', 'min_val': 0.01,'label': 'Valor'}),
+            ('vencimento', {'required': True, 'type': 'date',                  'label': 'Vencimento'}),
+        ])
+        if errors:
+            msg = errors[0]
+        else:
+            try:
+                financeiro_repository.insert_agendamento(
+                    current_user.id,
+                    request.form.get('descricao'),
+                    float(request.form.get('valor')),
+                    request.form.get('vencimento'),
+                )
+                msg = "Agendamento salvo com sucesso!"
+            except Exception as e:
+                logger.error(f"Erro ao agendar: {e}", exc_info=True)
+                msg = f"Erro ao salvar: {e}"
 
     contas = []
     try:

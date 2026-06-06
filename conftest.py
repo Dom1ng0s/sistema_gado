@@ -172,6 +172,7 @@ def app(db_setup):
     flask_app.config.update({
         "TESTING": True,
         "WTF_CSRF_ENABLED": False,
+        "RATELIMIT_ENABLED": False,
     })
 
     import db_config

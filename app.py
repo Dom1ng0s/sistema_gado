@@ -2,6 +2,8 @@ import os
 import logging
 from flask import Flask, redirect, url_for
 from flask_login import LoginManager, current_user
+from flask_wtf.csrf import CSRFProtect
+from extensions import limiter
 from models import User
 from routes.auth import auth_bp
 from routes.financeiro import financeiro_bp
@@ -14,6 +16,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
+csrf = CSRFProtect(app)
+limiter.init_app(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)

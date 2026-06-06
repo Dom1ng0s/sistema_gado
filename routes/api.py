@@ -3,17 +3,20 @@ from flask_login import login_required, current_user
 import logging
 import requests
 from repositories import animal_repository, configuracao_repository
+from extensions import limiter
 
 api_bp = Blueprint('api', __name__)
 logger = logging.getLogger(__name__)
 
 @api_bp.route('/graficos')
 @login_required
+@limiter.limit("60 per minute")
 def graficos_page():
     return render_template('graficos.html')
 
 @api_bp.route('/api/graficos/sexo')
 @login_required
+@limiter.limit("60 per minute")
 def graficos_sexo():
     try:
         rows = animal_repository.get_contagem_por_sexo(current_user.id)
@@ -24,6 +27,7 @@ def graficos_sexo():
 
 @api_bp.route('/api/graficos/peso')
 @login_required
+@limiter.limit("60 per minute")
 def graficos_peso():
     try:
         rows = animal_repository.get_pesos_atuais_rebanho(current_user.id)
@@ -45,6 +49,7 @@ def graficos_peso():
 
 @api_bp.route('/api/graficos/gmd')
 @login_required
+@limiter.limit("60 per minute")
 def graficos_gmd():
     try:
         gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
@@ -56,6 +61,7 @@ def graficos_gmd():
 # --- FIM DAS ROTAS DE GRÁFICOS ---
 
 @api_bp.route('/proxy-cidades')
+@limiter.limit("10 per minute")
 def proxy_cidades():
     """
     Busca cidades na API Oficial do IBGE.
@@ -87,6 +93,7 @@ def proxy_cidades():
 
 @api_bp.route('/cotacoes-regionais')
 @login_required
+@limiter.limit("30 per minute")
 def cotacoes_regionais():
     """
     1. Pega o estado (UF) do usuário.
@@ -137,6 +144,7 @@ def cotacoes_regionais():
 
 @api_bp.route('/cotacoes-brasil')
 @login_required
+@limiter.limit("30 per minute")
 def cotacoes_brasil():
     """Retorna a lista completa de cotações (Boi e Novilha) de todas as praças."""
     try:

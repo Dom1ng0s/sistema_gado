@@ -3,6 +3,7 @@ from flask_login import login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from db_config import get_db_cursor
 from models import User
+from routes.validators import validate
 import logging
 
 auth_bp = Blueprint('auth', __name__)
@@ -14,9 +15,16 @@ def login():
         return redirect(url_for('operacional.painel'))
 
     if request.method == 'POST':
+        errors = validate(request.form, [
+            ('username', {'required': True, 'type': 'str', 'max_len': 150, 'label': 'Usuário'}),
+            ('password', {'required': True, 'type': 'str', 'max_len': 255, 'label': 'Senha'}),
+        ])
+        if errors:
+            return render_template('login.html', mensagem=errors[0]), 400
+
         username = request.form['username']
         password = request.form['password']
-        
+
         try:
             with get_db_cursor() as cursor:
                 cursor.execute("SELECT id, username, password_hash FROM usuarios WHERE username = %s", (username,))
@@ -44,17 +52,23 @@ def novo_usuario():
     mensagem = None
     if request.method == 'POST':
         try:
+            errors = validate(request.form, [
+                ('username',    {'required': True,  'type': 'str',   'max_len': 150, 'label': 'Usuário'}),
+                ('password',    {'required': True,  'type': 'str',   'min_len': 6, 'max_len': 255, 'label': 'Senha'}),
+                ('nome_fazenda',{'required': False, 'type': 'str',   'max_len': 255, 'label': 'Nome da fazenda'}),
+                ('area_total',  {'required': False, 'type': 'float', 'min_val': 0,   'label': 'Área total'}),
+            ])
+            if errors:
+                return render_template('novo_usuario.html', mensagem=errors[0]), 400
+
             # 1. Coleta Dados do Formulário
             novo_user = request.form['username'].strip()
             nova_senha = request.form['password'].strip()
-            
+
             nome_fazenda = request.form.get('nome_fazenda', '').strip()
             cidade = request.form.get('cidade_estado', '').strip()
             area = request.form.get('area_total')
             if not area: area = 0
-
-            if not novo_user or not nova_senha:
-                 return render_template('novo_usuario.html', mensagem="Usuário e Senha são obrigatórios.")
 
             with get_db_cursor() as cursor:
                 # 2. Verifica se usuário já existe

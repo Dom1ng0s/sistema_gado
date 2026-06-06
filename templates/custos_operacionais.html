@@ -27,6 +27,7 @@
     {% endif %}
 
     <form action="{{ url_for('financeiro.custos_operacionais') }}" method="POST" class="form-container">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label>Data do Custo:</label>
             <input type="date" name="data" required>

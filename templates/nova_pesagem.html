@@ -9,6 +9,7 @@
     <h1>Registrar Pesagem</h1>
 
     <form action="{{ url_for('operacional.nova_pesagem', id_animal=id_animal) }}" method="POST" class="form-container">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label>Data da Pesagem:</label>
             <input type="date" name="data_pesagem" required>
