@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; padding: 0 10mm; }
+  h1   { font-size: 20px; color: #2e7d32; margin-bottom: 2px; }
+  h2   { font-size: 14px; color: #2e7d32; margin: 16px 0 6px; border-bottom: 1px solid #aed581; padding-bottom: 3px; }
+  .header  { border-bottom: 2px solid #2e7d32; padding-bottom: 8px; margin-bottom: 12px; }
+  .meta    { font-size: 11px; color: #555; margin-top: 4px; }
+  table    { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th       { background: #e8f5e9; color: #1b5e20; padding: 5px 8px; text-align: left; font-size: 11px; }
+  td       { padding: 4px 8px; border-bottom: 1px solid #e0e0e0; font-size: 11px; }
+  tr:nth-child(even) td { background: #f9fbe7; }
+  .num     { text-align: right; }
+  .pos     { color: #2e7d32; font-weight: bold; }
+  .neg     { color: #c62828; font-weight: bold; }
+  .badge   { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; }
+  .low     { background: #ffebee; color: #c62828; }
+  .ok      { background: #e8f5e9; color: #2e7d32; }
+  .none    { color: #999; font-style: italic; }
+  .footer  { margin-top: 20px; font-size: 10px; color: #aaa; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Relatório do Rebanho</h1>
+  <div class="meta">
+    Fazenda: <strong>{{ config[0] if config and config[0] else '—' }}</strong>
+    &nbsp;|&nbsp;
+    Localização: {{ config[1] if config and config[1] else '—' }}
+    &nbsp;|&nbsp;
+    Gerado em: {{ data_geracao }}
+  </div>
+</div>
+
+<h2>Resumo Financeiro — Fluxo de Caixa Anual</h2>
+{% if fluxo %}
+<table>
+  <thead>
+    <tr>
+      <th>Ano</th>
+      <th class="num">Entradas (R$)</th>
+      <th class="num">Compras (R$)</th>
+      <th class="num">Medicações (R$)</th>
+      <th class="num">Custos Op. (R$)</th>
+      <th class="num">Resultado (R$)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in fluxo %}
+    {% set resultado = (row[1] or 0) - ((row[2] or 0) + (row[3] or 0) + (row[4] or 0)) %}
+    <tr>
+      <td>{{ row[0] }}</td>
+      <td class="num">{{ (row[1] or 0)|brl }}</td>
+      <td class="num">{{ (row[2] or 0)|brl }}</td>
+      <td class="num">{{ (row[3] or 0)|brl }}</td>
+      <td class="num">{{ (row[4] or 0)|brl }}</td>
+      <td class="num {% if resultado >= 0 %}pos{% else %}neg{% endif %}">
+        {{ resultado|brl }}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="none">Nenhum dado financeiro disponível.</p>
+{% endif %}
+
+<h2>Listagem de Animais com GMD &nbsp;<small style="font-weight:normal;color:#555;">(GMD médio do rebanho: {{ "%.3f"|format(gmd_medio) }} kg/dia)</small></h2>
+{% if animais %}
+<table>
+  <thead>
+    <tr>
+      <th>Brinco</th>
+      <th>Sexo</th>
+      <th>Dt. Entrada</th>
+      <th class="num">Dias em lote</th>
+      <th class="num">Peso atual (kg)</th>
+      <th class="num">GMD (kg/dia)</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in animais %}
+    <tr>
+      <td>{{ r[1] }}</td>
+      <td>{{ 'Macho' if r[2] == 'M' else 'Fêmea' }}</td>
+      <td>{{ r[3] }}</td>
+      <td class="num">{{ r[5] if r[5] is not none else '—' }}</td>
+      <td class="num">{{ "%.1f"|format(r[6]) if r[6] is not none else '—' }}</td>
+      <td class="num">{{ "%.3f"|format(r[4]) if r[4] is not none else '—' }}</td>
+      <td>
+        {% if r[4] is none %}
+          <span class="badge none">Sem pesagem</span>
+        {% elif r[4] < gmd_medio %}
+          <span class="badge low">Abaixo da média</span>
+        {% else %}
+          <span class="badge ok">Normal</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="none">Nenhum animal ativo no rebanho.</p>
+{% endif %}
+
+<div class="footer">Sistema de Gestão de Gado — relatório gerado automaticamente</div>
+</body>
+</html>

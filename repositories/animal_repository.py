@@ -139,6 +139,42 @@ def get_gmd_medio_rebanho(user_id):
         return float(res[0]) if res and res[0] else 0.0
 
 
+def get_animais_com_gmd(user_id):
+    """Animais ativos com GMD (LEFT JOIN — inclui animais sem pesagem)."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT a.id, a.brinco, a.sexo, a.data_compra, "
+            "       v.gmd, v.dias, v.peso_final "
+            "FROM animais a "
+            "LEFT JOIN v_gmd_analitico v ON a.id = v.animal_id "
+            "WHERE a.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL "
+            "ORDER BY LENGTH(a.brinco), a.brinco",
+            (user_id,)
+        )
+        return cursor.fetchall()
+
+
+def get_animais_abaixo_gmd_medio(user_id):
+    """Animais ativos cujo GMD está abaixo da média do rebanho do usuário."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT sub.animal_id, a.brinco, sub.gmd, sub.gmd_media "
+            "FROM ( "
+            "    SELECT v.animal_id, v.gmd, "
+            "           AVG(v.gmd) OVER () AS gmd_media "
+            "    FROM v_gmd_analitico v "
+            "    JOIN animais a ON v.animal_id = a.id "
+            "    WHERE v.user_id = %s "
+            "      AND a.data_venda IS NULL AND a.deleted_at IS NULL "
+            ") sub "
+            "JOIN animais a ON sub.animal_id = a.id "
+            "WHERE sub.gmd < sub.gmd_media "
+            "ORDER BY sub.gmd ASC",
+            (user_id,)
+        )
+        return cursor.fetchall()
+
+
 # ---- MEDICACOES ----
 
 def get_medicacoes_by_animal(animal_id):

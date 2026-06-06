@@ -33,6 +33,14 @@ app.register_blueprint(operacional_bp)
 app.register_blueprint(config_bp)
 app.register_blueprint(api_bp)
 
+@app.template_filter('brl')
+def format_brl(value):
+    try:
+        return f"{float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except (ValueError, TypeError):
+        return "0,00"
+
+
 @app.context_processor
 def inject_user_info():
     site_name = "Meu Rebanho"

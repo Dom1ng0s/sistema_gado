@@ -1,8 +1,10 @@
-from flask import Blueprint, jsonify, render_template
+from flask import Blueprint, jsonify, render_template, Response
 from flask_login import login_required, current_user
 import logging
 import requests
-from repositories import animal_repository, configuracao_repository
+from datetime import date
+from playwright.sync_api import sync_playwright
+from repositories import animal_repository, configuracao_repository, financeiro_repository
 from extensions import limiter
 
 api_bp = Blueprint('api', __name__)
@@ -56,6 +58,69 @@ def graficos_gmd():
         return jsonify({'gmd_medio': gmd_medio})
     except Exception as e:
         logger.error(f"Erro Gráfico GMD: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@api_bp.route('/api/v1/relatorio/pdf')
+@login_required
+@limiter.limit("6 per minute")
+def relatorio_pdf():
+    try:
+        config    = configuracao_repository.get_configuracao(current_user.id)
+        fluxo     = financeiro_repository.get_fluxo_caixa(current_user.id)
+        animais   = animal_repository.get_animais_com_gmd(current_user.id)
+        gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
+
+        html = render_template('relatorio_pdf.html',
+                               config=config,
+                               fluxo=fluxo,
+                               animais=animais,
+                               gmd_medio=gmd_medio,
+                               data_geracao=date.today().strftime('%d/%m/%Y'))
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page()
+            page.set_content(html, wait_until='load')
+            pdf_bytes = page.pdf(format='A4', margin={
+                'top': '20mm', 'bottom': '20mm',
+                'left': '15mm', 'right': '15mm',
+            })
+            browser.close()
+
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={'Content-Disposition': 'attachment; filename="relatorio_rebanho.pdf"'},
+        )
+    except Exception as e:
+        logger.error(f"Erro relatório PDF: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/api/v1/alertas/gmd')
+@login_required
+@limiter.limit("30 per minute")
+def alerta_gmd():
+    try:
+        rows = animal_repository.get_animais_abaixo_gmd_medio(current_user.id)
+        if not rows:
+            gmd_media = animal_repository.get_gmd_medio_rebanho(current_user.id)
+            return jsonify({
+                'gmd_media_rebanho': round(gmd_media, 3),
+                'total': 0,
+                'animais': [],
+            })
+        gmd_media = round(float(rows[0][3]), 3)
+        return jsonify({
+            'gmd_media_rebanho': gmd_media,
+            'total': len(rows),
+            'animais': [
+                {'id': r[0], 'brinco': r[1], 'gmd_atual': round(float(r[2]), 3)}
+                for r in rows
+            ],
+        })
+    except Exception as e:
+        logger.error(f"Erro alerta GMD: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 # --- FIM DAS ROTAS DE GRÁFICOS ---
