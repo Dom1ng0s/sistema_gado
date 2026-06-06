@@ -1,9 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_required, current_user
-from db_config import get_db_cursor
 import math
 import logging
-from datetime import datetime
+from repositories import animal_repository
 
 operacional_bp = Blueprint('operacional', __name__)
 logger = logging.getLogger(__name__)
@@ -17,31 +16,13 @@ def painel():
     total_pg = 1
 
     try:
-        with get_db_cursor() as cursor:
-            # ADICIONAMOS 'deleted_at IS NULL' COMO REGRA PADRÃO
-            conds, params = ["user_id = %s", "deleted_at IS NULL"], [current_user.id] # <--- MUDANÇA AQUI
-            
-            if termo: 
-                conds.append("brinco LIKE %s")
-                params.append(f"{termo}%")
-            
-            if status == 'ativos': 
-                conds.append("data_venda IS NULL")
-            elif status == 'vendidos': 
-                conds.append("data_venda IS NOT NULL")
-            
-            where = " WHERE " + " AND ".join(conds)
-            
-            # O resto continua igual...
-            cursor.execute(f"SELECT COUNT(*) FROM animais {where}", tuple(params))
-            total = cursor.fetchone()[0]
-            
-            cursor.execute(f"SELECT id, brinco, sexo, data_compra, preco_compra, data_venda, preco_venda FROM animais {where} ORDER BY LENGTH(brinco) ASC, brinco ASC LIMIT %s OFFSET %s", tuple(params + [limit, offset]))
-            animais = cursor.fetchall()
-            if total > 0: total_pg = math.ceil(total / limit)
+        total = animal_repository.count_animais(current_user.id, termo, status)
+        animais = animal_repository.get_animais_paginados(current_user.id, limit, offset, termo, status)
+        if total > 0:
+            total_pg = math.ceil(total / limit)
     except Exception as e:
         logger.error(f"Erro painel: {e}", exc_info=True)
-    
+
     return render_template("index.html", lista_animais=animais, pagina_atual=pg, total_paginas=total_pg, busca=termo, status=status)
 
 @operacional_bp.route('/lixeira')
@@ -54,48 +35,22 @@ def lixeira():
     total_pg = 1
 
     try:
-        with get_db_cursor() as cursor:
-            # FILTRO FIXO: Traz apenas o que tem data de exclusão (deleted_at IS NOT NULL)
-            conds, params = ["user_id = %s", "deleted_at IS NOT NULL"], [current_user.id]
-            
-            if termo:
-                conds.append("brinco LIKE %s")
-                params.append(f"{termo}%")
-            
-            where = " WHERE " + " AND ".join(conds)
-            
-            # Paginação
-            cursor.execute(f"SELECT COUNT(*) FROM animais {where}", tuple(params))
-            total = cursor.fetchone()[0]
-            
-            # Busca os dados (Note que trazemos deleted_at para mostrar na tela)
-            cursor.execute(f"""
-                SELECT id, brinco, sexo, deleted_at 
-                FROM animais {where} 
-                ORDER BY deleted_at DESC 
-                LIMIT %s OFFSET %s
-            """, tuple(params + [limit, offset]))
-            
-            animais = cursor.fetchall()
-            if total > 0: total_pg = math.ceil(total / limit)
-            
+        total = animal_repository.count_animais_lixeira(current_user.id, termo)
+        animais = animal_repository.get_animais_lixeira_paginados(current_user.id, limit, offset, termo)
+        if total > 0:
+            total_pg = math.ceil(total / limit)
     except Exception as e:
         logger.error(f"Erro lixeira: {e}", exc_info=True)
-    
+
     return render_template("lixeira.html", lista_animais=animais, pagina_atual=pg, total_paginas=total_pg, busca=termo)
 
-# 2. ATUALIZE A ROTA DE RESTAURAR (Para voltar para a lixeira)
 @operacional_bp.route('/restaurar_animal/<int:id_animal>')
 @login_required
 def restaurar_animal(id_animal):
     try:
-        with get_db_cursor() as cursor:
-            # Remove a data de exclusão (NULL), trazendo o animal de volta à vida
-            cursor.execute("UPDATE animais SET deleted_at = NULL WHERE id=%s AND user_id=%s", (id_animal, current_user.id))
+        animal_repository.restore_animal(id_animal, current_user.id)
     except Exception as e:
         logger.error(f"Erro restaurar: {e}", exc_info=True)
-    
-    # Redireciona para a lixeira para o usuário ver que o item sumiu de lá (foi restaurado)
     return redirect(url_for('operacional.lixeira'))
 
 @operacional_bp.route("/cadastro", methods=["GET", "POST"])
@@ -104,18 +59,17 @@ def cadastro():
     msg = None
     if request.method == "POST":
         try:
-            brinco, sexo, data = request.form["brinco"].strip(), request.form["sexo"], request.form["data_compra"]
+            brinco = request.form["brinco"].strip()
+            sexo = request.form["sexo"]
+            data = request.form["data_compra"]
             peso = float(request.form["peso_compra"])
             val_arr = float(request.form["valor_arroba"])
-            
-            with get_db_cursor() as cursor:
-                cursor.execute("SELECT id FROM animais WHERE brinco = %s AND user_id = %s", (brinco, current_user.id))
-                if cursor.fetchone(): return render_template("cadastro.html", mensagem="Brinco já existe.")
-                
-                cursor.execute("INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) VALUES (%s, %s, %s, %s, %s)", (brinco, sexo, data, (peso/30)*val_arr, current_user.id))
-                aid = cursor.lastrowid
-                cursor.execute("INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)", (aid, data, peso))
-                msg = f"Animal {brinco} cadastrado."
+
+            if animal_repository.check_brinco_exists(brinco, current_user.id):
+                return render_template("cadastro.html", mensagem="Brinco já existe.")
+
+            animal_repository.cadastrar_animal(brinco, sexo, data, (peso / 30) * val_arr, peso, current_user.id)
+            msg = f"Animal {brinco} cadastrado."
         except Exception as e:
             logger.error(f"Erro cadastro: {e}", exc_info=True)
             msg = f"Erro: {e}"
@@ -125,24 +79,23 @@ def cadastro():
 @login_required
 def detalhes(id_animal):
     try:
-        with get_db_cursor() as cursor:
-            cursor.execute("SELECT * FROM animais WHERE id=%s AND user_id=%s", (id_animal, current_user.id))
-            animal = cursor.fetchone()
-            if not animal: return redirect(url_for('operacional.painel'))
-            
-            cursor.execute("SELECT * FROM pesagens WHERE animal_id=%s ORDER BY data_pesagem DESC", (id_animal,))
-            pesagens = cursor.fetchall()
-            cursor.execute("SELECT * FROM medicacoes WHERE animal_id=%s", (id_animal,))
-            meds = cursor.fetchall()
-            cursor.execute("SELECT peso_final, ganho_total, dias, gmd FROM v_gmd_analitico WHERE animal_id=%s", (id_animal,))
-            view = cursor.fetchone()
-            
-            kpis = {'peso_atual': view[0] if view else (pesagens[0][3] if pesagens else 0), 
-                    'ganho_total': view[1] if view else 0, 'dias': view[2] if view else 0, 
-                    'gmd': "{:.3f}".format(view[3]) if view else "0.000",
-                    'custo_total': f"{(float(animal[4] or 0) + sum(float(m[4] or 0) for m in meds)):.2f}"}
-            
-            return render_template("detalhes.html", animal=animal, historico_peso=pesagens, historico_med=meds, indicadores=kpis)
+        animal = animal_repository.get_animal_by_id(id_animal, current_user.id)
+        if not animal:
+            return redirect(url_for('operacional.painel'))
+
+        pesagens = animal_repository.get_pesagens_by_animal(id_animal)
+        meds = animal_repository.get_medicacoes_by_animal(id_animal)
+        view = animal_repository.get_gmd_by_animal(id_animal)
+
+        kpis = {
+            'peso_atual': view[0] if view else (pesagens[0][3] if pesagens else 0),
+            'ganho_total': view[1] if view else 0,
+            'dias': view[2] if view else 0,
+            'gmd': "{:.3f}".format(view[3]) if view else "0.000",
+            'custo_total': f"{(float(animal[4] or 0) + sum(float(m[4] or 0) for m in meds)):.2f}",
+        }
+
+        return render_template("detalhes.html", animal=animal, historico_peso=pesagens, historico_med=meds, indicadores=kpis)
     except Exception as e:
         logger.error(f"Erro detalhes: {e}", exc_info=True)
         return redirect(url_for('operacional.painel'))
@@ -152,12 +105,10 @@ def detalhes(id_animal):
 def vender(id_animal):
     if request.method == 'POST':
         try:
-            dt, peso, val = request.form['data_venda'], float(request.form['peso_venda']), float(request.form['valor_arroba'])
-            with get_db_cursor() as cursor:
-                cursor.execute("SELECT id FROM animais WHERE id=%s AND user_id=%s", (id_animal, current_user.id))
-                if cursor.fetchone():
-                    cursor.execute("UPDATE animais SET data_venda=%s, preco_venda=%s WHERE id=%s", (dt, (peso/30)*val, id_animal))
-                    cursor.execute("INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)", (id_animal, dt, peso))
+            dt = request.form['data_venda']
+            peso = float(request.form['peso_venda'])
+            val = float(request.form['valor_arroba'])
+            animal_repository.registrar_venda(id_animal, current_user.id, dt, (peso / 30) * val, peso)
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro vender: {e}", exc_info=True)
@@ -168,11 +119,11 @@ def vender(id_animal):
 def medicar(id_animal):
     if request.method == 'POST':
         try:
-            with get_db_cursor() as cursor:
-                cursor.execute("SELECT id FROM animais WHERE id=%s AND user_id=%s", (id_animal, current_user.id))
-                if cursor.fetchone():
-                    cursor.execute("INSERT INTO medicacoes (animal_id, data_aplicacao, nome_medicamento, custo, observacoes) VALUES (%s, %s, %s, %s, %s)", 
-                                   (id_animal, request.form['data_aplicacao'], request.form['nome'], request.form['custo'], request.form['obs']))
+            animal_repository.registrar_medicacao(
+                id_animal, current_user.id,
+                request.form['data_aplicacao'], request.form['nome'],
+                request.form['custo'], request.form['obs']
+            )
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro medicar: {e}", exc_info=True)
@@ -183,11 +134,10 @@ def medicar(id_animal):
 def nova_pesagem(id_animal):
     if request.method == 'POST':
         try:
-            with get_db_cursor() as cursor:
-                cursor.execute("SELECT id FROM animais WHERE id=%s AND user_id=%s", (id_animal, current_user.id))
-                if cursor.fetchone():
-                    cursor.execute("INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)", 
-                                   (id_animal, request.form['data_pesagem'], request.form['peso']))
+            animal_repository.registrar_pesagem(
+                id_animal, current_user.id,
+                request.form['data_pesagem'], request.form['peso']
+            )
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro pesar: {e}", exc_info=True)
@@ -197,14 +147,7 @@ def nova_pesagem(id_animal):
 @login_required
 def excluir_animal(id_animal):
     try:
-        with get_db_cursor() as cursor:
-            # Verifica se o animal é do usuário antes de "apagar"
-            cursor.execute("SELECT id FROM animais WHERE id=%s AND user_id=%s", (id_animal, current_user.id))
-            if cursor.fetchone():
-                # SOFT DELETE: Marcamos a data e hora atual
-                now = datetime.now()
-                cursor.execute("UPDATE animais SET deleted_at=%s WHERE id=%s", (now, id_animal))
-                
+        animal_repository.soft_delete_animal(id_animal, current_user.id)
     except Exception as e:
         logger.error(f"Erro excluir: {e}", exc_info=True)
     return redirect(url_for('operacional.painel'))
@@ -214,68 +157,38 @@ def excluir_animal(id_animal):
 def excluir_pesagem(id_pesagem):
     aid = None
     try:
-        with get_db_cursor() as cursor:
-            # Busca o animal_id para poder redirecionar de volta para a ficha certa
-            cursor.execute("SELECT p.animal_id FROM pesagens p JOIN animais a ON p.animal_id=a.id WHERE p.id=%s AND a.user_id=%s", (id_pesagem, current_user.id))
-            res = cursor.fetchone()
-            if res:
-                aid = res[0]
-                # SOFT DELETE NA PESAGEM
-                cursor.execute("UPDATE pesagens SET deleted_at=%s WHERE id=%s", (datetime.now(), id_pesagem))
+        aid = animal_repository.soft_delete_pesagem(id_pesagem, current_user.id)
     except Exception as e:
         logger.error(f"Erro excluir pesagem: {e}", exc_info=True)
-        
-    if aid: return redirect(url_for('operacional.detalhes', id_animal=aid))
+
+    if aid:
+        return redirect(url_for('operacional.detalhes', id_animal=aid))
     return redirect(url_for('operacional.painel'))
 
 @operacional_bp.route('/vacinacao-coletiva', methods=['GET', 'POST'])
 @login_required
 def vacinacao_coletiva():
-    # 1. PROCESSAMENTO DO FORMULÁRIO (SALVAR)
     if request.method == 'POST':
         try:
-            # Pega os dados comuns a todos
-            dt = request.form['data_aplicacao']
-            nome = request.form['nome']
-            custo = request.form['custo']
-            obs = request.form['obs']
-            
-            # Pega a LISTA de animais selecionados (Checkboxes)
-            animais_ids = request.form.getlist('animais_ids') 
-
+            animais_ids = request.form.getlist('animais_ids')
             if not animais_ids:
                 return render_template('vacinacao_lote.html', erro="Nenhum animal selecionado!", animais=[])
 
-            with get_db_cursor() as cursor:
-                # Loop para inserir um registro para cada animal marcado
-                sql = """
-                    INSERT INTO medicacoes (animal_id, data_aplicacao, nome_medicamento, custo, observacoes) 
-                    VALUES (%s, %s, %s, %s, %s)
-                """
-                for animal_id in animais_ids:
-                    cursor.execute(sql, (animal_id, dt, nome, custo, obs))
-            
-            # Sucesso: volta para o painel
+            animal_repository.insert_medicacao_lote(
+                animais_ids,
+                request.form['data_aplicacao'],
+                request.form['nome'],
+                request.form['custo'],
+                request.form['obs']
+            )
             return redirect(url_for('operacional.painel'))
-
         except Exception as e:
             logger.error(f"Erro vacinacao lote: {e}", exc_info=True)
             return "Erro ao processar vacinação."
 
-    # 2. EXIBIÇÃO DA TELA (CARREGAR LISTA)
     try:
-        with get_db_cursor() as cursor:
-            # Busca apenas animais ATIVOS (que estão no pasto)
-            cursor.execute("""
-                SELECT id, brinco 
-                FROM animais 
-                WHERE user_id = %s AND data_venda IS NULL 
-                ORDER BY brinco ASC
-            """, (current_user.id,))
-            lista_animais = cursor.fetchall()
-            
+        lista_animais = animal_repository.get_animais_ativos(current_user.id)
         return render_template('vacinacao_lote.html', animais=lista_animais)
-    
     except Exception as e:
         logger.error(f"Erro carregar lote: {e}", exc_info=True)
         return redirect(url_for('operacional.painel'))
@@ -286,57 +199,29 @@ def cadastro_lote():
     msg = None
     if request.method == "POST":
         try:
-            # 1. Dados do Cabeçalho (LOTE)
             codigo_lote = request.form["codigo_lote"].strip()
             descricao = request.form["descricao"]
             data_compra = request.form["data_compra"]
             valor_arroba = float(request.form["valor_arroba"])
-            
-            # 2. Listas de Dados Individuais (Arrays do HTML)
+
             brincos = request.form.getlist('brincos[]')
             sexos = request.form.getlist('sexos[]')
             pesos_str = request.form.getlist('pesos[]')
 
-            # Validação básica
-            if not brincos or len(brincos) == 0:
+            if not brincos:
                 return render_template("cadastro_lote.html", mensagem="Erro: A tabela de animais está vazia.")
 
-            with get_db_cursor() as cursor:
-                # A. Cria o Lote
-                # Calculamos o custo total do lote somando os animais depois, 
-                # ou podemos deixar custo_medio_cabeca como NULL inicialmente.
-                sql_lote = """
-                    INSERT INTO lotes (user_id, codigo_lote, descricao, data_aquisicao)
-                    VALUES (%s, %s, %s, %s)
-                """
-                cursor.execute(sql_lote, (current_user.id, codigo_lote, descricao, data_compra))
-                lote_id = cursor.lastrowid
+            animais_data = [
+                (brinco, sexo, float(peso_txt), (float(peso_txt) / 30) * valor_arroba)
+                for brinco, sexo, peso_txt in zip(brincos, sexos, pesos_str)
+            ]
 
-                # B. Prepara Queries
-                sql_animal = """
-                    INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id, lote_id)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """
-                sql_peso = "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)"
-
-                # C. Itera sobre as listas zipadas (Brinco, Sexo, Peso)
-                for brinco, sexo, peso_txt in zip(brincos, sexos, pesos_str):
-                    peso = float(peso_txt)
-                    
-                    # Cálculo individual do custo: (Peso / 30) * Valor da @ do Lote
-                    custo_animal = (peso / 30) * valor_arroba
-                    
-                    # Insere Animal
-                    cursor.execute(sql_animal, (brinco, sexo, data_compra, custo_animal, current_user.id, lote_id))
-                    animal_id = cursor.lastrowid
-                    
-                    # Insere Pesagem
-                    cursor.execute(sql_peso, (animal_id, data_compra, peso))
-
-                msg = f"✅ Lote '{codigo_lote}' salvo com {len(brincos)} animais e pesos individuais!"
-
+            animal_repository.cadastrar_lote(
+                current_user.id, codigo_lote, descricao, data_compra, animais_data
+            )
+            msg = f"Lote '{codigo_lote}' salvo com {len(brincos)} animais e pesos individuais!"
         except Exception as e:
             logger.error(f"Erro cadastro lote: {e}", exc_info=True)
-            msg = f" Erro ao processar lote: {e}"
+            msg = f"Erro ao processar lote: {e}"
 
     return render_template("cadastro_lote.html", mensagem=msg)

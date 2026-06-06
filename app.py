@@ -8,7 +8,7 @@ from routes.financeiro import financeiro_bp
 from routes.operacional import operacional_bp
 from routes.api import api_bp
 from routes.configuracoes import config_bp
-from db_config import get_db_cursor 
+from repositories import configuracao_repository
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -35,13 +35,11 @@ def inject_user_info():
 
     if current_user.is_authenticated:
         try:
-            with get_db_cursor() as cursor:
-                cursor.execute("SELECT nome_fazenda FROM configuracoes WHERE user_id = %s", (current_user.id,))
-                res = cursor.fetchone()
-                if res and res[0]: 
-                    site_name = res[0]
+            res = configuracao_repository.get_configuracao(current_user.id)
+            if res and res[0]:
+                site_name = res[0]
         except Exception:
-            pass 
+            pass
 
     return {'nome_fazenda_header': site_name}
 

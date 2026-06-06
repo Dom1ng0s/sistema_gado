@@ -1,8 +1,8 @@
 from flask import Blueprint, jsonify, render_template
 from flask_login import login_required, current_user
-from db_config import get_db_cursor
 import logging
 import requests
+from repositories import animal_repository, configuracao_repository
 
 api_bp = Blueprint('api', __name__)
 logger = logging.getLogger(__name__)
@@ -16,10 +16,9 @@ def graficos_page():
 @login_required
 def graficos_sexo():
     try:
-        with get_db_cursor() as cursor:
-            cursor.execute("SELECT sexo, COUNT(*) FROM animais WHERE user_id = %s AND data_venda IS NULL AND deleted_at IS NULL GROUP BY sexo", (current_user.id,))
-            return jsonify({sexo: qtd for sexo, qtd in cursor.fetchall()})
-    except Exception as e: 
+        rows = animal_repository.get_contagem_por_sexo(current_user.id)
+        return jsonify({sexo: qtd for sexo, qtd in rows})
+    except Exception as e:
         logger.error(f"Erro Gráfico Sexo: {e}")
         return jsonify({'error': str(e)}), 500
 
@@ -27,17 +26,20 @@ def graficos_sexo():
 @login_required
 def graficos_peso():
     try:
-        with get_db_cursor() as cursor:
-            cursor.execute("SELECT p.peso FROM pesagens p INNER JOIN (SELECT animal_id, MAX(id) as m FROM pesagens GROUP BY animal_id) u ON p.id=u.m INNER JOIN animais a ON p.animal_id=a.id WHERE a.user_id=%s AND a.data_venda IS NULL AND a.deleted_at IS NULL", (current_user.id,))
-            cat_peso = {'Menos de 10@': 0, '10@ a 15@': 0, '15@ a 20@': 0, 'Mais de 20@': 0}
-            for (p_kg,) in cursor.fetchall():
-                p_arr = float(p_kg)/30
-                if p_arr < 10: cat_peso['Menos de 10@'] += 1
-                elif 10 <= p_arr < 15: cat_peso['10@ a 15@'] += 1
-                elif 15 <= p_arr < 20: cat_peso['15@ a 20@'] += 1
-                else: cat_peso['Mais de 20@'] += 1
-            return jsonify(cat_peso)
-    except Exception as e: 
+        rows = animal_repository.get_pesos_atuais_rebanho(current_user.id)
+        cat_peso = {'Menos de 10@': 0, '10@ a 15@': 0, '15@ a 20@': 0, 'Mais de 20@': 0}
+        for (p_kg,) in rows:
+            p_arr = float(p_kg) / 30
+            if p_arr < 10:
+                cat_peso['Menos de 10@'] += 1
+            elif 10 <= p_arr < 15:
+                cat_peso['10@ a 15@'] += 1
+            elif 15 <= p_arr < 20:
+                cat_peso['15@ a 20@'] += 1
+            else:
+                cat_peso['Mais de 20@'] += 1
+        return jsonify(cat_peso)
+    except Exception as e:
         logger.error(f"Erro Gráfico Peso: {e}")
         return jsonify({'error': str(e)}), 500
 
@@ -45,11 +47,9 @@ def graficos_peso():
 @login_required
 def graficos_gmd():
     try:
-        with get_db_cursor() as cursor:
-            cursor.execute("SELECT AVG(v.gmd) FROM v_gmd_analitico v JOIN animais a ON v.animal_id=a.id WHERE v.user_id=%s AND a.data_venda IS NULL AND a.deleted_at IS NULL", (current_user.id,))
-            res = cursor.fetchone()[0]
-            return jsonify({'gmd_medio': float(res) if res else 0.0})
-    except Exception as e: 
+        gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
+        return jsonify({'gmd_medio': gmd_medio})
+    except Exception as e:
         logger.error(f"Erro Gráfico GMD: {e}")
         return jsonify({'error': str(e)}), 500
 
@@ -63,33 +63,24 @@ def proxy_cidades():
     """
     try:
         url = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
-        
-        # Timeout para evitar que o servidor trave se o IBGE demorar
         response = requests.get(url, timeout=10)
-        
+
         if response.status_code == 200:
             dados_brutos = response.json()
             cidades_formatadas = []
-            
             for item in dados_brutos:
-                # O bloco try/except aqui é crucial.
-                # Se 'microrregiao' ou 'mesorregiao' for None, lança TypeError.
-                # Se a chave não existir, lança KeyError.
-                # Ignoramos ambos para garantir que só cidades válidas entrem.
                 try:
                     cidades_formatadas.append({
                         "nome": item['nome'],
                         "uf": item['microrregiao']['mesorregiao']['UF']['sigla']
                     })
                 except (KeyError, TypeError):
-                    continue 
-            
+                    continue
             return jsonify(cidades_formatadas)
-            
         else:
             logger.error(f"Erro IBGE: Status {response.status_code}")
             return jsonify({'error': f"Erro no IBGE: {response.status_code}"}), 502
-            
+
     except Exception as e:
         logger.error(f"Erro proxy: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
@@ -103,57 +94,42 @@ def cotacoes_regionais():
     3. Filtra as cotações do estado correspondente.
     """
     try:
-        # 1. BUSCAR LOCALIZAÇÃO DO USUÁRIO
         uf_usuario = None
-        with get_db_cursor() as cursor:
-            cursor.execute("SELECT cidade_estado FROM configuracoes WHERE user_id = %s", (current_user.id,))
-            res = cursor.fetchone()
-            if res and res[0]:
-                # Formato esperado: "Cidade - UF" (ex: "Uberaba - MG")
-                partes = res[0].split('-')
-                if len(partes) > 1:
-                    uf_usuario = partes[-1].strip().upper() # Pega o "MG"
-        
+        res = configuracao_repository.get_configuracao(current_user.id)
+        if res and res[1]:
+            partes = res[1].split('-')
+            if len(partes) > 1:
+                uf_usuario = partes[-1].strip().upper()
+
         if not uf_usuario:
             return jsonify({'erro': 'Localização não configurada'}), 404
 
-        # 2. DEFINIR URLs DOS DADOS
         base_url = "https://raw.githubusercontent.com/dom1ng0s/gado-scraper/main"
         url_boi = f"{base_url}/cotacoes_boi_hoje.json"
         url_novilha = f"{base_url}/cotacoes_novilha_hoje.json"
 
-        # 3. FUNÇÃO AUXILIAR DE BUSCA E FILTRO
         def buscar_e_filtrar(url, uf):
             try:
                 resp = requests.get(url, timeout=5)
-                if resp.status_code != 200: return []
-                
+                if resp.status_code != 200:
+                    return []
                 dados = resp.json()
                 resultados = []
-                
-                # Mapeamento para casos onde o JSON usa nome completo
                 mapa_estados = {'AC': 'Acre', 'AL': 'Alagoas', 'RR': 'Roraima'}
                 nome_completo = mapa_estados.get(uf, '')
-
                 for item in dados:
                     praca = item.get('praca', '').upper()
                     if praca.startswith(uf) or praca == uf or (nome_completo and praca == nome_completo.upper()):
                         resultados.append(item)
-                
                 return resultados
             except Exception as e:
                 logger.error(f"Erro ao ler JSON {url}: {e}")
                 return []
 
-        # 4. EXECUTAR
         cotacoes_boi = buscar_e_filtrar(url_boi, uf_usuario)
         cotacoes_novilha = buscar_e_filtrar(url_novilha, uf_usuario)
 
-        return jsonify({
-            'uf': uf_usuario,
-            'boi': cotacoes_boi,
-            'novilha': cotacoes_novilha
-        })
+        return jsonify({'uf': uf_usuario, 'boi': cotacoes_boi, 'novilha': cotacoes_novilha})
 
     except Exception as e:
         logger.error(f"Erro cotacoes: {e}", exc_info=True)
@@ -165,7 +141,7 @@ def cotacoes_brasil():
     """Retorna a lista completa de cotações (Boi e Novilha) de todas as praças."""
     try:
         base_url = "https://raw.githubusercontent.com/dom1ng0s/gado-scraper/main"
-        
+
         def buscar_dados(endpoint):
             try:
                 resp = requests.get(f"{base_url}/{endpoint}", timeout=5)
@@ -175,7 +151,7 @@ def cotacoes_brasil():
 
         boi = buscar_dados("cotacoes_boi_hoje.json")
         novilha = buscar_dados("cotacoes_novilha_hoje.json")
-        
+
         return jsonify({'boi': boi, 'novilha': novilha})
 
     except Exception as e:
