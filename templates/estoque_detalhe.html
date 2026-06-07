@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% block title %}{{ produto[2] }} — Estoque{% endblock %}
+
+{% block extra_css %}
+<style>
+.mov-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  margin-bottom: var(--space-8);
+}
+@media (max-width: 680px) {
+  .mov-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% set saldo = produto[8] | float %}
+{% set minimo = produto[5] | float %}
+{% set abaixo = produto[9] %}
+{% set pct = ((saldo / minimo * 100) | round(0) | int) if minimo > 0 else none %}
+
+<!-- ── Cabeçalho ─────────────────────────────────────── -->
+<div class="page-header">
+  <div>
+    <p class="label">Estoque</p>
+    <h1 class="page-title">{{ produto[2] }}</h1>
+    <div style="display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-1);">
+      <span class="tag">{{ produto[4]|capitalize }}</span>
+      <span class="tag">{{ produto[3] }}</span>
+      {% if abaixo %}
+        <span class="badge badge-danger">Abaixo do mínimo</span>
+      {% endif %}
+    </div>
+  </div>
+  <a href="{{ url_for('estoque.lista_estoque') }}" class="btn btn-ghost btn-sm">← Estoque</a>
+</div>
+
+<!-- ── Flash messages ──────────────────────────────── -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="alert {% if category == 'sucesso' %}alert-success{% else %}alert-danger{% endif %}"
+         style="margin-bottom:var(--space-4);">
+      <span class="alert-icon">{% if category == 'sucesso' %}✓{% else %}⚠{% endif %}</span>
+      <div>{{ msg }}</div>
+    </div>
+  {% endfor %}
+{% endwith %}
+
+<!-- ── Cards de KPI ──────────────────────────────────── -->
+<div class="grid-metrics" style="margin-bottom:var(--space-6);">
+
+  <div class="metric-card {% if abaixo %}card-accent-red{% endif %}">
+    <span class="label">Saldo atual ({{ produto[3] }})</span>
+    <div class="metric-value"
+         style="color:{% if abaixo %}var(--color-danger){% else %}var(--color-primary){% endif %};">
+      {{ "%.3f"|format(saldo) }}
+    </div>
+    {% if abaixo %}
+      <div class="metric-delta down">↓ Abaixo do mínimo</div>
+    {% elif saldo > 0 %}
+      <div class="metric-delta up">↑ Estoque OK</div>
+    {% endif %}
+  </div>
+
+  <div class="metric-card">
+    <span class="label">Total entradas</span>
+    <div class="metric-value" style="color:var(--color-primary);">
+      {{ "%.3f"|format(produto[6]) }}
+    </div>
+    <div class="metric-delta flat">{{ produto[3] }}</div>
+  </div>
+
+  <div class="metric-card">
+    <span class="label">Total saídas</span>
+    <div class="metric-value" style="color:var(--color-accent-dark);">
+      {{ "%.3f"|format(produto[7]) }}
+    </div>
+    <div class="metric-delta flat">{{ produto[3] }}</div>
+  </div>
+
+  <div class="metric-card">
+    <span class="label">Estoque mínimo</span>
+    <div class="metric-value" style="font-size:var(--text-xl);">
+      {{ "%.3f"|format(minimo) }}
+    </div>
+    <div class="metric-delta flat">{{ produto[3] }}</div>
+  </div>
+
+</div>
+
+<!-- ── Nível de estoque visual (só se minimo > 0) ─────── -->
+{% if minimo > 0 %}
+<div class="card" style="margin-bottom:var(--space-6);">
+  <div class="card-body">
+    <div style="display:flex; justify-content:space-between; align-items:center;
+                margin-bottom:var(--space-2);">
+      <span class="label">Nível de estoque</span>
+      <span style="font-size:var(--text-sm); font-weight:var(--weight-semibold);
+                   color:{% if abaixo %}var(--color-danger){% else %}var(--color-primary){% endif %};">
+        {% if pct is not none %}{{ pct }}%{% endif %}
+        ({{ "%.3f"|format(saldo) }} / {{ "%.3f"|format(minimo) }} {{ produto[3] }})
+      </span>
+    </div>
+    <div class="lotacao-bar">
+      <div class="lotacao-fill {% if abaixo %}danger{% elif pct is not none and pct <= 150 %}warning{% else %}ok{% endif %}"
+           style="width:{{ [pct if pct is not none else 100, 100]|min }}%;"></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Formulários de movimentação ─────────────────────── -->
+<div class="mov-grid">
+
+  <!-- Entrada -->
+  <div class="card card-accent-green">
+    <div class="card-header">
+      <h3 style="margin:0; font-size:var(--text-base);">+ Registrar Entrada</h3>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('estoque.registrar_entrada', produto_id=produto[0]) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label for="entrada_qtd">Quantidade <span style="color:var(--color-danger);">*</span></label>
+          <input id="entrada_qtd" type="number" name="quantidade"
+                 class="form-input" min="0.001" step="0.001" required>
+        </div>
+        <div class="form-group">
+          <label for="entrada_data">Data <span style="color:var(--color-danger);">*</span></label>
+          <input id="entrada_data" type="date" name="data_mov" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="entrada_custo">Custo unitário (R$)</label>
+          <input id="entrada_custo" type="number" name="custo_unitario"
+                 class="form-input" min="0" step="0.01" placeholder="Opcional">
+        </div>
+        <div class="form-group">
+          <label for="entrada_motivo">Motivo / Nota Fiscal</label>
+          <input id="entrada_motivo" type="text" name="motivo"
+                 class="form-input" maxlength="300" placeholder="Opcional">
+        </div>
+        <button type="submit" class="btn btn-primary">Confirmar Entrada</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Saída -->
+  <div class="card card-accent-red">
+    <div class="card-header">
+      <h3 style="margin:0; font-size:var(--text-base);">− Registrar Saída</h3>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('estoque.registrar_saida', produto_id=produto[0]) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label for="saida_qtd">Quantidade <span style="color:var(--color-danger);">*</span></label>
+          <input id="saida_qtd" type="number" name="quantidade"
+                 class="form-input" min="0.001" step="0.001" required max="{{ produto[8] }}">
+        </div>
+        <div class="form-group">
+          <label for="saida_data">Data <span style="color:var(--color-danger);">*</span></label>
+          <input id="saida_data" type="date" name="data_mov" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="saida_motivo">Motivo</label>
+          <input id="saida_motivo" type="text" name="motivo"
+                 class="form-input" maxlength="300"
+                 placeholder="Ex: Aplicação no lote A">
+        </div>
+        <button type="submit" class="btn btn-danger">Confirmar Saída</button>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Histórico de movimentações ──────────────────────── -->
+<h2 style="margin-bottom:var(--space-4);">Histórico de Movimentações</h2>
+
+{% if movimentacoes %}
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:center;">Data</th>
+        <th style="text-align:center;">Tipo</th>
+        <th style="text-align:right;">Quantidade</th>
+        <th style="text-align:right;">Custo Unit.</th>
+        <th>Motivo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in movimentacoes %}
+      <tr {% if m[1] == 'saida' %}style="background:rgba(226,75,74,0.03);"{% endif %}>
+        <td style="text-align:center;">{{ m[5] }}</td>
+        <td style="text-align:center;">
+          <span class="badge {% if m[1] == 'entrada' %}badge-success{% else %}badge-danger{% endif %}">
+            {{ m[1]|capitalize }}
+          </span>
+        </td>
+        <td style="text-align:right; font-weight:var(--weight-semibold);">
+          {{ "%.3f"|format(m[2]) }} {{ produto[3] }}
+        </td>
+        <td style="text-align:right; color:var(--color-ink-secondary);">
+          {% if m[3] %}R$ {{ m[3]|brl }}{% else %}—{% endif %}
+        </td>
+        <td style="color:var(--color-ink-secondary);">{{ m[4] or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div style="text-align:center; padding:var(--space-12); color:var(--color-ink-tertiary);">
+  <p>Nenhuma movimentação registrada.</p>
+  <p style="font-size:var(--text-sm);">Use os formulários acima para registrar entradas e saídas.</p>
+</div>
+{% endif %}
+
+{% endblock %}

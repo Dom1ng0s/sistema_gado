@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SGG{% endblock %} — Sistema de Gestão de Gado</title>
+
+  <!-- Design System (sempre primeiro) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}">
+
+  <!-- CSS legado (compatibilidade) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  {% block extra_css %}{% endblock %}
+
+  <!-- ECharts -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-logo" href="{{ url_for('operacional.painel') }}">
+    🐂 SGG
+  </a>
+  <div class="nav-links">
+    <a href="{{ url_for('operacional.painel') }}"
+       class="nav-link{% if request.endpoint and request.endpoint.startswith('operacional') %} active{% endif %}">
+      Rebanho
+    </a>
+    <a href="{{ url_for('financeiro.financeiro') }}"
+       class="nav-link{% if request.endpoint and request.endpoint.startswith('financeiro') %} active{% endif %}">
+      Financeiro
+    </a>
+    <a href="{{ url_for('pastos.listar_pastos') }}"
+       class="nav-link{% if request.endpoint and request.endpoint.startswith('pastos') %} active{% endif %}">
+      Pastos
+    </a>
+    <a href="{{ url_for('estoque.lista_estoque') }}"
+       class="nav-link{% if request.endpoint and request.endpoint.startswith('estoque') %} active{% endif %}">
+      Estoque
+    </a>
+    <a href="{{ url_for('api.graficos_page') }}"
+       class="nav-link{% if request.endpoint == 'api.graficos_page' %} active{% endif %}">
+      Relatórios
+    </a>
+    <a href="{{ url_for('configuracoes.settings') }}"
+       class="nav-link{% if request.endpoint and request.endpoint.startswith('configuracoes') %} active{% endif %}">
+      Configurações
+    </a>
+  </div>
+  <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost btn-sm">Sair</a>
+</nav>
+
+<main class="page-container">
+  {% block content %}{% endblock %}
+</main>
+
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

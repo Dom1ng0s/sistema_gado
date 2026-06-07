@@ -155,21 +155,77 @@ def get_animais_com_gmd(user_id):
 
 
 def get_animais_abaixo_gmd_medio(user_id):
-    """Animais ativos cujo GMD está abaixo da média do rebanho do usuário."""
+    """Animais ativos com GMD abaixo de (média - 2σ): outliers estatísticos do rebanho."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT sub.animal_id, a.brinco, sub.gmd, sub.gmd_media "
+            "SELECT sub.animal_id, a.brinco, sub.gmd, sub.gmd_media, "
+            "       sub.gmd_std, (sub.gmd_media - 2 * sub.gmd_std) AS limite_inferior "
             "FROM ( "
             "    SELECT v.animal_id, v.gmd, "
-            "           AVG(v.gmd) OVER () AS gmd_media "
+            "           AVG(v.gmd) OVER () AS gmd_media, "
+            "           STDDEV_POP(v.gmd) OVER () AS gmd_std "
             "    FROM v_gmd_analitico v "
             "    JOIN animais a ON v.animal_id = a.id "
             "    WHERE v.user_id = %s "
             "      AND a.data_venda IS NULL AND a.deleted_at IS NULL "
             ") sub "
             "JOIN animais a ON sub.animal_id = a.id "
-            "WHERE sub.gmd < sub.gmd_media "
+            "WHERE sub.gmd < (sub.gmd_media - 2 * sub.gmd_std) "
             "ORDER BY sub.gmd ASC",
+            (user_id,)
+        )
+        return cursor.fetchall()
+
+
+# ---- HEREDITARIEDADE ----
+
+def get_animais_ativos_por_sexo(user_id, sexo):
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT id, brinco FROM animais "
+            "WHERE user_id = %s AND sexo = %s AND data_venda IS NULL AND deleted_at IS NULL "
+            "ORDER BY brinco ASC",
+            (user_id, sexo)
+        )
+        return cursor.fetchall()
+
+
+def get_progenie_by_touro(animal_id, user_id):
+    """Filhos onde animal é pai (pai_id) OU mãe (mae_id)."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT f.id, f.brinco, f.sexo, f.data_compra, g.gmd, "
+            "    CASE WHEN f.pai_id = %s THEN 'pai' ELSE 'mae' END AS papel "
+            "FROM animais f "
+            "LEFT JOIN v_gmd_analitico g ON g.animal_id = f.id "
+            "WHERE (f.pai_id = %s OR f.mae_id = %s) "
+            "  AND f.user_id = %s AND f.deleted_at IS NULL "
+            "ORDER BY f.brinco",
+            (animal_id, animal_id, animal_id, user_id)
+        )
+        return cursor.fetchall()
+
+
+def get_historico_reproducao(vaca_id, user_id):
+    """Estatísticas agregadas da vw_historico_vaca para a vaca."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT vaca_id, total_coberturas, partos_vivos, taxa_sucesso, "
+            "    primeira_cobertura, ultima_cobertura "
+            "FROM vw_historico_vaca "
+            "WHERE vaca_id = %s AND user_id = %s",
+            (vaca_id, user_id)
+        )
+        return cursor.fetchone()
+
+
+def get_ranking_touros(user_id):
+    """Ranking de touros por GMD médio dos filhos (vw_gmd_por_touro)."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT touro_id, touro_brinco, qtd_filhos, gmd_medio_filhos "
+            "FROM vw_gmd_por_touro WHERE user_id = %s "
+            "ORDER BY gmd_medio_filhos DESC",
             (user_id,)
         )
         return cursor.fetchall()

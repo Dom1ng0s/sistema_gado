@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}Gestão de Pastos{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">{{ nome_fazenda_header }}</p>
+    <h1 class="page-title">Gestão de Pastos</h1>
+  </div>
+  <a href="{{ url_for('pastos.gmd_por_modulo') }}" class="btn btn-secondary btn-sm">📊 Ranking GMD</a>
+</div>
+
+<!-- ── Flash messages ──────────────────────────────── -->
+{% if mensagem %}
+  <div class="alert {% if 'sucesso' in mensagem.lower() %}alert-success{% else %}alert-danger{% endif %}"
+       style="margin-bottom:var(--space-5);">
+    <span class="alert-icon">{% if 'sucesso' in mensagem.lower() %}✓{% else %}⚠{% endif %}</span>
+    <div>{{ mensagem }}</div>
+  </div>
+{% endif %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="alert {% if category == 'sucesso' %}alert-success{% else %}alert-danger{% endif %}"
+         style="margin-bottom:var(--space-3);">
+      <span class="alert-icon">{% if category == 'sucesso' %}✓{% else %}⚠{% endif %}</span>
+      <div>{{ msg }}</div>
+    </div>
+  {% endfor %}
+{% endwith %}
+
+<!-- ── Formulário Novo Pasto ───────────────────────── -->
+<details style="margin-bottom:var(--space-8);">
+  <summary style="cursor:pointer; font-size:var(--text-base); font-weight:var(--weight-semibold);
+                  color:var(--color-primary); padding:var(--space-3) 0; user-select:none;">
+    + Cadastrar Novo Pasto
+  </summary>
+  <div style="max-width:600px; margin-top:var(--space-4);">
+    <form method="POST" action="{{ url_for('pastos.criar_pasto') }}" class="form-container">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label for="nome-pasto">Nome <span style="color:var(--color-danger);">*</span></label>
+        <input id="nome-pasto" type="text" name="nome" class="form-input"
+               required maxlength="100" placeholder="Ex: Pasto Norte">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--space-4);">
+        <div class="form-group">
+          <label for="area-ha">Área (ha)</label>
+          <input id="area-ha" type="number" name="area_hectares" step="0.01" min="0"
+                 class="form-input" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label for="cap-ua">Capacidade (UA)</label>
+          <input id="cap-ua" type="number" name="capacidade_ua" step="0.1" min="0"
+                 class="form-input" placeholder="Ex: 50">
+        </div>
+        <div class="form-group">
+          <label for="forrageira">Forrageira</label>
+          <input id="forrageira" type="text" name="forrageira" class="form-input"
+                 maxlength="100" placeholder="Ex: Mombaça">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Cadastrar Pasto</button>
+    </form>
+  </div>
+</details>
+
+<!-- ── Grid de pastos ─────────────────────────────── -->
+{% if pastos %}
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:var(--space-5);">
+  {% for p in pastos %}
+  {% set tem_superlotado = p[6] > 0 %}
+  {% set tem_alerta = p[7] > 0 %}
+  <div class="card {% if tem_superlotado %}card-accent-red{% elif tem_alerta %}card-accent-amber{% else %}card-accent-green{% endif %}"
+       style="display:flex; flex-direction:column;">
+    <div class="card-header">
+      <h3 style="margin:0; font-size:var(--text-base);">{{ p[1] }}</h3>
+      {% if tem_superlotado %}
+        <span class="badge badge-danger">Superlotado</span>
+      {% elif tem_alerta %}
+        <span class="badge badge-warning">Em alerta</span>
+      {% else %}
+        <span class="badge badge-success">OK</span>
+      {% endif %}
+    </div>
+    <div class="card-body" style="flex:1; display:flex; flex-direction:column; gap:var(--space-2);">
+      <div style="display:flex; flex-wrap:wrap; gap:var(--space-2);">
+        {% if p[2] %}<span class="tag">📐 {{ p[2] }} ha</span>{% endif %}
+        {% if p[3] %}<span class="tag">🌱 {{ p[3] }}</span>{% endif %}
+        {% if p[4] %}<span class="tag">🐄 Cap. {{ p[4] }} UA</span>{% endif %}
+        <span class="tag">📦 {{ p[5] }} módulo{{ 's' if p[5] != 1 }}</span>
+      </div>
+      <div style="margin-top:auto; padding-top:var(--space-4);">
+        <a href="{{ url_for('pastos.detalhe_pasto', pasto_id=p[0]) }}"
+           class="btn btn-primary btn-sm" style="width:100%; text-align:center;">
+          Ver Detalhe →
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div style="text-align:center; padding:var(--space-16); color:var(--color-ink-tertiary);">
+  <p style="font-size:var(--text-lg); margin-bottom:var(--space-2);">Nenhum pasto cadastrado</p>
+  <p style="font-size:var(--text-sm);">Use o formulário acima para adicionar seu primeiro pasto.</p>
+</div>
+{% endif %}
+
+{% endblock %}

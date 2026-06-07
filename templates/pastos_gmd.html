@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}Ranking GMD por Módulo{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">Pastos</p>
+    <h1 class="page-title">Ranking GMD por Módulo</h1>
+  </div>
+  <a href="{{ url_for('pastos.listar_pastos') }}" class="btn btn-ghost btn-sm">← Pastos</a>
+</div>
+
+{% if ranking %}
+
+<!-- ── Gráfico ECharts ────────────────────────────────── -->
+<div style="background:var(--color-surface); border:1px solid var(--color-border);
+            border-radius:var(--radius-lg); padding:var(--space-5); margin-bottom:var(--space-6);">
+  <p class="label" style="margin-bottom:var(--space-3);">GMD médio por módulo (kg/dia)</p>
+  <div id="chartGMD" style="width:100%; height:{{ [ranking|length * 44 + 60, 180]|max }}px;"></div>
+</div>
+
+<!-- ── Tabela ──────────────────────────────────────────── -->
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:center; width:48px;">#</th>
+        <th>Módulo</th>
+        <th style="text-align:right;">Nº Animais</th>
+        <th style="text-align:right;">GMD médio (kg/dia)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in ranking %}
+      <tr>
+        <td style="text-align:center; font-weight:var(--weight-bold); color:var(--color-primary);">
+          {{ loop.index }}
+        </td>
+        <td class="td-primary">{{ r[1] }}</td>
+        <td style="text-align:right;">{{ r[3] }}</td>
+        <td style="text-align:right; font-weight:var(--weight-semibold);">
+          {% if r[4] is not none %}
+            {% set gmd = r[4] | float %}
+            <span style="color:{% if gmd >= 0.8 %}var(--color-primary){% elif gmd >= 0.6 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
+              {{ "%.3f"|format(r[4]) }}
+            </span>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<div style="text-align:center; padding:var(--space-16); color:var(--color-ink-tertiary);">
+  <p style="font-size:var(--text-lg); margin-bottom:var(--space-2);">Sem dados de GMD por módulo</p>
+  <p style="font-size:var(--text-sm);">
+    Registre ocupações com animais e pesagens para visualizar o ranking.
+  </p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if ranking %}
+<script>
+const ranking = [
+  {% for r in ranking %}
+  {
+    modulo: "{{ r[1] | replace('"', '\\"') }}",
+    gmd: {{ r[4] if r[4] is not none else 0 }},
+    animais: {{ r[3] }}
+  }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+// Ordem inversa para ECharts horizontal (maior no topo)
+const nomes  = ranking.map(r => r.modulo).reverse();
+const valores = ranking.map(r => ({
+  value: r.gmd,
+  itemStyle: {
+    color: r.gmd >= 0.8 ? '#3B6D11' : r.gmd >= 0.6 ? '#EF9F27' : '#E24B4A'
+  }
+})).reverse();
+
+const chart = echarts.init(document.getElementById('chartGMD'));
+chart.setOption({
+  textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' },
+  grid: { top: 10, right: 80, bottom: 30, left: 20, containLabel: true },
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'shadow' },
+    backgroundColor: '#1C1C1A',
+    borderColor: '#1C1C1A',
+    textStyle: { color: '#FAFAF8', fontFamily: 'DM Sans, sans-serif', fontSize: 13 },
+    formatter: p => `${p[0].name}<br/><strong>${Number(p[0].value).toFixed(3)} kg/dia</strong>`
+  },
+  xAxis: {
+    type: 'value',
+    name: 'kg/dia',
+    nameTextStyle: { color: '#6B6B68', fontSize: 11 },
+    axisLabel: { color: '#6B6B68', fontSize: 11, formatter: v => v.toFixed(2) },
+    splitLine: { lineStyle: { color: '#EDEDE8' } },
+    max: value => Math.max(value.max * 1.15, 1.0)
+  },
+  yAxis: {
+    type: 'category',
+    data: nomes,
+    axisLabel: { color: '#3D3D3A', fontSize: 12 },
+    axisLine: { lineStyle: { color: '#D6D6D0' } }
+  },
+  series: [{
+    type: 'bar',
+    data: valores,
+    barMaxWidth: 32,
+    label: {
+      show: true, position: 'right',
+      fontSize: 12, color: '#3D3D3A',
+      formatter: p => p.value > 0 ? p.value.toFixed(3) : ''
+    },
+    markLine: {
+      silent: true,
+      symbol: 'none',
+      lineStyle: { color: '#9B9B99', type: 'dashed', width: 1.5 },
+      data: [{ xAxis: 0.8, name: 'Meta 0.800' }],
+      label: { formatter: 'Meta\n0.800', color: '#9B9B99', fontSize: 10 }
+    }
+  }]
+});
+
+window.addEventListener('resize', () => chart.resize());
+</script>
+{% endif %}
+{% endblock %}

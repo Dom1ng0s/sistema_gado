@@ -48,7 +48,11 @@ def db_setup():
             user_id INT NOT NULL,
             lote_id INT,
             deleted_at DATETIME,
-            FOREIGN KEY (user_id) REFERENCES usuarios(id)
+            pai_id INT NULL,
+            mae_id INT NULL,
+            FOREIGN KEY (user_id) REFERENCES usuarios(id),
+            FOREIGN KEY (pai_id) REFERENCES animais(id) ON DELETE SET NULL,
+            FOREIGN KEY (mae_id) REFERENCES animais(id) ON DELETE SET NULL
         )""")
 
         cursor.execute("""
@@ -136,6 +140,70 @@ def db_setup():
             ]
         )
 
+        # --- TABELAS DE HEREDITARIEDADE ---
+        cursor.execute("""
+        CREATE TABLE reproducao (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            vaca_id INT NOT NULL,
+            touro_id INT NULL,
+            touro_externo VARCHAR(200) NULL,
+            data_cobertura DATE NOT NULL,
+            data_parto DATE NULL,
+            resultado ENUM('vivo','natimorto','aborto') NOT NULL,
+            user_id INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (vaca_id) REFERENCES animais(id) ON DELETE CASCADE,
+            FOREIGN KEY (touro_id) REFERENCES animais(id) ON DELETE SET NULL,
+            FOREIGN KEY (user_id) REFERENCES usuarios(id)
+        )""")
+
+        # --- TABELAS DE GESTÃO DE PASTOS ---
+        cursor.execute("""
+        CREATE TABLE pastos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            nome VARCHAR(100) NOT NULL,
+            area_hectares DECIMAL(10,2),
+            forrageira VARCHAR(100),
+            capacidade_ua DECIMAL(10,2),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        )""")
+
+        cursor.execute("""
+        CREATE TABLE modulos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            pasto_id INT NOT NULL,
+            user_id INT NOT NULL,
+            nome VARCHAR(100) NOT NULL,
+            area_hectares DECIMAL(10,2),
+            capacidade_ua DECIMAL(10,2),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pasto_id) REFERENCES pastos(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES usuarios(id)
+        )""")
+
+        cursor.execute("""
+        CREATE TABLE ocupacoes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            modulo_id INT NOT NULL,
+            user_id INT NOT NULL,
+            data_entrada DATE NOT NULL,
+            data_saida DATE NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (modulo_id) REFERENCES modulos(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES usuarios(id)
+        )""")
+
+        cursor.execute("""
+        CREATE TABLE ocupacao_animais (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            ocupacao_id INT NOT NULL,
+            animal_id INT NOT NULL,
+            FOREIGN KEY (ocupacao_id) REFERENCES ocupacoes(id) ON DELETE CASCADE,
+            FOREIGN KEY (animal_id) REFERENCES animais(id) ON DELETE CASCADE
+        )""")
+
         # --- VIEWS (mocks) ---
         cursor.execute("""
         CREATE VIEW v_gmd_analitico AS
@@ -145,11 +213,120 @@ def db_setup():
         """)
 
         cursor.execute("""
+        CREATE VIEW vw_ocupacao_atual AS
+        SELECT
+            m.id AS modulo_id, m.pasto_id, m.user_id, m.nome AS modulo_nome,
+            m.capacidade_ua, o.id AS ocupacao_id, o.data_entrada,
+            COUNT(oa.animal_id) AS ua_atual,
+            ROUND(COUNT(oa.animal_id) / NULLIF(m.capacidade_ua, 0) * 100, 1) AS pct_lotacao
+        FROM modulos m
+        JOIN ocupacoes o ON o.modulo_id = m.id AND o.data_saida IS NULL
+        JOIN ocupacao_animais oa ON oa.ocupacao_id = o.id
+        GROUP BY m.id, m.pasto_id, m.user_id, m.nome, m.capacidade_ua, o.id, o.data_entrada
+        """)
+
+        cursor.execute("""
+        CREATE VIEW vw_dias_descanso AS
+        SELECT
+            m.id AS modulo_id, m.pasto_id, m.user_id, m.nome AS modulo_nome,
+            MAX(o.data_saida) AS ultima_saida,
+            DATEDIFF(CURDATE(), MAX(o.data_saida)) AS dias_descanso
+        FROM modulos m
+        LEFT JOIN ocupacoes o ON o.modulo_id = m.id AND o.data_saida IS NOT NULL
+        WHERE m.id NOT IN (SELECT modulo_id FROM ocupacoes WHERE data_saida IS NULL)
+        GROUP BY m.id, m.pasto_id, m.user_id, m.nome
+        """)
+
+        cursor.execute("""
+        CREATE VIEW vw_gmd_por_modulo AS
+        SELECT
+            o.modulo_id, m.nome AS modulo_nome, m.pasto_id, m.user_id,
+            COUNT(DISTINCT oa.animal_id) AS qtd_animais,
+            ROUND(AVG(g.gmd), 3) AS gmd_medio
+        FROM ocupacoes o
+        JOIN ocupacao_animais oa ON oa.ocupacao_id = o.id
+        JOIN modulos m ON m.id = o.modulo_id
+        LEFT JOIN v_gmd_analitico g ON g.animal_id = oa.animal_id
+        GROUP BY o.modulo_id, m.nome, m.pasto_id, m.user_id
+        """)
+
+        cursor.execute("""
         CREATE VIEW v_fluxo_caixa AS
         SELECT id AS user_id, 2024 AS ano,
                0 AS total_entradas, 0 AS total_compras,
                0 AS total_med, 0 AS total_ops
         FROM usuarios
+        """)
+
+        cursor.execute("""
+        CREATE VIEW vw_gmd_por_touro AS
+        SELECT
+            pai.id AS touro_id, pai.brinco AS touro_brinco, pai.user_id,
+            COUNT(DISTINCT filho.id) AS qtd_filhos,
+            ROUND(AVG(g.gmd), 3) AS gmd_medio_filhos
+        FROM animais pai
+        JOIN animais filho ON filho.pai_id = pai.id AND filho.deleted_at IS NULL
+        LEFT JOIN v_gmd_analitico g ON g.animal_id = filho.id
+        WHERE pai.deleted_at IS NULL
+        GROUP BY pai.id, pai.brinco, pai.user_id
+        """)
+
+        cursor.execute("""
+        CREATE VIEW vw_historico_vaca AS
+        SELECT
+            r.vaca_id, a.user_id,
+            COUNT(*) AS total_coberturas,
+            SUM(CASE WHEN r.resultado = 'vivo' THEN 1 ELSE 0 END) AS partos_vivos,
+            ROUND(SUM(CASE WHEN r.resultado = 'vivo' THEN 1 ELSE 0 END) / COUNT(*) * 100, 1) AS taxa_sucesso,
+            MIN(r.data_cobertura) AS primeira_cobertura,
+            MAX(r.data_cobertura) AS ultima_cobertura
+        FROM reproducao r
+        JOIN animais a ON r.vaca_id = a.id
+        GROUP BY r.vaca_id, a.user_id
+        """)
+
+        # --- TABELAS DE ESTOQUE VIRTUAL ---
+        cursor.execute("""
+        CREATE TABLE estoque_produtos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            nome VARCHAR(200) NOT NULL,
+            unidade VARCHAR(50) NOT NULL,
+            categoria ENUM('medicamento','vacina','suplemento','mineral','outro') NOT NULL DEFAULT 'outro',
+            estoque_minimo DECIMAL(10,3) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        )""")
+
+        cursor.execute("""
+        CREATE TABLE estoque_movimentacoes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            produto_id INT NOT NULL,
+            tipo ENUM('entrada','saida') NOT NULL,
+            quantidade DECIMAL(10,3) NOT NULL,
+            custo_unitario DECIMAL(10,2) NULL,
+            motivo VARCHAR(300) NULL,
+            data_mov DATE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES usuarios(id),
+            FOREIGN KEY (produto_id) REFERENCES estoque_produtos(id) ON DELETE CASCADE
+        )""")
+
+        cursor.execute("""
+        CREATE VIEW vw_saldo_estoque AS
+        SELECT
+            p.id AS produto_id, p.user_id, p.nome, p.unidade, p.categoria, p.estoque_minimo,
+            COALESCE(SUM(CASE WHEN m.tipo = 'entrada' THEN m.quantidade ELSE 0 END), 0) AS total_entradas,
+            COALESCE(SUM(CASE WHEN m.tipo = 'saida'   THEN m.quantidade ELSE 0 END), 0) AS total_saidas,
+            COALESCE(SUM(CASE WHEN m.tipo = 'entrada' THEN m.quantidade ELSE -m.quantidade END), 0) AS saldo_atual,
+            CASE
+                WHEN COALESCE(SUM(CASE WHEN m.tipo = 'entrada' THEN m.quantidade ELSE -m.quantidade END), 0) < p.estoque_minimo
+                THEN 1 ELSE 0
+            END AS abaixo_minimo
+        FROM estoque_produtos p
+        LEFT JOIN estoque_movimentacoes m ON m.produto_id = p.id
+        GROUP BY p.id, p.user_id, p.nome, p.unidade, p.categoria, p.estoque_minimo
         """)
 
         # --- DADOS INICIAIS ---

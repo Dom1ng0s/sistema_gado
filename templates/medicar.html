@@ -1,59 +1,70 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Medicação</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <h1>Adicionar Medicação / Vacina</h1>
+{% extends 'base.html' %}
+{% block title %}Medicação{% endblock %}
 
-    <form action="{{ url_for('operacional.medicar', id_animal=id_animal) }}" method="POST" class="form-container">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="form-group">
-            <label>Data da Aplicação:</label>
-            <input type="date" name="data_aplicacao" required>
-        </div>
+{% block content %}
 
-        <div class="form-group">
-            <label>Nome do Medicamento:</label>
-            <input type="text" name="nome" required placeholder="Ex: Ivermectina">
-        </div>
+<div class="page-header">
+  <div>
+    <p class="label">Rebanho</p>
+    <h1 class="page-title">Adicionar Medicação / Vacina</h1>
+  </div>
+  <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}"
+     class="btn btn-ghost btn-sm">← Voltar à ficha</a>
+</div>
 
-        <div class="form-group">
-            <label>Custo (R$):</label>
-            <input type="number" step="0.01" name="custo" required placeholder="0.00">
-        </div>
+<div style="max-width:480px;">
+  <form action="{{ url_for('operacional.medicar', id_animal=id_animal) }}"
+        method="POST" class="form-container">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <div class="form-group">
-            <label>Observações:</label>
-            <input type="text" name="obs" placeholder="Motivo, dosagem, carência...">
-        </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--space-4);">
+      <div class="form-group">
+        <label for="data_aplicacao">Data da Aplicação</label>
+        <input id="data_aplicacao" type="date" name="data_aplicacao"
+               class="form-input" required>
+      </div>
 
-        <button type="submit" class="btn btn-primary">Salvar Registro</button>
-    </form>
+      <div class="form-group">
+        <label for="custo">Custo (R$)</label>
+        <input id="custo" type="number" step="0.01" name="custo"
+               class="form-input" required placeholder="0.00">
+      </div>
+    </div>
 
-    <br>
-    <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}" class="btn btn-secondary">Voltar</a>
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const formularios = document.querySelectorAll("form");
-        
-        formularios.forEach(form => {
-            form.addEventListener("submit", function(event) {
-                const botaoSubmit = form.querySelector("button[type='submit']");
-                
-                if (botaoSubmit) {
-                    if (botaoSubmit.classList.contains("btn-loading")) {
-                        event.preventDefault();
-                        return;
-                    }
-                    botaoSubmit.classList.add("btn-loading");
-                    botaoSubmit.setAttribute("disabled", "true");
-                }
-            });
-        });
+    <div class="form-group">
+      <label for="nome">Nome do Medicamento</label>
+      <input id="nome" type="text" name="nome" class="form-input"
+             required placeholder="Ex: Ivermectina">
+    </div>
+
+    <div class="form-group">
+      <label for="obs">Observações</label>
+      <input id="obs" type="text" name="obs" class="form-input"
+             placeholder="Motivo, dosagem, carência...">
+    </div>
+
+    <div style="display:flex; gap:var(--space-3); margin-top:var(--space-2);">
+      <button type="submit" class="btn btn-primary">Salvar Registro</button>
+      <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}"
+         class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function () {
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn && !btn.classList.contains('btn-loading')) {
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+      }
     });
+  });
+});
 </script>
-</body>
-</html>
+{% endblock %}

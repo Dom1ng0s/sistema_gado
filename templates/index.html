@@ -1,187 +1,319 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Gestão de Rebanho</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
-</head>
-<body>
+{% extends 'base.html' %}
+{% block title %}Rebanho{% endblock %}
 
-    <div class="dashboard-header">
-        <h1>{{ nome_fazenda_header if nome_fazenda_header else 'Meu Rebanho' }}</h1>
-        <div class="user-controls">
-            <span class="user-greeting">Olá, <strong>{{ current_user.username }}</strong></span>
-            <a href="{{ url_for('configuracoes.settings') }}" title="Configurações" class="btn-settings">⚙️</a>
-            <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-logout">Sair</a>
-        </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Cabeçalho de página ──────────────────────────────── -->
+<div class="page-header">
+  <div>
+    <p class="label">{{ nome_fazenda_header }}</p>
+    <h1 class="page-title">Gestão do Rebanho</h1>
+  </div>
+  <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
+    <div id="mini-widget" class="mini-cotacao" style="display:none; margin-right:var(--space-3);">
+      <span id="lbl-uf" style="text-transform:uppercase; font-weight:700; font-size:var(--text-xs); color:var(--color-ink-secondary);">--</span>
+      <span style="color:var(--color-border-strong);">|</span>
+      <span style="font-size:var(--text-xs);">🐂 <strong id="preco-boi">--</strong></span>
+      <span style="color:var(--color-border-strong);">|</span>
+      <span style="font-size:var(--text-xs);">🐄 <strong id="preco-novilha">--</strong></span>
+      <span style="font-size:var(--text-xs); cursor:pointer; color:var(--color-primary); font-weight:var(--weight-medium);" onclick="abrirModalBrasil()">🇧🇷 Ver Brasil</span>
     </div>
+    <a href="{{ url_for('api.relatorio_pdf') }}" class="btn btn-secondary btn-sm">Relatório PDF</a>
+    <a href="{{ url_for('operacional.vacinacao_coletiva') }}" class="btn btn-accent btn-sm">💉 Vacina em Lote</a>
+    <a href="{{ url_for('operacional.cadastro_lote') }}" class="btn btn-secondary">+ Lote</a>
+    <a href="{{ url_for('operacional.cadastro') }}" class="btn btn-primary">+ Novo Animal</a>
+  </div>
+</div>
 
-    <div class="action-bar">
-        <div class="action-buttons-group">
-            <a href="{{ url_for('operacional.cadastro') }}"          class="btn btn-primary btn-action">+ Novo Animal</a>
-            <a href="{{ url_for('operacional.cadastro_lote') }}"     class="btn btn-primary btn-action">+ Lote de Animais</a>
-            <a href="{{ url_for('financeiro.financeiro') }}"         class="btn btn-primary btn-action">$ Financeiro</a>
-            <a href="{{ url_for('api.graficos_page') }}"             class="btn btn-primary btn-action">Meu Rebanho</a>
-            <a href="{{ url_for('operacional.vacinacao_coletiva') }}" class="btn btn-vacina">💉 Vacina em Lote</a>
-        </div>
+<!-- ── Cards de métrica ────────────────────────────────── -->
+<div class="grid-metrics">
 
-        <div id="mini-widget" class="mini-cotacao" style="display: none;">
-            <span id="lbl-uf" style="text-transform: uppercase; font-weight: 800;">--</span>
-            <span class="divisor">|</span>
-            <span>🐂 Boi <strong id="preco-boi">--</strong></span>
-            <span class="divisor">|</span>
-            <span>🐄 Novilha <strong id="preco-novilha">--</strong></span>
-            <span class="divisor">|</span>
-            <span class="btn-ver-brasil" onclick="abrirModalBrasil()">🇧🇷 Ver Brasil</span>
-        </div>
+  <div class="metric-card">
+    <span class="label">Total no rebanho</span>
+    <div class="metric-value" id="val-total">—</div>
+    <div class="metric-delta flat" id="delta-total">Carregando...</div>
+  </div>
+
+  <div class="metric-card">
+    <span class="label">GMD médio</span>
+    <div>
+      <span class="metric-value" id="val-gmd">—</span>
+      <span class="metric-unit">kg/dia</span>
     </div>
+    <div class="metric-delta flat" id="delta-gmd">Carregando...</div>
+  </div>
 
-    <form action="{{ url_for('operacional.painel') }}" method="GET" class="search-bar search-container">
-        <input type="hidden" name="status" value="{{ status }}">
-        <input type="text" name="busca" class="input-busca" placeholder="Digite o número do brinco..." value="{{ busca }}">
-        <button type="submit" class="btn-buscar">🔍 Buscar</button>
-        {% if busca or status != 'todos' %}
-            <a href="{{ url_for('operacional.painel') }}" class="btn-limpar">Limpar</a>
-        {% endif %}
-    </form>
+  <div class="metric-card">
+    <span class="label">Machos</span>
+    <div class="metric-value" id="val-machos">—</div>
+    <div class="metric-delta flat" id="delta-machos">Carregando...</div>
+  </div>
 
-    <div class="filter-bar">
-        <span class="filter-label">Exibir:</span>
-        <a href="{{ url_for('operacional.painel', status='todos',    busca=busca) }}" class="btn btn-filter {% if status == 'todos'    %}btn-primary{% else %}btn-secondary{% endif %}">Todos</a>
-        <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca) }}" class="btn btn-filter {% if status == 'ativos'   %}btn-primary{% else %}btn-secondary{% endif %}">Apenas Ativos</a>
-        <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca) }}" class="btn btn-filter {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}">Apenas Vendidos</a>
-        <a href="{{ url_for('operacional.lixeira') }}" class="btn btn-lixeira" title="Ver animais excluídos">🗑️ Lixeira</a>
-    </div>
+  <div class="metric-card">
+    <span class="label">Fêmeas</span>
+    <div class="metric-value" id="val-femeas">—</div>
+    <div class="metric-delta flat" id="delta-femeas">Carregando...</div>
+  </div>
 
-    <table>
-        <thead>
-            <tr><th>Brinco</th><th>Sexo</th><th>Data Compra</th><th>Status</th><th>Ações</th></tr>
-        </thead>
-        <tbody>
-            {% for animal in lista_animais %}
-            <tr>
-                <td class="animal-brinco">{{ animal[1] }}</td>
-                <td>{{ animal[2] }}</td>
-                <td>{{ animal[3] }}</td>
-                <td>
-                    {% if animal[5] %}
-                        <span class="tag-vendido">VENDIDO</span>
-                    {% else %}
-                        <span class="tag-ativo">ATIVO</span>
-                    {% endif %}
-                </td>
-                <td><a href="{{ url_for('operacional.detalhes', id_animal=animal[0]) }}" class="link-detalhes">Ver Ficha &rarr;</a></td>
-            </tr>
-            {% else %}
-            <tr><td colspan="5" class="empty-state">Seu rebanho está vazio ou nenhum animal encontrado.</td></tr>
-            {% endfor %}
-        </tbody>
+</div>
+
+<!-- ── Alertas de GMD ──────────────────────────────────── -->
+<div id="alertas-gmd" style="display:flex; flex-direction:column; gap:var(--space-2); margin-bottom:var(--space-6);"></div>
+
+<!-- ── Busca ───────────────────────────────────────────── -->
+<form action="{{ url_for('operacional.painel') }}" method="GET"
+      style="display:flex; gap:var(--space-2); margin-bottom:var(--space-4); align-items:center;">
+  <input type="hidden" name="status" value="{{ status }}">
+  <input type="text" name="busca" class="form-input"
+         placeholder="Buscar pelo número do brinco..."
+         value="{{ busca }}"
+         style="max-width:320px;">
+  <button type="submit" class="btn btn-secondary btn-sm">🔍 Buscar</button>
+  {% if busca or status != 'todos' %}
+    <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">Limpar</a>
+  {% endif %}
+</form>
+
+<!-- ── Filtros de status ───────────────────────────────── -->
+<div style="display:flex; gap:var(--space-1); align-items:center; margin-bottom:var(--space-5);">
+  <span class="label" style="margin-right:var(--space-2);">Exibir:</span>
+  <a href="{{ url_for('operacional.painel', status='todos',    busca=busca) }}"
+     class="btn btn-sm {% if status == 'todos'    %}btn-primary{% else %}btn-secondary{% endif %}">Todos</a>
+  <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca) }}"
+     class="btn btn-sm {% if status == 'ativos'   %}btn-primary{% else %}btn-secondary{% endif %}">Apenas Ativos</a>
+  <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca) }}"
+     class="btn btn-sm {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}">Apenas Vendidos</a>
+  <a href="{{ url_for('operacional.lixeira') }}"
+     class="btn btn-sm btn-ghost" style="margin-left:auto;">🗑️ Lixeira</a>
+</div>
+
+<!-- ── Tabela de animais ───────────────────────────────── -->
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Brinco</th>
+        <th>Sexo</th>
+        <th>Data Compra</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for animal in lista_animais %}
+      <tr>
+        <td class="td-primary">{{ animal[1] }}</td>
+        <td>{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</td>
+        <td>{{ animal[3] }}</td>
+        <td>
+          {% if animal[5] %}
+            <span class="badge badge-neutral">Vendido</span>
+          {% else %}
+            <span class="badge badge-success">Ativo</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('operacional.detalhes', id_animal=animal[0]) }}"
+             class="btn btn-ghost btn-sm">Ver ficha</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" style="text-align:center; padding:var(--space-10); color:var(--color-ink-tertiary);">
+          Seu rebanho está vazio ou nenhum animal encontrado.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Paginação ──────────────────────────────────────── -->
+<div style="display:flex; justify-content:center; align-items:center; gap:var(--space-3); margin-top:var(--space-6);">
+  {% if pagina_atual > 1 %}
+    <a href="{{ url_for('operacional.painel', page=pagina_atual-1, busca=busca, status=status) }}"
+       class="btn btn-secondary btn-sm">&laquo; Anterior</a>
+  {% else %}
+    <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">&laquo; Anterior</span>
+  {% endif %}
+
+  <span style="font-size:var(--text-sm); color:var(--color-ink-secondary);">
+    Página {{ pagina_atual }} de {{ total_paginas }}
+  </span>
+
+  {% if pagina_atual < total_paginas %}
+    <a href="{{ url_for('operacional.painel', page=pagina_atual+1, busca=busca, status=status) }}"
+       class="btn btn-secondary btn-sm">Próximo &raquo;</a>
+  {% else %}
+    <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">Próximo &raquo;</span>
+  {% endif %}
+</div>
+
+<!-- ── Modal Cotações Brasil ───────────────────────────── -->
+<div id="modalBrasil" class="modal-overlay" onclick="fecharModal(event)">
+  <div class="modal-content">
+    <span class="btn-fechar" onclick="document.getElementById('modalBrasil').style.display='none'">&times;</span>
+    <h2 class="modal-title">🇧🇷 Cotações Nacionais</h2>
+    <div id="loadingModal" class="modal-loading">🔄 Carregando dados...</div>
+    <table class="tabela-cotacao" id="tabelaModal" style="display:none;">
+      <thead>
+        <tr>
+          <th>Praça / Região</th>
+          <th>Boi Gordo (Vista)</th>
+          <th>Novilha (Vista)</th>
+        </tr>
+      </thead>
+      <tbody id="corpoTabelaBrasil"></tbody>
     </table>
+  </div>
+</div>
 
-    <div class="pagination-container">
-        {% if pagina_atual > 1 %}
-            <a href="{{ url_for('operacional.painel', page=pagina_atual-1, busca=busca, status=status) }}" class="btn btn-secondary">&laquo; Anterior</a>
-        {% else %}
-            <span class="btn btn-secondary btn-disabled">&laquo; Anterior</span>
-        {% endif %}
+{% endblock %}
 
-        <span class="page-info">Página {{ pagina_atual }} de {{ total_paginas }}</span>
+{% block scripts %}
+<script>
+const API = {
+  sexo:    "{{ url_for('api.graficos_sexo') }}",
+  gmd:     "{{ url_for('api.graficos_gmd') }}",
+  alertas: "{{ url_for('api.alerta_gmd') }}",
+  cotacao: "{{ url_for('api.cotacoes_regionais') }}",
+  brasil:  "{{ url_for('api.cotacoes_brasil') }}",
+};
 
-        {% if pagina_atual < total_paginas %}
-            <a href="{{ url_for('operacional.painel', page=pagina_atual+1, busca=busca, status=status) }}" class="btn btn-secondary">Próximo &raquo;</a>
-        {% else %}
-            <span class="btn btn-secondary btn-disabled">Próximo &raquo;</span>
-        {% endif %}
-    </div>
+async function carregarMetricas() {
+  try {
+    const [sexoData, gmdData, alertasData] = await Promise.all([
+      fetch(API.sexo).then(r => r.json()),
+      fetch(API.gmd).then(r => r.json()),
+      fetch(API.alertas).then(r => r.json()),
+    ]);
 
-    <!-- Modal Cotações Brasil -->
-    <div id="modalBrasil" class="modal-overlay" onclick="fecharModal(event)">
-        <div class="modal-content">
-            <span class="btn-fechar" onclick="document.getElementById('modalBrasil').style.display='none'">&times;</span>
-            <h2 class="modal-title">🇧🇷 Cotações Nacionais</h2>
+    const M = sexoData.M || 0;
+    const F = sexoData.F || 0;
+    const total = M + F;
 
-            <div id="loadingModal" class="modal-loading">🔄 Carregando dados...</div>
+    document.getElementById('val-total').textContent = total;
+    document.getElementById('delta-total').textContent = `${M} machos · ${F} fêmeas`;
+    document.getElementById('delta-total').className = 'metric-delta flat';
 
-            <table class="tabela-cotacao" id="tabelaModal" style="display: none;">
-                <thead>
-                    <tr>
-                        <th>Praça / Região</th>
-                        <th>Boi Gordo (Vista)</th>
-                        <th>Novilha (Vista)</th>
-                    </tr>
-                </thead>
-                <tbody id="corpoTabelaBrasil"></tbody>
-            </table>
-        </div>
-    </div>
+    document.getElementById('val-machos').textContent = M;
+    document.getElementById('val-femeas').textContent = F;
+    if (total > 0) {
+      document.getElementById('delta-machos').textContent = `${((M / total) * 100).toFixed(0)}% do rebanho`;
+      document.getElementById('delta-femeas').textContent = `${((F / total) * 100).toFixed(0)}% do rebanho`;
+    } else {
+      document.getElementById('delta-machos').textContent = '—';
+      document.getElementById('delta-femeas').textContent = '—';
+    }
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            fetch("{{ url_for('api.cotacoes_regionais') }}")
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error || (!data.boi.length && !data.novilha.length)) return;
-                    document.getElementById('lbl-uf').innerText = data.uf;
-                    if (data.boi.length > 0)
-                        document.getElementById('preco-boi').innerText = `R$ ${parseFloat(data.boi[0].preco_vista).toFixed(2).replace('.', ',')}`;
-                    if (data.novilha.length > 0)
-                        document.getElementById('preco-novilha').innerText = `R$ ${parseFloat(data.novilha[0].preco_vista).toFixed(2).replace('.', ',')}`;
-                    document.getElementById('mini-widget').style.display = 'inline-flex';
-                })
-                .catch(err => console.error(err));
-        });
+    const gmd = gmdData.gmd_medio || 0;
+    const gmdEl = document.getElementById('val-gmd');
+    const deltaGmd = document.getElementById('delta-gmd');
+    gmdEl.textContent = gmd > 0 ? gmd.toFixed(3) : '—';
 
-        function abrirModalBrasil() {
-            const modal   = document.getElementById('modalBrasil');
-            const tbody   = document.getElementById('corpoTabelaBrasil');
-            const loading = document.getElementById('loadingModal');
-            const tabela  = document.getElementById('tabelaModal');
+    if (gmd >= 0.8) {
+      deltaGmd.textContent = '↑ Acima da meta (0.800)';
+      deltaGmd.className = 'metric-delta up';
+    } else if (gmd > 0) {
+      deltaGmd.textContent = '↓ Abaixo da meta (0.800)';
+      deltaGmd.className = 'metric-delta down';
+    } else {
+      deltaGmd.textContent = 'Sem pesagens registradas';
+      deltaGmd.className = 'metric-delta flat';
+    }
 
-            modal.style.display = 'flex';
-            tbody.innerHTML = '';
-            loading.style.display = 'block';
-            tabela.style.display  = 'none';
+    // Alertas GMD
+    const alertasDiv = document.getElementById('alertas-gmd');
+    alertasDiv.innerHTML = '';
 
-            fetch("{{ url_for('api.cotacoes_brasil') }}")
-                .then(res => res.json())
-                .then(data => {
-                    let html = '';
-                    const listaBoi     = data.boi     || [];
-                    const listaNovilha = data.novilha || [];
-                    let mapaNovilha = {};
-                    listaNovilha.forEach(item => { mapaNovilha[item.praca] = item.preco_vista; });
+    if (!alertasData.error && alertasData.total > 0) {
+      const lista  = alertasData.animais.slice(0, 6).map(a => a.brinco).join(', ');
+      const mais   = alertasData.total > 6 ? ` e mais ${alertasData.total - 6}` : '';
+      const limite = alertasData.gmd_limite_inferior != null
+                     ? alertasData.gmd_limite_inferior.toFixed(3)
+                     : '—';
+      alertasDiv.innerHTML = `
+        <div class="alert alert-danger">
+          <span class="alert-icon">⚠</span>
+          <div>
+            <strong>${alertasData.total} animal${alertasData.total > 1 ? 'is' : ''} com GMD crítico (outlier &lt; ${limite} kg/dia)</strong><br>
+            <span style="font-size:var(--text-xs);">${lista}${mais} — abaixo de 2 desvios padrão do rebanho</span>
+          </div>
+        </div>`;
+    } else if (!alertasData.error && total > 0) {
+      alertasDiv.innerHTML = `
+        <div class="alert alert-success">
+          <span class="alert-icon">✓</span>
+          <div><strong>Nenhum outlier detectado — todos os animais dentro do intervalo esperado do rebanho</strong></div>
+        </div>`;
+    }
 
-                    listaBoi.forEach(item => {
-                        const praca    = item.praca;
-                        const precoBoi = parseFloat(item.preco_vista).toFixed(2).replace('.', ',');
-                        const precoNov = mapaNovilha[praca]
-                            ? parseFloat(mapaNovilha[praca]).toFixed(2).replace('.', ',')
-                            : '---';
+  } catch (e) {
+    console.error('Erro ao carregar métricas:', e);
+  }
+}
 
-                        html += `
-                            <tr>
-                                <td class="praca-nome">${praca}</td>
-                                <td class="preco-boi">R$ ${precoBoi}</td>
-                                <td class="preco-novilha">R$ ${precoNov}</td>
-                            </tr>
-                        `;
-                    });
+async function carregarCotacao() {
+  try {
+    const data = await fetch(API.cotacao).then(r => r.json());
+    if (data.error || (!data.boi?.length && !data.novilha?.length)) return;
+    document.getElementById('lbl-uf').textContent = data.uf;
+    if (data.boi?.length)
+      document.getElementById('preco-boi').textContent = `R$ ${parseFloat(data.boi[0].preco_vista).toFixed(2).replace('.', ',')}`;
+    if (data.novilha?.length)
+      document.getElementById('preco-novilha').textContent = `R$ ${parseFloat(data.novilha[0].preco_vista).toFixed(2).replace('.', ',')}`;
+    document.getElementById('mini-widget').style.display = 'inline-flex';
+  } catch (e) { console.error(e); }
+}
 
-                    tbody.innerHTML = html;
-                    loading.style.display = 'none';
-                    tabela.style.display  = 'table';
-                })
-                .catch(err => {
-                    console.error(err);
-                    loading.innerText = "Erro ao carregar dados.";
-                });
-        }
+function abrirModalBrasil() {
+  const modal   = document.getElementById('modalBrasil');
+  const tbody   = document.getElementById('corpoTabelaBrasil');
+  const loading = document.getElementById('loadingModal');
+  const tabela  = document.getElementById('tabelaModal');
 
-        function fecharModal(e) {
-            if (e.target.id === 'modalBrasil')
-                document.getElementById('modalBrasil').style.display = 'none';
-        }
-    </script>
-</body>
-</html>
+  modal.style.display = 'flex';
+  tbody.innerHTML = '';
+  loading.style.display = 'block';
+  tabela.style.display  = 'none';
+
+  fetch(API.brasil).then(r => r.json()).then(data => {
+    const listaBoi     = data.boi     || [];
+    const listaNovilha = data.novilha || [];
+    const mapaNovilha  = {};
+    listaNovilha.forEach(i => { mapaNovilha[i.praca] = i.preco_vista; });
+
+    tbody.innerHTML = listaBoi.map(item => {
+      const pBoi = parseFloat(item.preco_vista).toFixed(2).replace('.', ',');
+      const pNov = mapaNovilha[item.praca]
+        ? parseFloat(mapaNovilha[item.praca]).toFixed(2).replace('.', ',') : '---';
+      return `<tr>
+        <td class="praca-nome">${item.praca}</td>
+        <td class="preco-boi">R$ ${pBoi}</td>
+        <td class="preco-novilha">R$ ${pNov}</td>
+      </tr>`;
+    }).join('');
+
+    loading.style.display = 'none';
+    tabela.style.display  = 'table';
+  }).catch(err => {
+    console.error(err);
+    loading.innerText = "Erro ao carregar dados.";
+  });
+}
+
+function fecharModal(e) {
+  if (e.target.id === 'modalBrasil')
+    document.getElementById('modalBrasil').style.display = 'none';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  carregarMetricas();
+  carregarCotacao();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% block title %}Ranking de Touros{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">Hereditariedade</p>
+    <h1 class="page-title">Ranking de Touros</h1>
+  </div>
+  <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">← Painel</a>
+</div>
+
+<!-- ── Card GMD do rebanho ────────────────────────────── -->
+<div class="grid-metrics" style="margin-bottom:var(--space-6);">
+  <div class="metric-card">
+    <span class="label">GMD médio do rebanho</span>
+    <div>
+      <span class="metric-value">{{ "%.3f"|format(gmd_medio) }}</span>
+      <span class="metric-unit">kg/dia</span>
+    </div>
+    <div class="metric-delta flat">Linha de referência no gráfico</div>
+  </div>
+  <div class="metric-card">
+    <span class="label">Touros no ranking</span>
+    <div class="metric-value">{{ ranking|length }}</div>
+    <div class="metric-delta flat">Com filhos pesados no sistema</div>
+  </div>
+</div>
+
+{% if ranking %}
+
+<!-- ── Gráfico ECharts horizontal bar ─────────────────── -->
+<div style="background:var(--color-surface); border:1px solid var(--color-border);
+            border-radius:var(--radius-lg); padding:var(--space-5); margin-bottom:var(--space-6);">
+  <p class="label" style="margin-bottom:var(--space-3);">GMD médio dos filhos por touro (kg/dia)</p>
+  <div id="chartTouros" style="width:100%; height:{{ [ranking|length * 48 + 60, 200]|max }}px;"></div>
+</div>
+
+<!-- ── Tabela ──────────────────────────────────────────── -->
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:center; width:48px;">#</th>
+        <th>Brinco</th>
+        <th style="text-align:center;">Filhos</th>
+        <th style="text-align:right;">GMD médio filhos</th>
+        <th style="text-align:center;">vs Rebanho</th>
+        <th style="text-align:center;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in ranking %}
+      {% set diff = r[3] - gmd_medio %}
+      <tr>
+        <td style="text-align:center; font-weight:var(--weight-bold); color:var(--color-ink-secondary);">
+          {{ loop.index }}
+        </td>
+        <td class="td-primary">{{ r[1] }}</td>
+        <td style="text-align:center;">{{ r[2] }}</td>
+        <td style="text-align:right; font-weight:var(--weight-semibold);
+                   color:{% if r[3] >= 0.8 %}var(--color-primary){% elif r[3] >= 0.6 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
+          {{ "%.3f"|format(r[3]) }} kg/dia
+        </td>
+        <td style="text-align:center;">
+          {% if diff >= 0 %}
+            <span class="badge badge-success">+{{ "%.3f"|format(diff) }}</span>
+          {% else %}
+            <span class="badge badge-danger">{{ "%.3f"|format(diff) }}</span>
+          {% endif %}
+        </td>
+        <td style="text-align:center;">
+          <a href="{{ url_for('operacional.detalhes', id_animal=r[0]) }}"
+             class="btn btn-ghost btn-sm">Ver ficha</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<div style="text-align:center; padding:var(--space-16); color:var(--color-ink-tertiary);">
+  <p style="font-size:var(--text-lg); margin-bottom:var(--space-2);">Nenhum touro com filhos registrados</p>
+  <p style="font-size:var(--text-sm);">Defina pai_id nos animais para que apareçam neste ranking.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if ranking %}
+<script>
+const gmdRebanho = {{ gmd_medio }};
+const touros = [
+  {% for r in ranking %}
+  { brinco: "{{ r[1] | replace('"', '\\"') }}", gmd: {{ r[3] }}, filhos: {{ r[2] }} }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+const nomes   = touros.map(t => t.brinco).reverse();
+const valores = touros.map(t => ({
+  value: t.gmd,
+  itemStyle: {
+    color: t.gmd >= 0.8 ? '#3B6D11' : t.gmd >= 0.6 ? '#EF9F27' : '#E24B4A'
+  }
+})).reverse();
+
+const chart = echarts.init(document.getElementById('chartTouros'));
+chart.setOption({
+  textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' },
+  grid: { top: 10, right: 80, bottom: 30, left: 20, containLabel: true },
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: { type: 'shadow' },
+    backgroundColor: '#1C1C1A',
+    borderColor: '#1C1C1A',
+    textStyle: { color: '#FAFAF8', fontFamily: 'DM Sans, sans-serif', fontSize: 13 },
+    formatter: p => `${p[0].name}<br/><strong>${Number(p[0].value).toFixed(3)} kg/dia</strong>`
+  },
+  xAxis: {
+    type: 'value',
+    name: 'kg/dia',
+    nameTextStyle: { color: '#6B6B68', fontSize: 11 },
+    axisLabel: { color: '#6B6B68', fontSize: 11, formatter: v => v.toFixed(2) },
+    splitLine: { lineStyle: { color: '#EDEDE8' } },
+    max: value => Math.max(value.max * 1.15, 1.0)
+  },
+  yAxis: {
+    type: 'category',
+    data: nomes,
+    axisLabel: { color: '#3D3D3A', fontSize: 12 },
+    axisLine: { lineStyle: { color: '#D6D6D0' } }
+  },
+  series: [{
+    type: 'bar',
+    data: valores,
+    barMaxWidth: 32,
+    label: {
+      show: true, position: 'right',
+      fontSize: 12, color: '#3D3D3A',
+      formatter: p => p.value > 0 ? p.value.toFixed(3) : ''
+    },
+    markLine: {
+      silent: true,
+      symbol: 'none',
+      lineStyle: { color: '#9B9B99', type: 'dashed', width: 1.5 },
+      data: [{ xAxis: gmdRebanho, name: 'Rebanho' }],
+      label: {
+        formatter: p => `Rebanho\n${Number(p.value).toFixed(3)}`,
+        color: '#9B9B99', fontSize: 10
+      }
+    }
+  }]
+});
+
+window.addEventListener('resize', () => chart.resize());
+</script>
+{% endif %}
+{% endblock %}

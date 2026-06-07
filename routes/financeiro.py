@@ -19,25 +19,25 @@ def calcular_kpis_unificados(user_id):
     dados['qtd_animais'] = animal_repository.count_animais(user_id, status='ativos')
     dados['gmd_medio'] = animal_repository.get_gmd_medio_rebanho(user_id)
 
-    dt_lim = date.today() - timedelta(days=90)
+    dt_lim = date.today() - timedelta(days=365)
     custos = financeiro_repository.get_custos_por_tipo_trimestre(user_id, dt_lim)
 
-    tot_tri = 0.0
+    tot_anual = 0.0
     for tipo, val in custos:
-        m_mensal = float(val) / 3
-        tot_tri += m_mensal
+        v = float(val)
+        tot_anual += v
         if tipo == 'Arrendamento':
-            dados['arrendamento'] += m_mensal
+            dados['arrendamento'] += v
         elif tipo == 'Nutrição':
-            dados['suplementacao'] += m_mensal
+            dados['suplementacao'] += v
         elif tipo == 'Salário':
-            dados['mao_obra'] += m_mensal
+            dados['mao_obra'] += v
         else:
-            dados['extras'] += m_mensal
-    dados['custo_mensal_total'] = tot_tri
+            dados['extras'] += v
+    dados['custo_mensal_total'] = tot_anual
 
     if dados['qtd_animais'] > 0:
-        dados['custo_diaria'] = (tot_tri / dados['qtd_animais']) / 30
+        dados['custo_diaria'] = (tot_anual / dados['qtd_animais']) / 365
     if dados['gmd_medio'] > 0:
         dados['dias_para_arroba'] = 30 / dados['gmd_medio']
         dados['custo_arroba'] = dados['custo_diaria'] * dados['dias_para_arroba']
@@ -128,13 +128,13 @@ def simulador_custo():
             sugestoes.update({'qtd_animais': qtd, 'gmd_medio': gmd, 'arrendamento': c_arr,
                               'suplementacao': c_sup, 'mao_obra': c_mao, 'extras': c_ext})
 
-            c_men = c_arr + c_sup + c_mao + c_ext
-            c_dia = (c_men / qtd / 30) if qtd > 0 else 0
+            c_anual = c_arr + c_sup + c_mao + c_ext
+            c_dia = (c_anual / qtd / 365) if qtd > 0 else 0
             d_arr = (30 / gmd) if gmd > 0 else 0
             c_arr_val = c_dia * d_arr
 
             res = {
-                'custo_mensal_total': f"{c_men:,.2f}",
+                'custo_total': f"{c_anual:,.2f}",
                 'custo_diaria': f"{c_dia:,.2f}",
                 'dias_arroba': int(d_arr),
                 'custo_arroba': f"{c_arr_val:,.2f}",

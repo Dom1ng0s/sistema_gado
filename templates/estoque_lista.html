@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+{% block title %}Estoque Virtual{% endblock %}
+
+{% block extra_css %}
+<style>
+.estoque-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+@media (max-width: 600px) {
+  .estoque-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">Estoque</p>
+    <h1 class="page-title">Estoque Virtual</h1>
+    <p style="margin:var(--space-1) 0 0; color:var(--color-ink-secondary); font-size:var(--text-sm);">
+      Controle de insumos — medicamentos, vacinas e suplementos
+    </p>
+  </div>
+  <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">← Painel</a>
+</div>
+
+<!-- ── Flash messages ──────────────────────────────── -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="alert {% if category == 'sucesso' %}alert-success{% else %}alert-danger{% endif %}"
+         style="margin-bottom:var(--space-4);">
+      <span class="alert-icon">{% if category == 'sucesso' %}✓{% else %}⚠{% endif %}</span>
+      <div>{{ msg }}</div>
+    </div>
+  {% endfor %}
+{% endwith %}
+
+<!-- ── Alerta de estoque baixo ─────────────────────── -->
+{% set alertas = produtos | selectattr(9, 'equalto', 1) | list %}
+{% if alertas %}
+<div class="alert alert-danger" style="margin-bottom:var(--space-5);">
+  <span class="alert-icon">⚠</span>
+  <div>
+    <strong>{{ alertas|length }} produto{{ 's' if alertas|length != 1 }} abaixo do mínimo:</strong>
+    {{ alertas | map(attribute=2) | join(', ') }}
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Painel resumo + gráfico ─────────────────────── -->
+{% if produtos %}
+<div style="display:grid; grid-template-columns:1fr 260px; gap:var(--space-5); margin-bottom:var(--space-6); align-items:start;">
+
+  <div class="grid-metrics" style="margin:0;">
+    <div class="metric-card">
+      <span class="label">Total de produtos</span>
+      <div class="metric-value">{{ produtos|length }}</div>
+    </div>
+    <div class="metric-card">
+      <span class="label">Abaixo do mínimo</span>
+      <div class="metric-value"
+           style="color:{% if alertas %}var(--color-danger){% else %}var(--color-primary){% endif %};">
+        {{ alertas|length }}
+      </div>
+      {% if alertas %}
+        <div class="metric-delta down">↓ Reposição necessária</div>
+      {% else %}
+        <div class="metric-delta up">↑ Todos em ordem</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div style="background:var(--color-surface); border:1px solid var(--color-border);
+              border-radius:var(--radius-lg); padding:var(--space-4);">
+    <p class="label" style="margin-bottom:var(--space-2);">Por categoria</p>
+    <div id="chartCategorias" style="width:100%; height:160px;"></div>
+  </div>
+
+</div>
+{% endif %}
+
+<!-- ── Formulário cadastrar produto (accordion) ─────── -->
+<details style="background:var(--color-surface); border:1px solid var(--color-border);
+                border-radius:var(--radius-lg); padding:var(--space-4);
+                margin-bottom:var(--space-6);">
+  <summary style="cursor:pointer; color:var(--color-primary); font-weight:var(--weight-semibold);
+                  padding:var(--space-2) 0; user-select:none;">
+    + Cadastrar Produto
+  </summary>
+  <form method="POST" action="{{ url_for('estoque.lista_estoque') }}"
+        style="margin-top:var(--space-4);">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="display:grid; grid-template-columns:2fr 1fr; gap:var(--space-3);">
+      <div class="form-group" style="margin:0;">
+        <label for="nome">Nome do Produto <span style="color:var(--color-danger);">*</span></label>
+        <input id="nome" type="text" name="nome" class="form-input"
+               maxlength="200" required placeholder="Ex: Ivermectina 1%">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label for="unidade">Unidade <span style="color:var(--color-danger);">*</span></label>
+        <input id="unidade" type="text" name="unidade" class="form-input"
+               maxlength="50" required placeholder="ml, kg, dose...">
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-3); margin-top:var(--space-3);">
+      <div class="form-group" style="margin:0;">
+        <label for="categoria">Categoria <span style="color:var(--color-danger);">*</span></label>
+        <select id="categoria" name="categoria" class="form-input" required>
+          <option value="">— selecione —</option>
+          <option value="medicamento">Medicamento</option>
+          <option value="vacina">Vacina</option>
+          <option value="suplemento">Suplemento</option>
+          <option value="mineral">Mineral</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label for="estoque_minimo">Estoque Mínimo (alerta)</label>
+        <input id="estoque_minimo" type="number" name="estoque_minimo"
+               class="form-input" min="0" step="0.001" value="0">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm" style="margin-top:var(--space-4);">
+      Cadastrar Produto
+    </button>
+  </form>
+</details>
+
+<!-- ── Lista de produtos ──────────────────────────── -->
+<p class="label" style="margin-bottom:var(--space-3);">
+  {% if produtos %}{{ produtos|length }} produto{{ 's' if produtos|length != 1 }} cadastrado{{ 's' if produtos|length != 1 }}{% endif %}
+</p>
+
+{% if produtos %}
+<div class="estoque-grid">
+  {% for p in produtos %}
+  {% set saldo = p[8] | float %}
+  {% set minimo = p[5] | float %}
+  {% set pct = ((saldo / minimo * 100) | round(0) | int) if minimo > 0 else none %}
+  {% set abaixo = p[9] %}
+
+  <div class="card {% if abaixo %}card-accent-red{% elif saldo > 0 %}card-accent-green{% endif %}">
+    <div class="card-header">
+      <div>
+        <span style="font-size:var(--text-base); font-weight:var(--weight-semibold);
+                     color:var(--color-ink);">{{ p[2] }}</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:var(--space-2);">
+        {% if abaixo %}
+          <span class="badge badge-danger">Baixo</span>
+        {% elif saldo == 0 %}
+          <span class="badge badge-neutral">Zerado</span>
+        {% else %}
+          <span class="badge badge-success">OK</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card-body" style="padding-top:var(--space-2);">
+      <div style="font-size:var(--text-sm); color:var(--color-ink-secondary); margin-bottom:var(--space-3);">
+        <span class="tag">{{ p[4]|capitalize }}</span>
+        <span style="margin-left:var(--space-2);">{{ p[3] }}</span>
+      </div>
+
+      <!-- Saldo em destaque -->
+      <div style="margin-bottom:var(--space-3);">
+        <div style="font-size:var(--text-2xl); font-weight:var(--weight-bold);
+                    color:{% if abaixo %}var(--color-danger){% else %}var(--color-primary){% endif %};">
+          {{ "%.3f"|format(saldo) }}
+        </div>
+        <div style="font-size:var(--text-xs); color:var(--color-ink-tertiary);">
+          saldo em {{ p[3] }}
+        </div>
+      </div>
+
+      <!-- Barra de nível (só se minimo > 0) -->
+      {% if minimo > 0 %}
+      <div style="margin-bottom:var(--space-3);">
+        <div style="display:flex; justify-content:space-between; font-size:var(--text-xs);
+                    color:var(--color-ink-tertiary); margin-bottom:var(--space-1);">
+          <span>Mínimo: {{ "%.3f"|format(minimo) }}</span>
+          {% if pct is not none %}<span>{{ [pct, 999]|min }}%</span>{% endif %}
+        </div>
+        <div class="lotacao-bar">
+          <div class="lotacao-fill {% if abaixo %}danger{% elif pct is not none and pct <= 150 %}warning{% else %}ok{% endif %}"
+               style="width:{{ [pct if pct is not none else 100, 100]|min }}%;"></div>
+        </div>
+      </div>
+      {% endif %}
+
+      <a href="{{ url_for('estoque.detalhe_estoque', produto_id=p[0]) }}"
+         class="btn btn-ghost btn-sm" style="width:100%; text-align:center;">
+        Ver detalhe →
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div style="text-align:center; padding:var(--space-16); color:var(--color-ink-tertiary);">
+  <p style="font-size:var(--text-lg); margin-bottom:var(--space-2);">Nenhum produto cadastrado</p>
+  <p style="font-size:var(--text-sm);">Use o formulário acima para adicionar o primeiro insumo.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if produtos %}
+<script>
+const estoqueItems = [
+  {% for p in produtos %}
+  { cat: "{{ p[4] }}" }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+const catMap = {};
+estoqueItems.forEach(i => { catMap[i.cat] = (catMap[i.cat] || 0) + 1; });
+
+const catColors = {
+  medicamento: '#3B6D11',
+  vacina:      '#EF9F27',
+  suplemento:  '#C0DD97',
+  mineral:     '#9B9B99',
+  outro:       '#B8A88A'
+};
+const catLabels = {
+  medicamento: 'Medicamento',
+  vacina:      'Vacina',
+  suplemento:  'Suplemento',
+  mineral:     'Mineral',
+  outro:       'Outro'
+};
+
+const catData = Object.entries(catMap).map(([k, v]) => ({
+  name: catLabels[k] || k,
+  value: v,
+  itemStyle: { color: catColors[k] || '#9B9B99' }
+}));
+
+const chart = echarts.init(document.getElementById('chartCategorias'));
+chart.setOption({
+  textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' },
+  tooltip: {
+    trigger: 'item',
+    backgroundColor: '#1C1C1A',
+    borderColor: '#1C1C1A',
+    textStyle: { color: '#FAFAF8', fontFamily: 'DM Sans, sans-serif', fontSize: 12 },
+    formatter: p => `${p.name}: <strong>${p.value}</strong>`
+  },
+  legend: { show: false },
+  series: [{
+    type: 'pie',
+    radius: ['42%', '70%'],
+    center: ['50%', '50%'],
+    data: catData,
+    label: {
+      show: true,
+      fontSize: 10,
+      color: '#3D3D3A',
+      formatter: p => p.value > 0 ? `${p.name}\n${p.value}` : ''
+    },
+    labelLine: { length: 6, length2: 8 }
+  }]
+});
+
+window.addEventListener('resize', () => chart.resize());
+</script>
+{% endif %}
+{% endblock %}

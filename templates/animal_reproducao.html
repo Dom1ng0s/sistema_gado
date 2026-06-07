@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block title %}Reprodução — {{ animal[1] }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline {
+  position: relative;
+  padding-left: var(--space-8);
+  margin-top: var(--space-2);
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: var(--color-border);
+}
+.timeline-item {
+  position: relative;
+  margin-bottom: var(--space-4);
+}
+.timeline-dot {
+  position: absolute;
+  left: calc(-1 * var(--space-8) + 3px);
+  top: 5px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2.5px solid var(--color-surface);
+  box-shadow: 0 0 0 2px currentColor;
+}
+.timeline-dot.vivo      { color: var(--color-primary);  background: var(--color-primary); }
+.timeline-dot.natimorto { color: var(--color-accent);   background: var(--color-accent); }
+.timeline-dot.aborto    { color: var(--color-danger);   background: var(--color-danger); }
+.timeline-card {
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">Hereditariedade</p>
+    <h1 class="page-title">Reprodução — {{ animal[1] }}</h1>
+    <p style="margin:var(--space-1) 0 0; color:var(--color-ink-secondary); font-size:var(--text-sm);">
+      {{ 'Macho' if animal[2] == 'M' else 'Fêmea' }} — histórico reprodutivo
+    </p>
+  </div>
+  <a href="{{ url_for('operacional.detalhes', id_animal=animal[0]) }}"
+     class="btn btn-ghost btn-sm">← Ficha do Animal</a>
+</div>
+
+<!-- ── Flash messages ──────────────────────────────── -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="alert {% if category == 'sucesso' %}alert-success{% else %}alert-danger{% endif %}"
+         style="margin-bottom:var(--space-4);">
+      <span class="alert-icon">{% if category == 'sucesso' %}✓{% else %}⚠{% endif %}</span>
+      <div>{{ msg }}</div>
+    </div>
+  {% endfor %}
+{% endwith %}
+
+<!-- ── Cards de estatísticas ──────────────────────────── -->
+{% if stats %}
+<div class="grid-metrics" style="margin-bottom:var(--space-6);">
+
+  <div class="metric-card">
+    <span class="label">Total de coberturas</span>
+    <div class="metric-value">{{ stats[1] }}</div>
+  </div>
+
+  <div class="metric-card">
+    <span class="label">Partos vivos</span>
+    <div class="metric-value">{{ stats[2] }}</div>
+  </div>
+
+  <div class="metric-card">
+    <span class="label">Taxa de sucesso</span>
+    <div class="metric-value"
+         style="color:{% if stats[3] >= 70 %}var(--color-primary){% else %}var(--color-danger){% endif %};">
+      {{ stats[3] }}%
+    </div>
+    {% if stats[3] >= 70 %}
+      <div class="metric-delta up">↑ Acima de 70%</div>
+    {% else %}
+      <div class="metric-delta down">↓ Abaixo de 70%</div>
+    {% endif %}
+  </div>
+
+  <div class="metric-card">
+    <span class="label">1ª Cobertura</span>
+    <div class="metric-value" style="font-size:var(--text-xl);">{{ stats[4] }}</div>
+    {% if stats[5] and stats[5] != stats[4] %}
+      <div class="metric-delta flat">Última: {{ stats[5] }}</div>
+    {% endif %}
+  </div>
+
+</div>
+{% endif %}
+
+<!-- ── Formulário de novo evento ──────────────────────── -->
+<div style="max-width:620px; margin-bottom:var(--space-8);">
+  <h2 style="margin-bottom:var(--space-4);">Registrar Evento Reprodutivo</h2>
+  <form method="POST" action="{{ url_for('operacional.registrar_reproducao') }}"
+        class="form-container">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="vaca_id" value="{{ animal[0] }}">
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
+      <div class="form-group">
+        <label for="data_cobertura">Data de Cobertura <span style="color:var(--color-danger);">*</span></label>
+        <input id="data_cobertura" type="date" name="data_cobertura"
+               class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label for="data_parto">Data de Parto</label>
+        <input id="data_parto" type="date" name="data_parto" class="form-input">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="resultado">Resultado <span style="color:var(--color-danger);">*</span></label>
+      <select id="resultado" name="resultado" class="form-input" required>
+        <option value="">— selecione —</option>
+        <option value="vivo">Vivo</option>
+        <option value="natimorto">Natimorto</option>
+        <option value="aborto">Aborto</option>
+      </select>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
+      <div class="form-group">
+        <label for="touro_id">Touro (rebanho)</label>
+        <select id="touro_id" name="touro_id" class="form-input">
+          <option value="">— selecione —</option>
+          {% for m in machos %}
+            <option value="{{ m[0] }}">{{ m[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="touro_externo">Ou touro externo / sêmen</label>
+        <input id="touro_externo" type="text" name="touro_externo"
+               class="form-input" maxlength="200"
+               placeholder="Nome do reprodutor...">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Salvar Evento</button>
+  </form>
+</div>
+
+<!-- ── Histórico — timeline vertical ──────────────────── -->
+<h2 style="margin-bottom:var(--space-4);">Histórico de Coberturas</h2>
+
+{% if eventos %}
+<div class="timeline">
+  {% for e in eventos %}
+  <div class="timeline-item">
+    <div class="timeline-dot {{ e[3] }}"></div>
+    <div class="timeline-card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:var(--space-2);">
+        <div>
+          <span class="label">Cobertura</span>
+          <div style="font-size:var(--text-base); font-weight:var(--weight-semibold);">{{ e[1] }}</div>
+        </div>
+        {% if e[3] == 'vivo' %}
+          <span class="badge badge-success">Vivo</span>
+        {% elif e[3] == 'natimorto' %}
+          <span class="badge badge-warning">Natimorto</span>
+        {% else %}
+          <span class="badge badge-danger">Aborto</span>
+        {% endif %}
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:var(--space-4); margin-top:var(--space-3);
+                  font-size:var(--text-sm); color:var(--color-ink-secondary);">
+        {% if e[2] %}
+          <span>🐄 Parto: <strong style="color:var(--color-ink);">{{ e[2] }}</strong></span>
+        {% endif %}
+        {% if e[4] or e[5] %}
+          <span>🐂 Touro: <strong style="color:var(--color-ink);">{{ e[4] or e[5] }}</strong></span>
+        {% else %}
+          <span style="color:var(--color-ink-tertiary);">Touro não informado</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div style="text-align:center; padding:var(--space-12); color:var(--color-ink-tertiary);">
+  <p>Nenhum evento reprodutivo registrado.</p>
+</div>
+{% endif %}
+
+{% endblock %}

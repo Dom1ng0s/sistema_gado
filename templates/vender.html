@@ -1,59 +1,71 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Registrar Venda</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <div style="border: 2px solid var(--danger-color); background-color: #FDDCDA; padding: 20px; border-radius: 10px; max-width: 500px; margin: 0 auto;">
-        <h2 style="color: var(--danger-color);">Registrar Venda (Saída)</h2>
-        <p style="color: var(--color-musgo);">Atenção: Ao confirmar, o animal sairá do estoque de ativos.</p>
+{% extends 'base.html' %}
+{% block title %}Registrar Venda{% endblock %}
 
-        <form action="{{ url_for('operacional.vender', id_animal=id_animal) }}" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-group">
-                <label>Data da Venda:</label>
-                <input type="date" name="data_venda" required>
-            </div>
+{% block content %}
 
-            <div class="form-group">
-                <label>Peso Final (kg):</label>
-                <input type="number" step="0.01" name="peso_venda" required placeholder="Ex: 540.5">
-            </div>
+<div class="page-header">
+  <div>
+    <p class="label">Rebanho</p>
+    <h1 class="page-title">Registrar Venda (Saída)</h1>
+  </div>
+  <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}"
+     class="btn btn-ghost btn-sm">← Cancelar</a>
+</div>
 
-            <div class="form-group">
-                <label>Valor da Arroba Vendida (R$):</label>
-                <input type="number" step="0.01" name="valor_arroba" required placeholder="Ex: 280.00">
-            </div>
+<div class="alert alert-danger" style="max-width:500px; margin-bottom:var(--space-6);">
+  <span class="alert-icon">⚠</span>
+  <div>
+    <strong>Atenção</strong><br>
+    Ao confirmar, o animal sairá do estoque de ativos e não poderá ser reativado sem restauração manual.
+  </div>
+</div>
 
-            <button type="submit" class="btn btn-danger">CONFIRMAR VENDA</button>
-        </form>
+<div style="max-width:480px;">
+  <form action="{{ url_for('operacional.vender', id_animal=id_animal) }}"
+        method="POST" class="form-container">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label for="data_venda">Data da Venda</label>
+      <input id="data_venda" type="date" name="data_venda" class="form-input" required>
     </div>
 
-    <br>
-    <div style="text-align: center;">
-        <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}" class="btn btn-secondary">Cancelar</a>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--space-4);">
+      <div class="form-group">
+        <label for="peso_venda">Peso Final (kg)</label>
+        <input id="peso_venda" type="number" step="0.01" name="peso_venda"
+               class="form-input" required placeholder="Ex: 540.5">
+      </div>
+
+      <div class="form-group">
+        <label for="valor_arroba">Valor da Arroba (R$)</label>
+        <input id="valor_arroba" type="number" step="0.01" name="valor_arroba"
+               class="form-input" required placeholder="Ex: 280.00">
+      </div>
     </div>
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const formularios = document.querySelectorAll("form");
-        
-        formularios.forEach(form => {
-            form.addEventListener("submit", function(event) {
-                const botaoSubmit = form.querySelector("button[type='submit']");
-                
-                if (botaoSubmit) {
-                    if (botaoSubmit.classList.contains("btn-loading")) {
-                        event.preventDefault();
-                        return;
-                    }
-                    botaoSubmit.classList.add("btn-loading");
-                    botaoSubmit.setAttribute("disabled", "true");
-                }
-            });
-        });
+
+    <div style="display:flex; gap:var(--space-3); margin-top:var(--space-2);">
+      <button type="submit" class="btn btn-danger">💲 Confirmar Venda</button>
+      <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}"
+         class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function () {
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn && !btn.classList.contains('btn-loading')) {
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+      }
     });
+  });
+});
 </script>
-</body>
-</html>
+{% endblock %}

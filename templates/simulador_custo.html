@@ -1,99 +1,134 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Simulador de Custos</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
-</head>
-<body>
-    <h1>Simulador de Ponto de Equilíbrio</h1>
-    <p>Ajuste os valores abaixo para calcular o custo real da sua @ produzida.</p>
+{% extends 'base.html' %}
+{% block title %}Simulador de Custos{% endblock %}
 
-    <form action="{{ url_for('financeiro.simulador_custo') }}" method="POST" class="form-container" style="max-width: 800px;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="grid-sim">
-            <div>
-                <h3>Parâmetros Produtivos</h3>
-                <div class="form-group">
-                    <label>Quantidade de Animais (Cabeças):</label>
-                    <input type="number" name="qtd_animais" value="{{ sugestoes.qtd_animais }}">
-                </div>
-                <div class="form-group">
-                    <label>GMD Projetado (kg/dia):</label>
-                    <input type="text" name="gmd" value="{{ sugestoes.gmd_medio }}">
-                    <small style="color: var(--color-musgo);">Ganho Médio Diário esperado</small>
-                </div>
-            </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
+{% endblock %}
 
-            <div>
-                <h3>Custos Mensais (R$)</h3>
-                <div class="form-group">
-                    <label>Arrendamento Total:</label>
-                    <input type="text" name="custo_arrendamento" value="{{ sugestoes.arrendamento|round(2) }}">
-                </div>
-                <div class="form-group">
-                    <label>Suplementação Total:</label>
-                    <input type="text" name="custo_suplementacao" value="{{ sugestoes.suplementacao|round(2) }}">
-                </div>
-                <div class="form-group">
-                    <label>Mão de Obra Total:</label>
-                    <input type="text" name="custo_mao_obra" value="{{ sugestoes.mao_obra|round(2) }}">
-                </div>
-                <div class="form-group">
-                    <label>Outros Custos:</label>
-                    <input type="text" name="custos_extras" value="{{ sugestoes.extras|round(2) }}">
-                </div>
-            </div>
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">Financeiro</p>
+    <h1 class="page-title">Simulador de Ponto de Equilíbrio</h1>
+  </div>
+  <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-ghost btn-sm">← Financeiro</a>
+</div>
+
+<p style="color:var(--color-ink-secondary); margin-bottom:var(--space-6);">
+  Ajuste os valores abaixo para calcular o custo real da sua @ produzida.
+</p>
+
+<div style="display:grid; grid-template-columns:1fr {% if resultados %}1fr{% endif %}; gap:var(--space-8); align-items:start;">
+
+  <!-- ── Formulário ──────────────────────────────────── -->
+  <form action="{{ url_for('financeiro.simulador_custo') }}" method="POST" class="form-container">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <h2 style="margin-bottom:var(--space-4);">Parâmetros Produtivos</h2>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
+      <div class="form-group">
+        <label for="qtd_animais">Quantidade de Animais (cabeças)</label>
+        <input id="qtd_animais" type="number" name="qtd_animais"
+               class="form-input" value="{{ sugestoes.qtd_animais }}">
+      </div>
+      <div class="form-group">
+        <label for="gmd">GMD Projetado (kg/dia)</label>
+        <input id="gmd" type="text" name="gmd"
+               class="form-input" value="{{ "%.3f"|format(sugestoes.gmd_medio) }}">
+        <small style="color:var(--color-ink-tertiary);">Ganho Médio Diário esperado</small>
+      </div>
+    </div>
+
+    <h2 style="margin-top:var(--space-5); margin-bottom:var(--space-4);">Custos Anuais (R$)</h2>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
+      <div class="form-group">
+        <label for="custo_arrendamento">Arrendamento (anual)</label>
+        <input id="custo_arrendamento" type="text" name="custo_arrendamento"
+               class="form-input" value="{{ sugestoes.arrendamento|round(2) }}">
+      </div>
+      <div class="form-group">
+        <label for="custo_suplementacao">Suplementação (anual)</label>
+        <input id="custo_suplementacao" type="text" name="custo_suplementacao"
+               class="form-input" value="{{ sugestoes.suplementacao|round(2) }}">
+      </div>
+      <div class="form-group">
+        <label for="custo_mao_obra">Mão de Obra (anual)</label>
+        <input id="custo_mao_obra" type="text" name="custo_mao_obra"
+               class="form-input" value="{{ sugestoes.mao_obra|round(2) }}">
+      </div>
+      <div class="form-group">
+        <label for="custos_extras">Outros Custos (anual)</label>
+        <input id="custos_extras" type="text" name="custos_extras"
+               class="form-input" value="{{ sugestoes.extras|round(2) }}">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="margin-top:var(--space-2);">
+      Calcular Custo da Arroba
+    </button>
+  </form>
+
+  <!-- ── Resultado ──────────────────────────────────── -->
+  {% if resultados %}
+  <div>
+    <h2 style="margin-bottom:var(--space-4);">Resultado da Simulação</h2>
+
+    {% if resultados.erro %}
+      <div class="alert alert-danger">
+        <span class="alert-icon">⚠</span>
+        <div>{{ resultados.erro }}</div>
+      </div>
+    {% else %}
+      <div class="grid-metrics" style="grid-template-columns:1fr 1fr;">
+        <div class="metric-card">
+          <span class="label">Custo anual total</span>
+          <div class="metric-value" style="font-size:var(--text-xl);">
+            R$ {{ resultados.custo_total }}
+          </div>
         </div>
-
-        <button type="submit" class="btn btn-primary" style="margin-top: 20px;">CALCULAR CUSTO DA ARROBA</button>
-    </form>
-
-    {% if resultados %}
-        {% if resultados.erro %}
-            <div class="alert" style="background-color: #FDDCDA; color: var(--danger-color); border: 1px solid #F1A9A6;">
-                {{ resultados.erro }}
-            </div>
-        {% else %}
-            <div class="res-box">
-                <h2>Resultados da Simulação</h2>
-                <div class="grid-sim">
-                    <div>
-                        <p>Custo Mensal da Fazenda: <strong>R$ {{ resultados.custo_mensal_total }}</strong></p>
-                        <p>Custo por Cabeça/Dia: <strong>R$ {{ resultados.custo_diaria }}</strong></p>
-                    </div>
-                    <div style="text-align: right;">
-                        <p>Dias para produzir 1@: <strong>{{ resultados.dias_arroba }} dias</strong></p>
-                        <p>Custo de Produção da @:</p>
-                        <div class="res-destaque">R$ {{ resultados.custo_arroba }}</div>
-                    </div>
-                </div>
-            </div>
-        {% endif %}
+        <div class="metric-card">
+          <span class="label">Custo por cabeça/dia</span>
+          <div class="metric-value" style="font-size:var(--text-xl);">
+            R$ {{ resultados.custo_diaria }}
+          </div>
+        </div>
+        <div class="metric-card">
+          <span class="label">Dias para produzir 1@</span>
+          <div class="metric-value" style="font-size:var(--text-xl);">
+            {{ resultados.dias_arroba }}
+          </div>
+          <div class="metric-delta flat">dias</div>
+        </div>
+        <div class="metric-card"
+             style="border-top:3px solid var(--color-accent); background:var(--color-accent-light, #FEF3E2);">
+          <span class="label">Custo de produção da @</span>
+          <div class="metric-value" style="font-size:var(--text-2xl); color:var(--color-accent);">
+            R$ {{ resultados.custo_arroba }}
+          </div>
+          <div class="metric-delta flat">por arroba produzida</div>
+        </div>
+      </div>
     {% endif %}
+  </div>
+  {% endif %}
 
-    <br>
-    <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-secondary">Voltar ao Financeiro</a>
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const formularios = document.querySelectorAll("form");
-        
-        formularios.forEach(form => {
-            form.addEventListener("submit", function(event) {
-                const botaoSubmit = form.querySelector("button[type='submit']");
-                
-                if (botaoSubmit) {
-                    if (botaoSubmit.classList.contains("btn-loading")) {
-                        event.preventDefault();
-                        return;
-                    }
-                    botaoSubmit.classList.add("btn-loading");
-                    botaoSubmit.setAttribute("disabled", "true");
-                }
-            });
-        });
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function () {
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn && !btn.classList.contains('btn-loading')) {
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+      }
     });
+  });
+});
 </script>
-</body>
-</html>
+{% endblock %}

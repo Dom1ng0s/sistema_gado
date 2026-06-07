@@ -1,20 +1,11 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Vacinação Coletiva</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
-    <script>
-        function selecionarTodos(source) {
-            checkboxes = document.getElementsByName('animais_ids');
-            for (var i = 0, n = checkboxes.length; i < n; i++) {
-                checkboxes[i].checked = source.checked;
-            }
-        }
-    </script>
-</head>
-<body>
+{% extends 'base.html' %}
+{% block title %}Vacinação Coletiva{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
+{% endblock %}
+
+{% block content %}
     <div style="max-width: 900px; margin: 0 auto;">
         <h1 style="border-bottom: 2px solid var(--primary-color); padding-bottom: 10px;">💉 Manejo Sanitário em Lote</h1>
 
@@ -72,14 +63,22 @@
             <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Cancelar e Voltar</a>
         </div>
     </div>
-    <script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function selecionarTodos(source) {
+        checkboxes = document.getElementsByName('animais_ids');
+        for (var i = 0, n = checkboxes.length; i < n; i++) {
+            checkboxes[i].checked = source.checked;
+        }
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
         const formularios = document.querySelectorAll("form");
-        
         formularios.forEach(form => {
             form.addEventListener("submit", function(event) {
                 const botaoSubmit = form.querySelector("button[type='submit']");
-                
                 if (botaoSubmit) {
                     if (botaoSubmit.classList.contains("btn-loading")) {
                         event.preventDefault();
@@ -92,5 +91,4 @@
         });
     });
 </script>
-</body>
-</html>
+{% endblock %}

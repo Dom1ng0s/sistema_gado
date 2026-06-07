@@ -48,6 +48,6 @@ def test_simulador_custo(client):
     
     assert response.status_code == 200
     
-    # Validação matemática simples:
-    assert b"1,500.00" in response.data # Total Mensal
-    assert b"5.00" in response.data     # Diária
+    # Validação matemática (escopo anual): 1500 / 10 animais / 365 dias = 0.41/dia
+    assert b"1,500.00" in response.data # Total Anual
+    assert b"0.41" in response.data     # Diária (anual)

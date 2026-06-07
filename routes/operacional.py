@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_required, current_user
 import math
 import logging
-from repositories import animal_repository
+from repositories import animal_repository, reproducao_repository
 from routes.validators import validate
 
 operacional_bp = Blueprint('operacional', __name__)
@@ -281,3 +281,80 @@ def cadastro_lote():
             msg = f"Erro ao processar lote: {e}"
 
     return render_template("cadastro_lote.html", mensagem=msg)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# HEREDITARIEDADE
+# ════════════════════════════════════════════════════════════════════════════
+
+@operacional_bp.route('/animais/<int:id_animal>/progenie')
+@login_required
+def progenie_animal(id_animal):
+    animal = animal_repository.get_animal_by_id(id_animal, current_user.id)
+    if not animal:
+        return redirect(url_for('operacional.painel'))
+    filhos = animal_repository.get_progenie_by_touro(id_animal, current_user.id)
+    return render_template('animal_progenie.html', animal=animal, filhos=filhos)
+
+
+@operacional_bp.route('/animais/<int:id_animal>/reproducao')
+@login_required
+def reproducao_animal(id_animal):
+    animal = animal_repository.get_animal_by_id(id_animal, current_user.id)
+    if not animal:
+        return redirect(url_for('operacional.painel'))
+    eventos   = reproducao_repository.get_reproducao_by_vaca(id_animal, current_user.id)
+    stats     = animal_repository.get_historico_reproducao(id_animal, current_user.id)
+    machos    = animal_repository.get_animais_ativos_por_sexo(current_user.id, 'M')
+    return render_template('animal_reproducao.html',
+                           animal=animal, eventos=eventos,
+                           stats=stats, machos=machos)
+
+
+@operacional_bp.route('/reproducao', methods=['POST'])
+@login_required
+def registrar_reproducao():
+    from routes.validators import validate
+    id_animal = request.form.get('vaca_id', type=int)
+
+    erros = validate(request.form, [
+        ('data_cobertura', {'label': 'Data de cobertura', 'required': True,  'type': 'date'}),
+        ('data_parto',     {'label': 'Data de parto',     'required': False, 'type': 'date'}),
+        ('resultado',      {'label': 'Resultado',          'required': True,
+                            'choices': ['vivo', 'natimorto', 'aborto']}),
+    ])
+    touro_id_raw  = request.form.get('touro_id', '').strip()
+    touro_externo = request.form.get('touro_externo', '').strip() or None
+
+    if not touro_id_raw and not touro_externo:
+        erros.append("Informe o touro (interno ou nome externo).")
+
+    if not id_animal or not animal_repository.get_animal_by_id(id_animal, current_user.id):
+        return redirect(url_for('operacional.painel'))
+
+    if erros:
+        from flask import flash
+        for e in erros:
+            flash(e, 'erro')
+        return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))
+
+    reproducao_repository.insert_reproducao(
+        current_user.id,
+        id_animal,
+        int(touro_id_raw) if touro_id_raw else None,
+        touro_externo,
+        request.form.get('data_cobertura'),
+        request.form.get('data_parto') or None,
+        request.form.get('resultado'),
+    )
+    from flask import flash
+    flash('Evento reprodutivo registrado com sucesso.', 'sucesso')
+    return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))
+
+
+@operacional_bp.route('/rebanho/ranking-touros')
+@login_required
+def ranking_touros():
+    ranking   = animal_repository.get_ranking_touros(current_user.id)
+    gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
+    return render_template('ranking_touros.html', ranking=ranking, gmd_medio=gmd_medio)

@@ -25,7 +25,7 @@ def test_cadastro_animal(client):
     response_painel = client.get('/painel')
     assert response_painel.status_code == 200
     assert b"TEST-01" in response_painel.data
-    assert b"ATIVO" in response_painel.data
+    assert b"Ativo" in response_painel.data
 
 def test_validacao_cadastro_duplicado(client):
     """Impede cadastro de dois animais com mesmo brinco para o mesmo usuário."""

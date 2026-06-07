@@ -1,95 +1,123 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Contas a Pagar</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='financeiro.css') }}">
-</head>
-<body>
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 20px;">
-        <h1 style="border: none; margin: 0;">📅 Contas a Pagar</h1>
-        <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-secondary">Voltar ao Financeiro</a>
+{% extends 'base.html' %}
+{% block title %}Contas a Pagar{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='financeiro.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">Financeiro</p>
+    <h1 class="page-title">Contas a Pagar</h1>
+  </div>
+  <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-ghost btn-sm">← Financeiro</a>
+</div>
+
+{% if mensagem %}
+  {% if 'sucesso' in mensagem.lower() or 'salvo' in mensagem.lower() %}
+    <div class="alert alert-success" style="margin-bottom:var(--space-5);">
+      <span class="alert-icon">✓</span>
+      <div>{{ mensagem }}</div>
+    </div>
+  {% else %}
+    <div class="alert alert-danger" style="margin-bottom:var(--space-5);">
+      <span class="alert-icon">⚠</span>
+      <div>{{ mensagem }}</div>
+    </div>
+  {% endif %}
+{% endif %}
+
+<!-- ── Formulário de novo agendamento ─────────────────── -->
+<div style="max-width:580px; margin-bottom:var(--space-8);">
+  <h2 style="margin-bottom:var(--space-4);">Novo Agendamento</h2>
+  <form method="POST" action="{{ url_for('financeiro.agendamentos') }}" class="form-container">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label for="descricao">Descrição</label>
+      <input id="descricao" type="text" name="descricao" class="form-input"
+             required maxlength="500"
+             placeholder="Ex: Parcela do trator, Ração...">
     </div>
 
-    {% if mensagem %}
-        <div class="alert" style="background-color: {% if 'sucesso' in mensagem.lower() or 'salvo' in mensagem.lower() %}#D6E8D0; color: var(--primary-color); border: 1px solid #B8D4B2;{% else %}#FDDCDA; color: var(--danger-color); border: 1px solid #F1A9A6;{% endif %} padding: 12px; border-radius: 6px; margin-bottom: 20px;">
-            {{ mensagem }}
-        </div>
-    {% endif %}
-
-    <div class="form-container" style="max-width: 600px; margin-bottom: 30px;">
-        <h3 style="color: var(--primary-color); border-bottom: 2px solid var(--color-palha); padding-bottom: 8px;">Novo Agendamento</h3>
-        <form method="POST" action="{{ url_for('financeiro.agendamentos') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-group">
-                <label>Descrição</label>
-                <input type="text" name="descricao" required maxlength="500" placeholder="Ex: Parcela do trator, Ração...">
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div class="form-group">
-                    <label>Valor (R$)</label>
-                    <input type="number" name="valor" step="0.01" min="0.01" required placeholder="0,00">
-                </div>
-                <div class="form-group">
-                    <label>Vencimento</label>
-                    <input type="date" name="vencimento" required>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-primary">Salvar Agendamento</button>
-        </form>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
+      <div class="form-group">
+        <label for="valor">Valor (R$)</label>
+        <input id="valor" type="number" name="valor" step="0.01" min="0.01"
+               class="form-input" required placeholder="0,00">
+      </div>
+      <div class="form-group">
+        <label for="vencimento">Vencimento</label>
+        <input id="vencimento" type="date" name="vencimento"
+               class="form-input" required>
+      </div>
     </div>
 
-    <h3 style="color: var(--text-dark); border-bottom: 2px solid var(--color-palha); padding-bottom: 8px;">Contas Agendadas</h3>
-    <table style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden;">
-        <thead>
-            <tr style="background-color: var(--color-palha); color: var(--color-musgo); font-size: 0.9rem;">
-                <th style="padding: 12px; text-align: left;">Descrição</th>
-                <th style="padding: 12px; text-align: right;">Valor (R$)</th>
-                <th style="padding: 12px; text-align: center;">Vencimento</th>
-                <th style="padding: 12px; text-align: center;">Status</th>
-                <th style="padding: 12px; text-align: center;">Ação</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in agendamentos %}
-            {% set vencido = item[3] < hoje and item[4] == 'pendente' %}
-            <tr style="border-bottom: 1px solid var(--color-palha); {% if vencido %}background-color: #fff8f8;{% endif %}">
-                <td style="padding: 12px;">{{ item[1] }}</td>
-                <td style="padding: 12px; text-align: right; font-weight: bold; color: var(--danger-color);">
-                    R$ {{ "%.2f"|format(item[2]) }}
-                </td>
-                <td style="padding: 12px; text-align: center; {% if vencido %}color: var(--danger-color); font-weight: bold;{% endif %}">
-                    {{ item[3] }}
-                    {% if vencido %}<br><small>VENCIDO</small>{% endif %}
-                </td>
-                <td style="padding: 12px; text-align: center;">
-                    {% if item[4] == 'pendente' %}
-                        <span style="background: #FEF3E2; color: var(--accent-color); padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">PENDENTE</span>
-                    {% else %}
-                        <span style="background: #D6E8D0; color: var(--primary-color); padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">PAGO</span>
-                    {% endif %}
-                </td>
-                <td style="padding: 12px; text-align: center;">
-                    {% if item[4] == 'pendente' %}
-                        <a href="{{ url_for('financeiro.baixar_agendamento', id_agendamento=item[0]) }}"
-                           onclick="return confirm('Confirmar pagamento de R$ {{ '%.2f'|format(item[2]) }}?');"
-                           style="background-color: var(--primary-color); color: white; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 0.85rem; font-weight: bold;">
-                            ✓ Baixar
-                        </a>
-                    {% else %}
-                        <span style="color: var(--color-musgo); font-size: 0.85rem;">—</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="5" style="padding: 20px; text-align: center; color: var(--color-musgo);">
-                    Nenhum agendamento cadastrado.
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</body>
-</html>
+    <button type="submit" class="btn btn-primary">Salvar Agendamento</button>
+  </form>
+</div>
+
+<!-- ── Lista de agendamentos ──────────────────────────── -->
+<h2 style="margin-bottom:var(--space-4);">Contas Agendadas</h2>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Descrição</th>
+        <th style="text-align:right;">Valor (R$)</th>
+        <th style="text-align:center;">Vencimento</th>
+        <th style="text-align:center;">Status</th>
+        <th style="text-align:center;">Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in agendamentos %}
+      {% set vencido = item[3] < hoje and item[4] == 'pendente' %}
+      <tr {% if vencido %}style="background:rgba(226,75,74,0.04);"{% endif %}>
+        <td class="td-primary">{{ item[1] }}</td>
+        <td style="text-align:right; font-weight:var(--weight-semibold); color:var(--color-danger);">
+          R$ {{ "%.2f"|format(item[2]) }}
+        </td>
+        <td style="text-align:center;">
+          {{ item[3] }}
+          {% if vencido %}
+            <br><span style="font-size:var(--text-xs); color:var(--color-danger); font-weight:var(--weight-bold);">VENCIDO</span>
+          {% endif %}
+        </td>
+        <td style="text-align:center;">
+          {% if item[4] == 'pago' %}
+            <span class="badge badge-success">Pago</span>
+          {% elif vencido %}
+            <span class="badge badge-danger">Vencido</span>
+          {% else %}
+            <span class="badge badge-warning">Pendente</span>
+          {% endif %}
+        </td>
+        <td style="text-align:center;">
+          {% if item[4] == 'pendente' %}
+            <a href="{{ url_for('financeiro.baixar_agendamento', id_agendamento=item[0]) }}"
+               class="btn btn-primary btn-sm"
+               onclick="return confirm('Confirmar pagamento de R$ {{ '%.2f'|format(item[2]) }}?');">
+              ✓ Baixar
+            </a>
+          {% else %}
+            <span style="color:var(--color-ink-tertiary);">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5"
+            style="text-align:center; padding:var(--space-8); color:var(--color-ink-tertiary);">
+          Nenhum agendamento cadastrado.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

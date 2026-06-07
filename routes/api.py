@@ -111,8 +111,10 @@ def alerta_gmd():
                 'animais': [],
             })
         gmd_media = round(float(rows[0][3]), 3)
+        limite = round(float(rows[0][5]), 3)
         return jsonify({
             'gmd_media_rebanho': gmd_media,
+            'gmd_limite_inferior': limite,
             'total': len(rows),
             'animais': [
                 {'id': r[0], 'brinco': r[1], 'gmd_atual': round(float(r[2]), 3)}

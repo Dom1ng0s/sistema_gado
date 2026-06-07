@@ -1,48 +1,11 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Entrada de Lote (Pesagem Individual)</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
+{% extends 'base.html' %}
+{% block title %}Entrada de Lote{% endblock %}
 
-    <script>
-        function gerarGrade() {
-            const qtd = parseInt(document.getElementById('qtdInput').value);
-            const prefixo = document.getElementById('prefixoInput').value.trim();
-            const tbody = document.getElementById('gradeBody');
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
+{% endblock %}
 
-            tbody.innerHTML = '';
-
-            if (!qtd || qtd <= 0) return;
-
-            for (let i = 1; i <= qtd; i++) {
-                const tr = document.createElement('tr');
-                const num = i.toString().padStart(2, '0');
-                const brincoSugerido = prefixo ? `${prefixo}-${num}` : '';
-
-                tr.innerHTML = `
-                    <td style="text-align:center; color: var(--color-musgo); background-color: var(--bg-light);">${i}</td>
-                    <td><input type="text" name="brincos[]" value="${brincoSugerido}" required autocomplete="off"></td>
-                    <td>
-                        <select name="sexos[]">
-                            <option value="M">Macho</option>
-                            <option value="F">Fêmea</option>
-                        </select>
-                    </td>
-                    <td><input type="number" step="0.01" name="pesos[]" placeholder="0.00" required></td>
-                    <td style="text-align:center;">
-                        <button type="button" class="btn-remove-linha" onclick="this.parentElement.parentElement.remove()" title="Remover animal">✕</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            }
-            document.getElementById('btnSalvar').style.display = 'block';
-            document.getElementById('avisoVazio').style.display = 'none';
-        }
-    </script>
-</head>
-<body>
+{% block content %}
     <h1>📋 Entrada de Lote (Detalhada)</h1>
 
     {% if mensagem %}
@@ -118,25 +81,59 @@
     <div style="text-align: center; margin-bottom: 40px;">
         <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Voltar ao Painel</a>
     </div>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const formularios = document.querySelectorAll("form");
-            
-            formularios.forEach(form => {
-                form.addEventListener("submit", function(event) {
-                    const botaoSubmit = form.querySelector("button[type='submit']");
-                    
-                    if (botaoSubmit) {
-                        if (botaoSubmit.classList.contains("btn-loading")) {
-                            event.preventDefault();
-                            return;
-                        }
-                        botaoSubmit.classList.add("btn-loading");
-                        botaoSubmit.setAttribute("disabled", "true");
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function gerarGrade() {
+        const qtd = parseInt(document.getElementById('qtdInput').value);
+        const prefixo = document.getElementById('prefixoInput').value.trim();
+        const tbody = document.getElementById('gradeBody');
+
+        tbody.innerHTML = '';
+
+        if (!qtd || qtd <= 0) return;
+
+        for (let i = 1; i <= qtd; i++) {
+            const tr = document.createElement('tr');
+            const num = i.toString().padStart(2, '0');
+            const brincoSugerido = prefixo ? `${prefixo}-${num}` : '';
+
+            tr.innerHTML = `
+                <td style="text-align:center; color: var(--color-musgo); background-color: var(--bg-light);">${i}</td>
+                <td><input type="text" name="brincos[]" value="${brincoSugerido}" required autocomplete="off"></td>
+                <td>
+                    <select name="sexos[]">
+                        <option value="M">Macho</option>
+                        <option value="F">Fêmea</option>
+                    </select>
+                </td>
+                <td><input type="number" step="0.01" name="pesos[]" placeholder="0.00" required></td>
+                <td style="text-align:center;">
+                    <button type="button" class="btn-remove-linha" onclick="this.parentElement.parentElement.remove()" title="Remover animal">✕</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+        document.getElementById('btnSalvar').style.display = 'block';
+        document.getElementById('avisoVazio').style.display = 'none';
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const formularios = document.querySelectorAll("form");
+        formularios.forEach(form => {
+            form.addEventListener("submit", function(event) {
+                const botaoSubmit = form.querySelector("button[type='submit']");
+                if (botaoSubmit) {
+                    if (botaoSubmit.classList.contains("btn-loading")) {
+                        event.preventDefault();
+                        return;
                     }
-                });
+                    botaoSubmit.classList.add("btn-loading");
+                    botaoSubmit.setAttribute("disabled", "true");
+                }
             });
         });
-    </script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}

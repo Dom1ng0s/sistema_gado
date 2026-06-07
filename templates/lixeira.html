@@ -1,79 +1,89 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Lixeira - Sistema Gado</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--danger-color); padding-bottom: 10px; margin-bottom: 20px;">
-        <h1 style="border: none; margin: 0; padding: 0; color: var(--danger-color);">🗑️ Lixeira de Animais</h1>
-        <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Voltar ao Rebanho</a>
-    </div>
+{% extends 'base.html' %}
+{% block title %}Lixeira{% endblock %}
 
-    <form action="{{ url_for('operacional.lixeira') }}" method="GET" class="search-bar">
-        <input type="text" name="busca" class="input-busca" placeholder="Buscar brinco excluído..." value="{{ busca }}">
-        <button type="submit" class="btn-buscar">🔍 Buscar</button>
-        {% if busca %}
-            <a href="{{ url_for('operacional.lixeira') }}" class="btn-limpar">Limpar</a>
-        {% endif %}
-    </form>
+{% block content %}
 
-    <div class="alert" style="background-color: #FDDCDA; color: var(--danger-color); margin-bottom: 20px; text-align: left; border: 1px solid #F1A9A6;">
-        <strong>Atenção:</strong> Os animais listados abaixo foram excluídos e <u>não</u> são contabilizados no financeiro nem nos gráficos.
-        Ao restaurar, eles voltarão a aparecer nos relatórios.
-    </div>
+<div class="page-header">
+  <div>
+    <p class="label">Rebanho</p>
+    <h1 class="page-title">Lixeira de Animais</h1>
+  </div>
+  <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary btn-sm">← Voltar ao Rebanho</a>
+</div>
 
-    <table>
-        <thead>
-            <tr style="background-color: var(--danger-color); color: white;">
-                <th>Brinco</th>
-                <th>Sexo</th>
-                <th>Data da Exclusão</th>
-                <th style="text-align: center;">Ação</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for animal in lista_animais %}
-            <tr>
-                <td style="font-weight: bold; color: var(--color-musgo);">{{ animal[1] }}</td>
-                <td>{{ animal[2] }}</td>
-                <td>{{ animal[3].strftime('%d/%m/%Y às %H:%M') }}</td>
-                <td style="text-align: center;">
-                    <a href="{{ url_for('operacional.restaurar_animal', id_animal=animal[0]) }}"
-                       class="btn btn-primary"
-                       style="padding: 6px 15px; font-size: 0.9em; margin: 0;">
-                       ♻️ Restaurar
-                    </a>
-                </td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="4" style="text-align: center; padding: 40px; color: var(--color-musgo);">
-                    A lixeira está vazia. Nenhum animal excluído recentemente.
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="alert alert-danger" style="margin-bottom:var(--space-5);">
+  <span class="alert-icon">ℹ</span>
+  <div>
+    <strong>Animais excluídos</strong> não são contabilizados no financeiro nem nos gráficos.
+    Ao restaurar, voltarão a aparecer em todos os relatórios.
+  </div>
+</div>
 
-    <div style="display: flex; justify-content: center; margin-top: 20px; gap: 10px;">
-        {% if pagina_atual > 1 %}
-            <a href="{{ url_for('operacional.lixeira', page=pagina_atual-1, busca=busca) }}" class="btn btn-secondary">&laquo; Anterior</a>
-        {% else %}
-            <span class="btn btn-secondary btn-disabled">&laquo; Anterior</span>
-        {% endif %}
+<form action="{{ url_for('operacional.lixeira') }}" method="GET"
+      style="display:flex; gap:var(--space-2); margin-bottom:var(--space-5); align-items:center;">
+  <input type="text" name="busca" class="form-input"
+         placeholder="Buscar brinco excluído..."
+         value="{{ busca }}"
+         style="max-width:300px;">
+  <button type="submit" class="btn btn-secondary btn-sm">🔍 Buscar</button>
+  {% if busca %}
+    <a href="{{ url_for('operacional.lixeira') }}" class="btn btn-ghost btn-sm">Limpar</a>
+  {% endif %}
+</form>
 
-        {% if total_paginas > 1 %}
-            <span style="align-self: center; font-weight: bold;">Página {{ pagina_atual }} de {{ total_paginas }}</span>
-        {% endif %}
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Brinco</th>
+        <th>Sexo</th>
+        <th>Excluído em</th>
+        <th style="text-align:center;">Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for animal in lista_animais %}
+      <tr>
+        <td class="td-primary">{{ animal[1] }}</td>
+        <td>{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</td>
+        <td>{{ animal[3].strftime('%d/%m/%Y às %H:%M') }}</td>
+        <td style="text-align:center;">
+          <a href="{{ url_for('operacional.restaurar_animal', id_animal=animal[0]) }}"
+             class="btn btn-primary btn-sm">♻️ Restaurar</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="4"
+            style="text-align:center; padding:var(--space-10); color:var(--color-ink-tertiary);">
+          A lixeira está vazia. Nenhum animal excluído recentemente.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
-        {% if pagina_atual < total_paginas %}
-            <a href="{{ url_for('operacional.lixeira', page=pagina_atual+1, busca=busca) }}" class="btn btn-secondary">Próximo &raquo;</a>
-        {% else %}
-            <span class="btn btn-secondary btn-disabled">Próximo &raquo;</span>
-        {% endif %}
-    </div>
+<div style="display:flex; justify-content:center; align-items:center; gap:var(--space-3); margin-top:var(--space-6);">
+  {% if pagina_atual > 1 %}
+    <a href="{{ url_for('operacional.lixeira', page=pagina_atual-1, busca=busca) }}"
+       class="btn btn-secondary btn-sm">&laquo; Anterior</a>
+  {% else %}
+    <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">&laquo; Anterior</span>
+  {% endif %}
 
-</body>
-</html>
+  {% if total_paginas > 1 %}
+    <span style="font-size:var(--text-sm); color:var(--color-ink-secondary);">
+      Página {{ pagina_atual }} de {{ total_paginas }}
+    </span>
+  {% endif %}
+
+  {% if pagina_atual < total_paginas %}
+    <a href="{{ url_for('operacional.lixeira', page=pagina_atual+1, busca=busca) }}"
+       class="btn btn-secondary btn-sm">Próximo &raquo;</a>
+  {% else %}
+    <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">Próximo &raquo;</span>
+  {% endif %}
+</div>
+
+{% endblock %}

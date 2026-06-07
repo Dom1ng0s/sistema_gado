@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% block title %}{{ pasto[1] }} — Detalhe{% endblock %}
+
+{% block extra_css %}
+<style>
+.check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: var(--space-2);
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  margin: var(--space-2) 0;
+}
+.check-grid label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+details summary {
+  cursor: pointer;
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+  padding: var(--space-2) 0;
+  user-select: none;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Cabeçalho ─────────────────────────────────────── -->
+<div class="page-header">
+  <div>
+    <p class="label">Pastos</p>
+    <h1 class="page-title">{{ pasto[1] }}</h1>
+    <div style="display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-1);">
+      {% if pasto[2] %}<span class="tag">📐 {{ pasto[2] }} ha</span>{% endif %}
+      {% if pasto[3] %}<span class="tag">🌱 {{ pasto[3] }}</span>{% endif %}
+      {% if pasto[4] %}<span class="tag">🐄 Cap. {{ pasto[4] }} UA</span>{% endif %}
+    </div>
+  </div>
+  <a href="{{ url_for('pastos.listar_pastos') }}" class="btn btn-ghost btn-sm">← Todos os Pastos</a>
+</div>
+
+<!-- ── Flash messages ──────────────────────────────── -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, msg in messages %}
+    <div class="alert {% if category == 'sucesso' %}alert-success{% else %}alert-danger{% endif %}"
+         style="margin-bottom:var(--space-3);">
+      <span class="alert-icon">{% if category == 'sucesso' %}✓{% else %}⚠{% endif %}</span>
+      <div>{{ msg }}</div>
+    </div>
+  {% endfor %}
+{% endwith %}
+
+<!-- ── Adicionar Módulo (accordion) ───────────────────── -->
+<details style="background:var(--color-surface); border:1px solid var(--color-border);
+                border-radius:var(--radius-lg); padding:var(--space-4);
+                margin-bottom:var(--space-6);">
+  <summary>+ Adicionar Módulo</summary>
+  <form method="POST" action="{{ url_for('pastos.criar_modulo', pasto_id=pasto[0]) }}"
+        style="margin-top:var(--space-4);">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:var(--space-3);">
+      <div class="form-group" style="margin:0;">
+        <label>Nome do módulo <span style="color:var(--color-danger);">*</span></label>
+        <input type="text" name="nome" class="form-input" required maxlength="100"
+               placeholder="Ex: Módulo A">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Área (ha)</label>
+        <input type="number" name="area_hectares" step="0.01" min="0" class="form-input">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Capacidade (UA)</label>
+        <input type="number" name="capacidade_ua" step="0.1" min="0" class="form-input">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm" style="margin-top:var(--space-3);">
+      Salvar Módulo
+    </button>
+  </form>
+</details>
+
+<!-- ── Lista de módulos ────────────────────────────────── -->
+<h2 style="margin-bottom:var(--space-4);">Módulos ({{ modulos|length }})</h2>
+
+{% if modulos %}
+<div style="display:flex; flex-direction:column; gap:var(--space-4);">
+  {% for m in modulos %}
+  {% set ocupado     = m[6] is not none %}
+  {% set pct         = m[5] | default(0) %}
+  {% set superlotado = ocupado and pct is not none and pct > 100 %}
+  {% set alerta      = ocupado and pct is not none and pct > 80 and pct <= 100 %}
+
+  <div class="card {% if superlotado %}card-accent-red{% elif alerta %}card-accent-amber{% elif ocupado %}card-accent-green{% endif %}"
+       {% if not ocupado %}style="border: 1.5px dashed var(--color-border-strong);"{% endif %}>
+
+    <!-- Cabeçalho do módulo -->
+    <div class="card-header">
+      <div style="display:flex; align-items:center; gap:var(--space-3);">
+        <h3 style="margin:0; font-size:var(--text-base);">{{ m[1] }}</h3>
+        {% if m[2] %}<span class="tag">{{ m[2] }} ha</span>{% endif %}
+      </div>
+      <div style="display:flex; align-items:center; gap:var(--space-2);">
+        {% if ocupado %}
+          {% if superlotado %}
+            <span class="badge badge-danger">Superlotado {{ pct }}%</span>
+          {% elif alerta %}
+            <span class="badge badge-warning">Alerta {{ pct }}%</span>
+          {% else %}
+            <span class="badge badge-success">Ocupado {% if pct is not none %}{{ pct }}%{% endif %}</span>
+          {% endif %}
+        {% else %}
+          <span class="badge badge-neutral">Livre</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card-body">
+
+      {% if ocupado %}
+      <!-- ── Módulo ocupado ──────────────────────────── -->
+
+      <!-- Barra de lotação -->
+      {% if m[3] and pct is not none %}
+      <div style="display:flex; align-items:center; gap:var(--space-3); margin-bottom:var(--space-3);">
+        <span style="font-size:var(--text-sm); color:var(--color-ink-secondary); white-space:nowrap;">
+          🐄 {{ m[4] or 0 }} / {{ m[3] }} UA
+        </span>
+        <div class="lotacao-bar" style="flex:1;">
+          <div class="lotacao-fill {% if superlotado %}danger{% elif alerta %}warning{% else %}ok{% endif %}"
+               style="width:{{ [pct, 100]|min }}%;"></div>
+        </div>
+      </div>
+      {% else %}
+      <div style="font-size:var(--text-sm); color:var(--color-ink-secondary); margin-bottom:var(--space-3);">
+        🐄 {{ m[4] or 0 }} UA &nbsp;|&nbsp; Entrada: {{ m[7] }}
+      </div>
+      {% endif %}
+
+      <!-- Chips dos animais -->
+      <div style="display:flex; flex-wrap:wrap; gap:var(--space-1); margin-bottom:var(--space-4);">
+        {% for a in animais_por_ocupacao.get(m[6], []) %}
+          <span class="tag">{{ a.brinco }}</span>
+        {% else %}
+          <span style="font-size:var(--text-xs); color:var(--color-ink-tertiary);">Sem animais registrados</span>
+        {% endfor %}
+      </div>
+
+      <!-- Encerrar ocupação -->
+      <form method="POST" action="{{ url_for('pastos.encerrar_ocupacao', ocupacao_id=m[6]) }}"
+            style="display:flex; align-items:center; gap:var(--space-3);">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="pasto_id" value="{{ pasto[0] }}">
+        <label style="font-size:var(--text-sm); color:var(--color-ink-secondary); white-space:nowrap;">
+          Data de saída:
+        </label>
+        <input type="date" name="data_saida" value="{{ hoje }}" required class="form-input"
+               style="width:auto;">
+        <button type="submit" class="btn btn-secondary btn-sm"
+                onclick="return confirm('Confirmar encerramento da ocupação?')">
+          Encerrar
+        </button>
+      </form>
+
+      {% else %}
+      <!-- ── Módulo livre ────────────────────────────── -->
+
+      <div style="font-size:var(--text-sm); color:var(--color-ink-secondary); margin-bottom:var(--space-4);">
+        {% if m[9] is not none %}
+          💤 Em descanso há <strong>{{ m[8] }} dia{{ 's' if m[8] != 1 }}</strong>
+          <span style="color:var(--color-ink-tertiary);">(saída em {{ m[9] }})</span>
+        {% elif m[3] %}
+          Cap. {{ m[3] }} UA — nunca ocupado
+        {% else %}
+          Nunca ocupado
+        {% endif %}
+      </div>
+
+      {% if animais_ativos %}
+      <details>
+        <summary>▶ Iniciar Ocupação</summary>
+        <form method="POST" action="{{ url_for('pastos.ocupar_modulo', modulo_id=m[0]) }}"
+              style="margin-top:var(--space-3);">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-group" style="margin-bottom:var(--space-3);">
+            <label style="font-size:var(--text-sm);">Data de entrada <span style="color:var(--color-danger);">*</span></label>
+            <input type="date" name="data_entrada" value="{{ hoje }}" required
+                   class="form-input" style="width:auto;">
+          </div>
+          <label style="font-size:var(--text-sm); font-weight:var(--weight-semibold);
+                        display:block; margin-bottom:var(--space-1);">
+            Selecione os animais <span style="color:var(--color-danger);">*</span>
+          </label>
+          <div class="check-grid">
+            {% for a in animais_ativos %}
+            <label>
+              <input type="checkbox" name="animal_ids[]" value="{{ a[0] }}"> {{ a[1] }}
+            </label>
+            {% endfor %}
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm" style="margin-top:var(--space-3);">
+            Confirmar Ocupação
+          </button>
+        </form>
+      </details>
+      {% else %}
+        <p style="font-size:var(--text-sm); color:var(--color-ink-tertiary);">
+          Não há animais ativos para alocar.
+        </p>
+      {% endif %}
+
+      {% endif %}
+    </div><!-- .card-body -->
+  </div><!-- .card -->
+  {% endfor %}
+</div>
+
+{% else %}
+<div style="text-align:center; padding:var(--space-16); color:var(--color-ink-tertiary);">
+  <p>Nenhum módulo cadastrado ainda.</p>
+  <p style="font-size:var(--text-sm);">Use o formulário acima para adicionar.</p>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,149 +1,227 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Painel Gráfico - Sistema Gado</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/patternomaly/dist/patternomaly.min.js"></script>
-</head>
-<body>
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 20px;">
-            <h1 style="border: none; margin: 0; padding: 0; width: auto;">Meu Rebanho</h1>
-            <div class="switch-wrapper">
-                <label class="switch">
-                    <input type="checkbox" id="daltonicoSwitch" onchange="alternarCores()">
-                    <span class="slider"></span>
-                </label>
-                <span class="label-switch">Modo Alto Contraste</span>
-            </div>
-        </div>
-        <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary" style="padding: 5px 15px; font-size: 14px;">Voltar ao Painel</a>
+{% extends 'base.html' %}
+{% block title %}Relatórios — Rebanho{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='funcionalidades.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Cabeçalho ─────────────────────────────────────── -->
+<div class="page-header">
+  <div>
+    <p class="label">{{ nome_fazenda_header }}</p>
+    <h1 class="page-title">Relatórios do Rebanho</h1>
+  </div>
+  <div style="display:flex; gap:var(--space-2); align-items:center;">
+    <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer;">
+      <div class="switch-wrapper" style="display:inline-flex; align-items:center; gap:var(--space-2);">
+        <label class="switch">
+          <input type="checkbox" id="daltonicoSwitch" onchange="alternarCores()">
+          <span class="slider"></span>
+        </label>
+        <span class="label-switch" style="font-size:var(--text-sm); color:var(--color-ink-secondary); white-space:nowrap;">Alto Contraste</span>
+      </div>
+    </label>
+    <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary btn-sm">← Painel</a>
+  </div>
+</div>
+
+<!-- ── Card GMD ───────────────────────────────────────── -->
+<div class="grid-metrics" style="margin-bottom:var(--space-6);">
+  <div class="metric-card">
+    <span class="label">GMD médio do rebanho</span>
+    <div>
+      <span class="metric-value" id="txtGMD">—</span>
+      <span class="metric-unit">kg/dia</span>
     </div>
+    <div class="metric-delta flat" id="deltaGMD">Carregando...</div>
+  </div>
+  <div class="metric-card">
+    <span class="label">Total de animais</span>
+    <div class="metric-value" id="txtTotal">—</div>
+    <div class="metric-delta flat" id="deltaSexo">Carregando...</div>
+  </div>
+</div>
 
-    <div class="grafico-container">
-        <div class="grafico-box" style="display: block;">
-            <h2>Composição (Sexo)</h2>
-            <div id="loadSexo" style="padding: 40px; color: var(--color-musgo);">🔄 Carregando dados...</div>
-            <canvas id="chartSexo" style="display:none;"></canvas>
-        </div>
-        <div class="grafico-box" style="display: block;">
-            <h2>Distribuição de Peso (@)</h2>
-            <div id="loadPeso" style="padding: 40px; color: var(--color-musgo);">🔄 Carregando dados...</div>
-            <canvas id="chartPeso" style="display:none;"></canvas>
-        </div>
-        <div class="grafico-box">
-            <h2>GMD Médio do Rebanho</h2>
-            <div class="kpi-valor" id="txtGMD">🔄</div>
-            <div class="kpi-sub">kg/dia (Média Global)</div>
-        </div>
-    </div>
+<!-- ── Gráficos ───────────────────────────────────────── -->
+<div class="grafico-container">
 
-    <script>
-        let chartSexo = null, chartPeso = null, dadosGlobais = null;
+  <div class="grafico-box" style="display:block;">
+    <h2>Composição por Sexo</h2>
+    <div id="chartSexo" style="width:100%; height:320px;"></div>
+  </div>
 
-        const CORES_PADRAO = {
-            sexo: ['#3E6B32', '#C0392B'],
-            peso: ['#B8D4B2', '#7A9E6E', '#3E6B32', '#253D1F']
-        };
-        const CORES_TEXTURA = {
-            sexo: [pattern.draw('diagonal', '#2196F3'), pattern.draw('dot', '#F44336')],
-            peso: [pattern.draw('ring', '#9E9E9E'), pattern.draw('box', '#FFC107'), pattern.draw('zigzag', '#2196F3'), pattern.draw('triangle', '#F44336')]
-        };
+  <div class="grafico-box" style="display:block;">
+    <h2>Distribuição de Peso (@)</h2>
+    <div id="chartPeso" style="width:100%; height:320px;"></div>
+  </div>
 
-        function desenharGraficos(usarTexturas) {
-            if (!dadosGlobais) return;
-            const paleta = usarTexturas ? CORES_TEXTURA : CORES_PADRAO;
-            
-            if (chartSexo) chartSexo.destroy();
-            if (chartPeso) chartPeso.destroy();
+</div>
 
-            document.getElementById('loadSexo').style.display = 'none';
-            document.getElementById('chartSexo').style.display = 'block';
-            document.getElementById('loadPeso').style.display = 'none';
-            document.getElementById('chartPeso').style.display = 'block';
+{% endblock %}
 
-            const ctxSexo = document.getElementById('chartSexo').getContext('2d');
-            chartSexo = new Chart(ctxSexo, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Machos', 'Fêmeas'],
-                    datasets: [{ data: [dadosGlobais.sexo.M || 0, dadosGlobais.sexo.F || 0], backgroundColor: paleta.sexo, borderWidth: 1 }]
-                },
-                options: { plugins: { legend: { position: 'bottom' } } }
-            });
+{% block scripts %}
+<script>
+const PALETAS = {
+  normal: {
+    sexo: ['#3B6D11', '#EF9F27'],
+    peso: ['#C0DD97', '#7CAB42', '#3B6D11', '#27500A']
+  },
+  contraste: {
+    sexo: ['#1565C0', '#E65100'],
+    peso: ['#1565C0', '#EF9F27', '#E24B4A', '#43A047']
+  }
+};
 
-            const ctxPeso = document.getElementById('chartPeso').getContext('2d');
-            chartPeso = new Chart(ctxPeso, {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(dadosGlobais.peso),
-                    datasets: [{ data: Object.values(dadosGlobais.peso), backgroundColor: paleta.peso, borderWidth: 1 }]
-                },
-                options: { plugins: { legend: { position: 'bottom' } } }
-            });
+const ECHART_DEFAULTS = {
+  textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#1C1C1A' },
+  tooltip: {
+    backgroundColor: '#1C1C1A',
+    borderColor: '#1C1C1A',
+    textStyle: { color: '#FAFAF8', fontFamily: 'DM Sans, sans-serif', fontSize: 13 }
+  }
+};
 
-            const valorGMD = dadosGlobais.gmd_medio ? dadosGlobais.gmd_medio.toFixed(3) : "0.000";
-            document.getElementById('txtGMD').innerText = valorGMD;
-        }
+let instSexo = null, instPeso = null, dadosGlobais = null;
 
-        function alternarCores() { desenharGraficos(document.getElementById('daltonicoSwitch').checked); }
+function desenharSexo(paleta) {
+  const el = document.getElementById('chartSexo');
+  if (!instSexo) instSexo = echarts.init(el);
 
-        // --- FASE 4: CACHE INTELIGENTE NO NAVEGADOR (LOCALSTORAGE) ---
-        const CACHE_KEY = 'cache_graficos_rebanho';
-        const TEMPO_CACHE_MS = 5 * 60 * 1000; // 5 minutos em milissegundos
+  const M = dadosGlobais.sexo.M || 0;
+  const F = dadosGlobais.sexo.F || 0;
 
-        function carregarDados() {
-            // 1. Tenta buscar do armazenamento do navegador
-            const cacheSalvo = localStorage.getItem(CACHE_KEY);
-            
-            if (cacheSalvo) {
-                const cache = JSON.parse(cacheSalvo);
-                const tempoPassado = Date.now() - cache.timestamp;
-                
-                // Se o cache tem menos de 5 minutos, usa ele e aborta o fetch!
-                if (tempoPassado < TEMPO_CACHE_MS) {
-                    console.log("⚡ Carregado instantaneamente do LocalStorage");
-                    dadosGlobais = cache.dados;
-                    desenharGraficos(false);
-                    return; 
-                }
-            }
+  instSexo.setOption({
+    ...ECHART_DEFAULTS,
+    tooltip: { ...ECHART_DEFAULTS.tooltip, trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    legend: {
+      orient: 'horizontal', bottom: 0,
+      textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' }
+    },
+    series: [{
+      type: 'pie',
+      radius: ['40%', '68%'],
+      center: ['50%', '46%'],
+      data: [
+        { name: 'Machos', value: M, itemStyle: { color: paleta.sexo[0] } },
+        { name: 'Fêmeas', value: F, itemStyle: { color: paleta.sexo[1] } }
+      ],
+      label: { show: true, formatter: '{b}\n{c} ({d}%)', fontFamily: 'DM Sans, sans-serif' },
+      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.2)' } }
+    }]
+  });
+}
 
-            // 2. Se não tem cache ou já passou de 5 min, busca no servidor paralelamente
-            console.log("🌍 Buscando dados atualizados no servidor...");
-            Promise.all([
-                fetch("{{ url_for('api.graficos_sexo') }}").then(res => res.json()),
-                fetch("{{ url_for('api.graficos_peso') }}").then(res => res.json()),
-                fetch("{{ url_for('api.graficos_gmd') }}").then(res => res.json())
-            ]).then(([dadosSexo, dadosPeso, dadosGmd]) => {
-                if (dadosSexo.error || dadosPeso.error || dadosGmd.error) throw new Error("Falha na API");
-                
-                dadosGlobais = { 
-                    sexo: dadosSexo, 
-                    peso: dadosPeso, 
-                    gmd_medio: dadosGmd.gmd_medio 
-                };
+function desenharPeso(paleta) {
+  const el = document.getElementById('chartPeso');
+  if (!instPeso) instPeso = echarts.init(el);
 
-                // 3. Salva a nova cópia no navegador com a hora exata
-                localStorage.setItem(CACHE_KEY, JSON.stringify({
-                    timestamp: Date.now(),
-                    dados: dadosGlobais
-                }));
+  const labels = Object.keys(dadosGlobais.peso);
+  const series = labels.map((label, i) => ({
+    name: label,
+    value: dadosGlobais.peso[label],
+    itemStyle: { color: paleta.peso[i % paleta.peso.length] }
+  }));
 
-                desenharGraficos(false);
-            }).catch(err => {
-                console.error(err);
-                document.getElementById('loadSexo').innerText = "Falha de conexão";
-                document.getElementById('loadPeso').innerText = "Falha de conexão";
-                document.getElementById('txtGMD').innerText = "--";
-            });
-        }
+  instPeso.setOption({
+    ...ECHART_DEFAULTS,
+    tooltip: { ...ECHART_DEFAULTS.tooltip, trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    legend: {
+      orient: 'horizontal', bottom: 0,
+      textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' }
+    },
+    series: [{
+      type: 'pie',
+      radius: ['40%', '68%'],
+      center: ['50%', '46%'],
+      data: series,
+      label: { show: true, formatter: '{b}\n{c} ({d}%)', fontFamily: 'DM Sans, sans-serif' },
+      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.2)' } }
+    }]
+  });
+}
 
-        // Inicia o processo
-        carregarDados();
-    </script>
-</body>
-</html>
+function alternarCores() {
+  if (!dadosGlobais) return;
+  const paleta = document.getElementById('daltonicoSwitch').checked
+    ? PALETAS.contraste : PALETAS.normal;
+  desenharSexo(paleta);
+  desenharPeso(paleta);
+}
+
+const CACHE_KEY = 'cache_graficos_rebanho';
+const CACHE_TTL = 5 * 60 * 1000;
+
+function carregarDados() {
+  // Carregar indicadores async
+  const cache = localStorage.getItem(CACHE_KEY);
+  if (cache) {
+    const obj = JSON.parse(cache);
+    if (Date.now() - obj.timestamp < CACHE_TTL) {
+      dadosGlobais = obj.dados;
+      renderizarTudo();
+      return;
+    }
+  }
+
+  instSexo = echarts.init(document.getElementById('chartSexo'));
+  instPeso = echarts.init(document.getElementById('chartPeso'));
+  instSexo.showLoading({ text: 'Carregando...', color: '#3B6D11' });
+  instPeso.showLoading({ text: 'Carregando...', color: '#3B6D11' });
+
+  Promise.all([
+    fetch("{{ url_for('api.graficos_sexo') }}").then(r => r.json()),
+    fetch("{{ url_for('api.graficos_peso') }}").then(r => r.json()),
+    fetch("{{ url_for('api.graficos_gmd') }}").then(r => r.json())
+  ]).then(([sexo, peso, gmdData]) => {
+    if (sexo.error || peso.error || gmdData.error) throw new Error('API error');
+    dadosGlobais = { sexo, peso, gmd_medio: gmdData.gmd_medio };
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), dados: dadosGlobais }));
+    instSexo.hideLoading();
+    instPeso.hideLoading();
+    renderizarTudo();
+  }).catch(err => {
+    console.error(err);
+    instSexo.hideLoading();
+    instPeso.hideLoading();
+    document.getElementById('txtGMD').textContent = '--';
+    document.getElementById('deltaSexo').textContent = 'Falha ao carregar dados';
+  });
+}
+
+function renderizarTudo() {
+  const paleta = PALETAS.normal;
+  desenharSexo(paleta);
+  desenharPeso(paleta);
+
+  const M = dadosGlobais.sexo.M || 0;
+  const F = dadosGlobais.sexo.F || 0;
+  document.getElementById('txtTotal').textContent = M + F;
+  document.getElementById('deltaSexo').textContent = `${M} machos · ${F} fêmeas`;
+  document.getElementById('deltaSexo').className = 'metric-delta flat';
+
+  const gmd = dadosGlobais.gmd_medio || 0;
+  document.getElementById('txtGMD').textContent = gmd > 0 ? gmd.toFixed(3) : '—';
+
+  const deltaGMD = document.getElementById('deltaGMD');
+  if (gmd >= 0.8) {
+    deltaGMD.textContent = '↑ Acima da meta (0.800)';
+    deltaGMD.className = 'metric-delta up';
+  } else if (gmd > 0) {
+    deltaGMD.textContent = '↓ Abaixo da meta (0.800)';
+    deltaGMD.className = 'metric-delta down';
+  } else {
+    deltaGMD.textContent = 'Sem pesagens registradas';
+    deltaGMD.className = 'metric-delta flat';
+  }
+}
+
+window.addEventListener('resize', () => {
+  instSexo?.resize();
+  instPeso?.resize();
+});
+
+document.addEventListener('DOMContentLoaded', carregarDados);
+</script>
+{% endblock %}

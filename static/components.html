@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGG — Referência de Componentes</title>
+  <link rel="stylesheet" href="design_system.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    .demo-section {
+      margin-bottom: 3rem;
+    }
+    .demo-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-ink-tertiary);
+      border-bottom: 0.5px solid var(--color-border);
+      padding-bottom: 8px;
+      margin-bottom: 1.5rem;
+    }
+    .demo-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    body { padding: 2rem; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     NAVEGAÇÃO
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Navegação</div>
+  <nav class="nav">
+    <a href="#" class="nav-logo">
+      🐮 SGG
+    </a>
+    <div class="nav-links">
+      <a href="#" class="nav-link active">Rebanho</a>
+      <a href="#" class="nav-link">Financeiro</a>
+      <a href="#" class="nav-link">Pastos</a>
+      <a href="#" class="nav-link">Estoque</a>
+      <a href="#" class="nav-link">Relatórios</a>
+    </div>
+    <button class="btn btn-ghost btn-sm">Sair</button>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     CABEÇALHO DE PÁGINA
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Cabeçalho de página</div>
+  <div class="page-header">
+    <div>
+      <p class="label">Fazenda São João</p>
+      <h1 class="page-title">Gestão do Rebanho</h1>
+    </div>
+    <div class="demo-row">
+      <button class="btn btn-secondary">Exportar PDF</button>
+      <button class="btn btn-primary">+ Novo animal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     CARDS DE MÉTRICA
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Cards de métrica</div>
+  <div class="grid-metrics">
+
+    <div class="metric-card">
+      <span class="label">Cabeças no rebanho</span>
+      <div class="metric-value">248</div>
+      <div class="metric-delta up">↑ 12 este mês</div>
+    </div>
+
+    <div class="metric-card">
+      <span class="label">GMD médio do rebanho</span>
+      <div>
+        <span class="metric-value">0.82</span>
+        <span class="metric-unit">kg/dia</span>
+      </div>
+      <div class="metric-delta down">↓ 0.08 abaixo da meta</div>
+    </div>
+
+    <div class="metric-card">
+      <span class="label">Saldo em caixa</span>
+      <div class="metric-value" style="font-size: 26px;">R$ 42.800</div>
+      <div class="metric-delta flat">Atualizado hoje</div>
+    </div>
+
+    <div class="metric-card">
+      <span class="label">Estoque imobilizado</span>
+      <div class="metric-value" style="font-size: 26px;">R$ 3.200</div>
+      <div class="metric-delta down">2 itens abaixo do mínimo</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     BADGES DE STATUS
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Badges de status</div>
+  <div class="demo-row">
+    <span class="badge badge-success">Normal</span>
+    <span class="badge badge-warning">Atenção</span>
+    <span class="badge badge-danger">Abaixo do GMD</span>
+    <span class="badge badge-neutral">Vendido</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TABELA DE ANIMAIS
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Tabela de animais</div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Brinco</th>
+          <th>Sexo</th>
+          <th>Raça</th>
+          <th>Peso atual</th>
+          <th>GMD</th>
+          <th>Pasto</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="td-primary">A-0042</td>
+          <td>Macho</td>
+          <td>Nelore</td>
+          <td>487 kg</td>
+          <td>1.02 kg/dia</td>
+          <td><span class="tag">Módulo B2</span></td>
+          <td><span class="badge badge-success">Normal</span></td>
+          <td><button class="btn btn-ghost btn-sm">Ver</button></td>
+        </tr>
+        <tr>
+          <td class="td-primary">A-0078</td>
+          <td>Macho</td>
+          <td>Nelore</td>
+          <td>312 kg</td>
+          <td>0.41 kg/dia</td>
+          <td><span class="tag">Módulo A1</span></td>
+          <td><span class="badge badge-danger">Abaixo GMD</span></td>
+          <td><button class="btn btn-ghost btn-sm">Ver</button></td>
+        </tr>
+        <tr>
+          <td class="td-primary">F-0015</td>
+          <td>Fêmea</td>
+          <td>Angus</td>
+          <td>398 kg</td>
+          <td>0.78 kg/dia</td>
+          <td><span class="tag">Módulo C3</span></td>
+          <td><span class="badge badge-warning">Atenção</span></td>
+          <td><button class="btn btn-ghost btn-sm">Ver</button></td>
+        </tr>
+        <tr>
+          <td class="td-primary">A-0091</td>
+          <td>Macho</td>
+          <td>Nelore</td>
+          <td>521 kg</td>
+          <td>1.14 kg/dia</td>
+          <td><span class="tag">Módulo B2</span></td>
+          <td><span class="badge badge-success">Normal</span></td>
+          <td><button class="btn btn-ghost btn-sm">Ver</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     ALERTAS
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Alertas</div>
+  <div style="display: flex; flex-direction: column; gap: 8px; max-width: 600px;">
+
+    <div class="alert alert-danger">
+      <span class="alert-icon">⚠</span>
+      <div>
+        <strong>3 animais com GMD abaixo de 0.5 kg/dia</strong><br>
+        <span style="font-size: var(--text-xs);">A-0078, A-0023, F-0041 — verificar alimentação ou saúde</span>
+      </div>
+    </div>
+
+    <div class="alert alert-warning">
+      <span class="alert-icon">📦</span>
+      <div>
+        <strong>Vacina Aftosa abaixo do ponto de reposição</strong><br>
+        <span style="font-size: var(--text-xs);">12 doses restantes — mínimo definido: 30 doses</span>
+      </div>
+    </div>
+
+    <div class="alert alert-success">
+      <span class="alert-icon">✓</span>
+      <div>
+        <strong>Módulo B3 pronto para ocupação</strong><br>
+        <span style="font-size: var(--text-xs);">18 dias de descanso completados</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     BOTÕES
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Botões</div>
+  <div class="demo-row">
+    <button class="btn btn-primary">+ Novo animal</button>
+    <button class="btn btn-secondary">Exportar PDF</button>
+    <button class="btn btn-accent">Ver alertas</button>
+    <button class="btn btn-ghost">Cancelar</button>
+    <button class="btn btn-danger">Remover</button>
+  </div>
+  <div class="demo-row" style="margin-top: 12px;">
+    <button class="btn btn-primary btn-sm">Salvar</button>
+    <button class="btn btn-secondary btn-sm">Editar</button>
+    <button class="btn btn-ghost btn-sm">Ver detalhes</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     FORMULÁRIO
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Formulário — cadastro de animal</div>
+  <div class="card" style="max-width: 560px;">
+    <div class="card-header">
+      <h3 class="section-title" style="font-size: var(--text-md);">Novo animal</h3>
+    </div>
+    <div class="card-body">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+        <div class="form-group">
+          <label class="form-label">Brinco</label>
+          <input type="text" class="form-input" placeholder="Ex: A-0123">
+          <span class="form-hint">Identificador único do animal</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Sexo</label>
+          <select class="form-select">
+            <option value="">Selecionar</option>
+            <option>Macho</option>
+            <option>Fêmea</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Raça</label>
+          <input type="text" class="form-input" placeholder="Ex: Nelore">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Peso de entrada (kg)</label>
+          <input type="number" class="form-input" placeholder="0">
+        </div>
+
+        <div class="form-group" style="grid-column: span 2;">
+          <label class="form-label">Data de compra</label>
+          <input type="date" class="form-input">
+        </div>
+
+      </div>
+      <div class="demo-row" style="margin-top: 20px; justify-content: flex-end;">
+        <button class="btn btn-ghost">Cancelar</button>
+        <button class="btn btn-primary">Salvar animal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     CARD DE PASTO COM LOTAÇÃO
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Card de módulo de pasto</div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; max-width: 800px;">
+
+    <div class="card card-accent-green">
+      <div class="card-body">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+          <div>
+            <p class="label">Módulo</p>
+            <h3 style="font-family: var(--font-display); font-size: var(--text-lg); margin: 0;">B2</h3>
+          </div>
+          <span class="badge badge-success">Ocupado</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); color: var(--color-ink-tertiary); margin-bottom: 6px;">
+          <span>Lotação</span>
+          <span style="font-weight: 500; color: var(--color-ink);">38 / 50 UA</span>
+        </div>
+        <div class="lotacao-bar">
+          <div class="lotacao-fill ok" style="width: 76%;"></div>
+        </div>
+        <div style="margin-top: 12px; font-size: var(--text-xs); color: var(--color-ink-tertiary);">
+          GMD médio: <strong style="color: var(--color-ink);">0.94 kg/dia</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-accent-amber">
+      <div class="card-body">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+          <div>
+            <p class="label">Módulo</p>
+            <h3 style="font-family: var(--font-display); font-size: var(--text-lg); margin: 0;">A1</h3>
+          </div>
+          <span class="badge badge-warning">Superlotado</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); color: var(--color-ink-tertiary); margin-bottom: 6px;">
+          <span>Lotação</span>
+          <span style="font-weight: 500; color: var(--color-danger);">48 / 40 UA</span>
+        </div>
+        <div class="lotacao-bar">
+          <div class="lotacao-fill danger" style="width: 100%;"></div>
+        </div>
+        <div style="margin-top: 12px; font-size: var(--text-xs); color: var(--color-ink-tertiary);">
+          GMD médio: <strong style="color: var(--color-danger);">0.51 kg/dia</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-style: dashed; border-color: var(--color-border-strong);">
+      <div class="card-body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 140px; text-align: center;">
+        <p class="label" style="margin-bottom: 4px;">Módulo C3</p>
+        <p style="font-size: var(--text-sm); color: var(--color-ink-tertiary);">Descansando há 18 dias</p>
+        <button class="btn btn-accent btn-sm" style="margin-top: 12px;">Ocupar módulo</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     GRÁFICO ECHARTS — GMD por módulo
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Gráfico ECharts — GMD por módulo de pasto</div>
+  <div class="card">
+    <div class="card-header">
+      <span class="section-title" style="font-size: var(--text-base); font-family: var(--font-display);">GMD médio por módulo</span>
+      <span class="badge badge-neutral">Últimos 30 dias</span>
+    </div>
+    <div class="card-body">
+      <div id="chart-gmd" style="height: 260px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     GRÁFICO ECHARTS — Fluxo de caixa
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Gráfico ECharts — Fluxo de caixa mensal</div>
+  <div class="card">
+    <div class="card-header">
+      <span class="section-title" style="font-size: var(--text-base); font-family: var(--font-display);">Fluxo de caixa</span>
+      <span class="badge badge-neutral">2026</span>
+    </div>
+    <div class="card-body">
+      <div id="chart-caixa" style="height: 260px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TAGS
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Tags de contexto</div>
+  <div class="demo-row">
+    <span class="tag">Nelore</span>
+    <span class="tag">Módulo B2</span>
+    <span class="tag">Lote 04/2026</span>
+    <span class="tag">Touro #12</span>
+    <span class="tag">Pastejo rotacionado</span>
+    <span class="tag">Vacina aftosa</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SCRIPTS ECHARTS
+══════════════════════════════════════════════════════ -->
+<script>
+  const primaryColor  = '#3B6D11';
+  const primaryLight  = '#639922';
+  const accentColor   = '#EF9F27';
+  const dangerColor   = '#E24B4A';
+  const textMuted     = '#888780';
+  const borderColor   = 'rgba(60,52,30,0.12)';
+
+  const chartDefaults = {
+    textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#4A4A46' },
+    grid: { left: 16, right: 16, top: 16, bottom: 0, containLabel: true }
+  };
+
+  /* GMD por módulo */
+  const chartGmd = echarts.init(document.getElementById('chart-gmd'));
+  chartGmd.setOption({
+    ...chartDefaults,
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#fff',
+      borderColor: borderColor,
+      borderWidth: 0.5,
+      textStyle: { color: '#1C1C1A', fontFamily: 'DM Sans, sans-serif', fontSize: 12 }
+    },
+    xAxis: {
+      type: 'category',
+      data: ['A1', 'A2', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'],
+      axisLine: { lineStyle: { color: borderColor } },
+      axisTick: { show: false },
+      axisLabel: { color: textMuted, fontSize: 12 }
+    },
+    yAxis: {
+      type: 'value',
+      name: 'kg/dia',
+      nameTextStyle: { color: textMuted, fontSize: 11 },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: borderColor, type: 'dashed' } },
+      axisLabel: { color: textMuted, fontSize: 11 }
+    },
+    series: [{
+      type: 'bar',
+      data: [0.51, 0.88, 0.91, 0.94, 0, 0.72, 0.85, 0],
+      barMaxWidth: 40,
+      itemStyle: {
+        borderRadius: [4, 4, 0, 0],
+        color: (params) => {
+          const v = params.value;
+          if (v === 0) return 'rgba(60,52,30,0.10)';
+          if (v < 0.6) return dangerColor;
+          if (v < 0.8) return accentColor;
+          return primaryColor;
+        }
+      },
+      label: {
+        show: true, position: 'top',
+        fontSize: 11, color: textMuted,
+        formatter: (p) => p.value === 0 ? 'Descanso' : p.value.toFixed(2)
+      }
+    }]
+  });
+
+  /* Fluxo de caixa */
+  const chartCaixa = echarts.init(document.getElementById('chart-caixa'));
+  chartCaixa.setOption({
+    ...chartDefaults,
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#fff',
+      borderColor: borderColor,
+      borderWidth: 0.5,
+      textStyle: { color: '#1C1C1A', fontFamily: 'DM Sans, sans-serif', fontSize: 12 }
+    },
+    legend: {
+      bottom: 0,
+      textStyle: { color: textMuted, fontSize: 12 },
+      icon: 'circle', itemWidth: 8, itemHeight: 8
+    },
+    xAxis: {
+      type: 'category',
+      data: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+      axisLine: { lineStyle: { color: borderColor } },
+      axisTick: { show: false },
+      axisLabel: { color: textMuted, fontSize: 12 }
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: borderColor, type: 'dashed' } },
+      axisLabel: {
+        color: textMuted, fontSize: 11,
+        formatter: (v) => 'R$ ' + (v / 1000).toFixed(0) + 'k'
+      }
+    },
+    series: [
+      {
+        name: 'Receitas',
+        type: 'bar',
+        stack: 'total',
+        data: [18000, 12000, 22000, 15000, 30000, 19000],
+        itemStyle: { color: primaryColor, borderRadius: [0, 0, 0, 0] }
+      },
+      {
+        name: 'Despesas',
+        type: 'bar',
+        stack: 'total',
+        data: [-8000, -9500, -7000, -11000, -13000, -8500],
+        itemStyle: { color: dangerColor, borderRadius: [0, 0, 0, 0] }
+      },
+      {
+        name: 'Saldo',
+        type: 'line',
+        data: [10000, 2500, 15000, 4000, 17000, 10500],
+        lineStyle: { color: accentColor, width: 2 },
+        itemStyle: { color: accentColor },
+        symbol: 'circle', symbolSize: 6
+      }
+    ]
+  });
+
+  window.addEventListener('resize', () => {
+    chartGmd.resize();
+    chartCaixa.resize();
+  });
+</script>
+
+</body>
+</html>

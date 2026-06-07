@@ -1,106 +1,328 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Ficha do Animal</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    {% if animal %}
-        <h1>Ficha Técnica: Brinco {{ animal[1] }}</h1>
+{% extends 'base.html' %}
+{% block title %}Ficha — {{ animal[1] if animal else 'Animal' }}{% endblock %}
 
-        <div class="dashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
-            <div class="kpi-box" style="background-color: #EEF4EB; padding: 15px; border-radius: 8px; text-align: center;">
-                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--secondary-color);">Peso Atual</h3>
-                <strong style="font-size: 24px;">{{ indicadores.peso_atual }} kg</strong>
-            </div>
-            <div class="kpi-box" style="background-color: var(--color-palha); padding: 15px; border-radius: 8px; text-align: center;">
-                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--secondary-color);">GMD (Média)</h3>
-                <strong style="font-size: 24px; color: var(--primary-color);">{{ indicadores.gmd }}</strong>
-                <br><small style="font-size: 11px;">kg/dia em {{ indicadores.dias }} dias</small>
-            </div>
+{% block extra_css %}
+<style>
+@media (max-width: 760px) {
+  .detalhe-layout { grid-template-columns: 1fr !important; }
+}
+</style>
+{% endblock %}
 
-            {% set cor_ganho = 'var(--primary-color)' if indicadores.ganho_total >= 0 else 'var(--danger-color)' %}
-            <div class="kpi-box" style="background-color: #EEF4EB; padding: 15px; border-radius: 8px; text-align: center;">
-                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--secondary-color);">Ganho Total</h3>
-                <strong style="font-size: 24px; color: {{ cor_ganho }};">{{ indicadores.ganho_total }} kg</strong>
-            </div>
+{% block content %}
+{% if animal %}
 
-            <div class="kpi-box" style="background-color: #FEF3E2; padding: 15px; border-radius: 8px; text-align: center;">
-                <h3 style="margin: 0 0 10px 0; font-size: 16px; color: var(--accent-color);">Custo Total</h3>
-                <strong style="font-size: 24px; color: var(--accent-color);">R$ {{ indicadores.custo_total }}</strong>
-            </div>
-        </div>
+<!-- ── Cabeçalho ─────────────────────────────────────── -->
+<div class="page-header">
+  <div>
+    <p class="label">Rebanho</p>
+    <h1 class="page-title" style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap;">
+      Brinco {{ animal[1] }}
+      {% if animal[5] %}
+        <span class="badge badge-neutral">Vendido</span>
+      {% else %}
+        <span class="badge badge-success">Ativo</span>
+      {% endif %}
+      <span class="badge badge-neutral">{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</span>
+    </h1>
+  </div>
+  <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
+    <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">← Rebanho</a>
+    {% if not animal[5] %}
+      <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}" class="btn btn-secondary btn-sm">+ Medicação</a>
+      <a href="{{ url_for('operacional.nova_pesagem', id_animal=animal[0]) }}" class="btn btn-primary btn-sm">+ Pesagem</a>
+    {% endif %}
+  </div>
+</div>
 
-        <div class="card">
-            <h3>Dados Fixos</h3>
-            <p><strong>Sexo:</strong> {{ animal[2] }}</p>
-            <p><strong>Data de Compra/Nascimento:</strong> {{ animal[3] }}</p>
-            <p><strong>Preço de Compra:</strong> R$ {{ animal[4] }}</p>
-        </div>
+<!-- ── Cards de métrica ────────────────────────────────── -->
+{% set gmd_val = indicadores.gmd | float %}
+<div class="grid-metrics">
 
-        <hr><h2>Evolução de Peso</h2>
-        <a href="{{ url_for('operacional.nova_pesagem', id_animal=animal[0]) }}" class="btn btn-primary">+ Nova Pesagem</a>
+  <div class="metric-card">
+    <span class="label">Peso atual</span>
+    <div>
+      <span class="metric-value">{{ indicadores.peso_atual }}</span>
+      <span class="metric-unit">kg</span>
+    </div>
+    <div class="metric-delta flat">
+      {{ indicadores.dias }} dia{{ 's' if indicadores.dias != 1 }} de confinamento
+    </div>
+  </div>
 
-        <table>
-            <thead><tr><th>Data da Pesagem</th><th>Peso (kg)</th><th>Ações</th></tr></thead>
-            <tbody>
-                {% for pesagem in historico_peso %}
-                <tr>
-                    <td>{{ pesagem[2] }}</td>
-                    <td>{{ pesagem[3] }} kg</td>
-                    <td>
-                        <a href="{{ url_for('operacional.excluir_pesagem', id_pesagem=pesagem[0]) }}"
-                           style="color: var(--danger-color); text-decoration: none; font-weight: bold;"
-                           onclick="return confirm('Tem certeza que deseja apagar este registro?');">
-                           [X] Excluir
-                        </a>
-                    </td>
-                </tr>
-                {% else %}<tr><td colspan="3">Nenhuma pesagem registrada.</td></tr>{% endfor %}
-            </tbody>
-        </table>
+  <div class="metric-card">
+    <span class="label">GMD médio</span>
+    <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap;">
+      <span class="metric-value">{{ indicadores.gmd }}</span>
+      <span class="metric-unit">kg/dia</span>
+      {% if gmd_val >= 0.8 %}
+        <span class="badge badge-success">Ótimo</span>
+      {% elif gmd_val >= 0.6 %}
+        <span class="badge badge-warning">Regular</span>
+      {% elif gmd_val > 0 %}
+        <span class="badge badge-danger">Baixo</span>
+      {% else %}
+        <span class="badge badge-neutral">—</span>
+      {% endif %}
+    </div>
+    {% if gmd_val >= 0.8 %}
+      <div class="metric-delta up">↑ Acima da meta (0.800)</div>
+    {% elif gmd_val > 0 %}
+      <div class="metric-delta down">↓ Abaixo da meta (0.800)</div>
+    {% else %}
+      <div class="metric-delta flat">Sem pesagens suficientes</div>
+    {% endif %}
+  </div>
 
-        <br><hr><h2>Histórico Sanitário (Vacinas/Remédios)</h2>
-        <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}" class="btn btn-primary">+ Adicionar Vacina/Remédio</a>
+  <div class="metric-card">
+    <span class="label">Ganho total</span>
+    <div>
+      <span class="metric-value">{{ indicadores.ganho_total }}</span>
+      <span class="metric-unit">kg</span>
+    </div>
+    {% if indicadores.ganho_total > 0 %}
+      <div class="metric-delta up">↑ Ganho desde a entrada</div>
+    {% elif indicadores.ganho_total < 0 %}
+      <div class="metric-delta down">↓ Perda desde a entrada</div>
+    {% else %}
+      <div class="metric-delta flat">Sem variação registrada</div>
+    {% endif %}
+  </div>
 
-        <table>
-            <thead><tr><th>Data</th><th>Medicamento</th><th>Custo</th><th>Obs</th></tr></thead>
-            <tbody>
-                {% for med in historico_med %}
-                <tr><td>{{ med[2] }}</td><td>{{ med[3] }}</td><td>R$ {{ med[4] }}</td><td>{{ med[5] }}</td></tr>
-                {% else %}<tr><td colspan="4">Nenhuma medicação registrada.</td></tr>{% endfor %}
-            </tbody>
-        </table>
+  <div class="metric-card">
+    <span class="label">Custo acumulado</span>
+    <div class="metric-value">R$ {{ indicadores.custo_total }}</div>
+    <div class="metric-delta flat">Compra + medicações</div>
+  </div>
 
-    {% else %}<h1>Erro: Animal não encontrado.</h1>{% endif %}
+</div>
 
-    <br>
-    <div style="margin: 20px 0;">
-        {% if not animal[6] %}
-            <a href="{{ url_for('operacional.vender', id_animal=animal[0]) }}"
-               style="background-color: var(--danger-color); color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;">
-               💲 Registrar Venda (Baixa)
-            </a>
-        {% else %}
-            <div style="background-color: #FDDCDA; color: var(--danger-color); padding: 10px; border: 1px solid #F1A9A6; display: inline-block; border-radius: 5px;">
-                <strong>VENDIDO</strong> em {{ animal[5] }} por R$ {{ animal[6] }}
-            </div>
+<!-- ── Layout assimétrico ─────────────────────────────── -->
+<div class="detalhe-layout"
+     style="display:grid; grid-template-columns: 1fr 300px; gap:var(--space-6); margin-bottom:var(--space-8);">
+
+  <!-- ───── Coluna esquerda: gráfico + pesagens ───── -->
+  <div>
+    <h2 style="margin:0 0 var(--space-4);">Evolução de Peso</h2>
+
+    {% if historico_peso | length >= 2 %}
+    <div style="background:var(--color-surface); border:1px solid var(--color-border);
+                border-radius:var(--radius-lg); padding:var(--space-4); margin-bottom:var(--space-4);">
+      <div id="chartPeso" style="width:100%; height:260px;"></div>
+    </div>
+    {% endif %}
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Peso</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in historico_peso %}
+          <tr>
+            <td>{{ p[2] }}</td>
+            <td class="td-primary">{{ p[3] }} kg</td>
+            <td>
+              <a href="{{ url_for('operacional.excluir_pesagem', id_pesagem=p[0]) }}"
+                 class="btn btn-ghost btn-sm"
+                 style="color:var(--color-danger);"
+                 onclick="return confirm('Remover esta pesagem?');">Excluir</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="3"
+                style="text-align:center; padding:var(--space-8); color:var(--color-ink-tertiary);">
+              Nenhuma pesagem registrada.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ───── Coluna direita: info + ações ───── -->
+  <div style="display:flex; flex-direction:column; gap:var(--space-4);">
+
+    <!-- Dados fixos -->
+    <div class="card">
+      <p class="label" style="margin-bottom:var(--space-3);">Dados do Animal</p>
+      <dl style="display:grid; grid-template-columns: auto 1fr;
+                 gap:var(--space-2) var(--space-3); font-size:var(--text-sm); margin:0;">
+        <dt style="color:var(--color-ink-secondary);">Sexo</dt>
+        <dd style="margin:0;">
+          <span class="badge {% if animal[2] == 'M' %}badge-success{% else %}badge-warning{% endif %}">
+            {{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}
+          </span>
+        </dd>
+        <dt style="color:var(--color-ink-secondary);">Entrada</dt>
+        <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[3] }}</dd>
+        <dt style="color:var(--color-ink-secondary);">Preço compra</dt>
+        <dd style="margin:0; font-weight:var(--weight-medium);">R$ {{ animal[4] }}</dd>
+        {% if animal[5] %}
+          <dt style="color:var(--color-ink-secondary);">Data venda</dt>
+          <dd style="margin:0;">{{ animal[5] }}</dd>
+          <dt style="color:var(--color-ink-secondary);">Preço venda</dt>
+          <dd style="margin:0; font-weight:var(--weight-medium); color:var(--color-primary);">
+            R$ {{ animal[6] }}
+          </dd>
         {% endif %}
-    </div>
-    <br><br><br>
-
-    <div style="border: 2px solid var(--danger-color); padding: 20px; border-radius: 8px; background-color: #FDDCDA;">
-        <h3 style="color: var(--danger-color); margin-top: 0;">Excluir Animal</h3>
-        <p>O animal irá para a Lixeira</p>
-        <a href="{{ url_for('operacional.excluir_animal', id_animal=animal[0]) }}"
-           style="background-color: var(--danger-color); color: white; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px;"
-           onclick="return confirm('ATENÇÃO: o animal excluido irá para a lixeira');">
-           🗑️ EXCLUIR ANIMAL
-        </a>
+      </dl>
     </div>
 
-    <br><br>
-    <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Voltar ao Rebanho</a>
-</body>
-</html>
+    <!-- Genealogia -->
+    <div class="card">
+      <p class="label" style="margin-bottom:var(--space-3);">Genealogia</p>
+      <div style="display:flex; flex-direction:column; gap:var(--space-2);">
+        <a href="{{ url_for('operacional.progenie_animal', id_animal=animal[0]) }}"
+           class="btn btn-secondary btn-sm">🐄 Ver Progênie</a>
+        <a href="{{ url_for('operacional.reproducao_animal', id_animal=animal[0]) }}"
+           class="btn btn-secondary btn-sm">🔬 Reprodução</a>
+      </div>
+    </div>
+
+    <!-- Status de venda -->
+    {% if animal[5] %}
+      <div class="alert alert-warning">
+        <span class="alert-icon">💲</span>
+        <div>
+          <strong>Animal vendido</strong><br>
+          <span style="font-size:var(--text-xs);">{{ animal[5] }} — R$ {{ animal[6] }}</span>
+        </div>
+      </div>
+    {% else %}
+      <a href="{{ url_for('operacional.vender', id_animal=animal[0]) }}"
+         class="btn btn-danger" style="text-align:center;">
+        💲 Registrar Venda
+      </a>
+    {% endif %}
+
+    <!-- Zona de perigo -->
+    <div class="alert alert-danger"
+         style="flex-direction:column; align-items:flex-start; gap:var(--space-3);">
+      <div>
+        <strong>Excluir animal</strong><br>
+        <span style="font-size:var(--text-xs);">
+          O animal irá para a lixeira e não será contabilizado nos relatórios.
+        </span>
+      </div>
+      <a href="{{ url_for('operacional.excluir_animal', id_animal=animal[0]) }}"
+         class="btn btn-danger btn-sm"
+         onclick="return confirm('Mover o animal para a lixeira?');">
+         🗑️ Excluir animal
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Histórico sanitário (largura total) ─────────────── -->
+<div style="margin-bottom:var(--space-8);">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4);">
+    <h2 style="margin:0;">Histórico Sanitário</h2>
+    {% if not animal[5] %}
+      <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}"
+         class="btn btn-primary btn-sm">+ Medicação</a>
+    {% endif %}
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Medicamento</th>
+          <th>Custo</th>
+          <th>Observações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for med in historico_med %}
+        <tr>
+          <td>{{ med[2] }}</td>
+          <td class="td-primary">{{ med[3] }}</td>
+          <td>R$ {{ med[4] }}</td>
+          <td style="color:var(--color-ink-secondary);">{{ med[5] or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4"
+              style="text-align:center; padding:var(--space-8); color:var(--color-ink-tertiary);">
+            Nenhuma medicação registrada.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="alert alert-danger">Animal não encontrado.</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if animal and historico_peso | length >= 2 %}
+<script>
+const pesagensRaw = [
+  {% for p in historico_peso %}
+  { data: "{{ p[2] }}", peso: {{ p[3] }} }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+
+// Inverter para cronológico (query retorna DESC)
+const pesagens = pesagensRaw.slice().reverse();
+
+const chart = echarts.init(document.getElementById('chartPeso'));
+chart.setOption({
+  textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' },
+  grid: { top: 20, right: 20, bottom: 40, left: 58, containLabel: false },
+  tooltip: {
+    trigger: 'axis',
+    backgroundColor: '#1C1C1A',
+    borderColor: '#1C1C1A',
+    textStyle: { color: '#FAFAF8', fontFamily: 'DM Sans, sans-serif', fontSize: 13 },
+    formatter: p => `${p[0].axisValue}<br/><strong>${p[0].value} kg</strong>`
+  },
+  xAxis: {
+    type: 'category',
+    data: pesagens.map(p => p.data),
+    axisLabel: { fontSize: 11, color: '#6B6B68', rotate: pesagens.length > 6 ? 30 : 0 },
+    axisLine: { lineStyle: { color: '#D6D6D0' } }
+  },
+  yAxis: {
+    type: 'value',
+    name: 'kg',
+    nameTextStyle: { color: '#6B6B68', fontSize: 11 },
+    axisLabel: { color: '#6B6B68', fontSize: 11 },
+    splitLine: { lineStyle: { color: '#EDEDE8' } }
+  },
+  series: [{
+    type: 'line',
+    data: pesagens.map(p => p.peso),
+    smooth: true,
+    symbol: 'circle',
+    symbolSize: 7,
+    lineStyle: { color: '#3B6D11', width: 2.5 },
+    itemStyle: { color: '#3B6D11', borderColor: '#fff', borderWidth: 2 },
+    areaStyle: {
+      color: {
+        type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+        colorStops: [
+          { offset: 0, color: 'rgba(59,109,17,0.20)' },
+          { offset: 1, color: 'rgba(59,109,17,0)' }
+        ]
+      }
+    }
+  }]
+});
+
+window.addEventListener('resize', () => chart.resize());
+</script>
+{% endif %}
+{% endblock %}

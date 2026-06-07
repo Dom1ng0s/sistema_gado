@@ -87,9 +87,16 @@ def _purge(user_id):
     cur = conn.cursor()
     cur.execute("SET FOREIGN_KEY_CHECKS = 0")
     for sql in [
+        "DELETE oa FROM ocupacao_animais oa JOIN ocupacoes o ON oa.ocupacao_id = o.id JOIN modulos m ON o.modulo_id = m.id WHERE m.user_id = %s",
+        "DELETE o FROM ocupacoes o JOIN modulos m ON o.modulo_id = m.id WHERE m.user_id = %s",
+        "DELETE FROM modulos WHERE user_id = %s",
+        "DELETE FROM pastos WHERE user_id = %s",
         "DELETE p FROM pesagens p JOIN animais a ON p.animal_id = a.id WHERE a.user_id = %s",
         "DELETE m FROM medicacoes m JOIN animais a ON m.animal_id = a.id WHERE a.user_id = %s",
+        "DELETE FROM reproducao WHERE user_id = %s",
         "DELETE FROM animais WHERE user_id = %s",
+        "DELETE FROM estoque_movimentacoes WHERE user_id = %s",
+        "DELETE FROM estoque_produtos WHERE user_id = %s",
         "DELETE FROM lotes WHERE user_id = %s",
         "DELETE FROM custos_operacionais WHERE user_id = %s",
         "DELETE FROM financial_schedule WHERE user_id = %s",

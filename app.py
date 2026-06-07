@@ -10,6 +10,8 @@ from routes.financeiro import financeiro_bp
 from routes.operacional import operacional_bp
 from routes.api import api_bp
 from routes.configuracoes import config_bp
+from routes.pastos import pastos_bp
+from routes.estoque import estoque_bp
 from repositories import configuracao_repository
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -32,6 +34,8 @@ app.register_blueprint(financeiro_bp)
 app.register_blueprint(operacional_bp)
 app.register_blueprint(config_bp)
 app.register_blueprint(api_bp)
+app.register_blueprint(pastos_bp)
+app.register_blueprint(estoque_bp)
 
 @app.template_filter('brl')
 def format_brl(value):
