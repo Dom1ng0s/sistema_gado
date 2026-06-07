@@ -36,8 +36,8 @@ def login():
         try:
             with get_db_cursor() as cursor:
                 cursor.execute(
-                    "SELECT id, username, password_hash, email FROM usuarios WHERE username = %s",
-                    (username,)
+                    "SELECT id, username, password_hash, email FROM usuarios WHERE username = %s OR email = %s",
+                    (username, username)
                 )
                 dados = cursor.fetchone()
 
