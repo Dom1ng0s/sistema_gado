@@ -3,11 +3,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='financeiro.css') }}">
-<style>
-@media (max-width: 760px) {
-  .fin-ano-grid { grid-template-columns: 1fr 1fr !important; }
-}
-</style>
 {% endblock %}
 
 {% block content %}
@@ -69,7 +64,7 @@
 </div>
 
 <!-- ── Seção anual ────────────────────────────────────── -->
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4);">
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4);">
   <h2 style="margin:0;">Análise do Exercício</h2>
   <form action="{{ url_for('financeiro.financeiro') }}" method="GET"
         style="display:flex; align-items:center; gap:var(--space-2);">
@@ -82,8 +77,7 @@
   </form>
 </div>
 
-<div class="fin-ano-grid"
-     style="display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-3); margin-bottom:var(--space-6);">
+<div class="fin-ano-grid">
 
   <div class="metric-card" style="border-top:3px solid var(--color-primary);">
     <span class="label">Entradas {{ ano_selecionado }}</span>
@@ -126,7 +120,7 @@
 {% endif %}
 
 <!-- ── Tabela de custos ───────────────────────────────── -->
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4);">
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4);">
   <h2 style="margin:0;">Detalhamento de Custos ({{ ano_selecionado }})</h2>
   <a href="{{ url_for('financeiro.custos_operacionais') }}" class="btn btn-primary btn-sm">+ Novo Lançamento</a>
 </div>

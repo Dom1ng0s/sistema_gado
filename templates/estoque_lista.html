@@ -52,7 +52,7 @@
 
 <!-- ── Painel resumo + gráfico ─────────────────────── -->
 {% if produtos %}
-<div style="display:grid; grid-template-columns:1fr 260px; gap:var(--space-5); margin-bottom:var(--space-6); align-items:start;">
+<div class="grid-sidebar" style="margin-bottom:var(--space-6);">
 
   <div class="grid-metrics" style="margin:0;">
     <div class="metric-card">
@@ -93,7 +93,7 @@
   <form method="POST" action="{{ url_for('estoque.lista_estoque') }}"
         style="margin-top:var(--space-4);">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div style="display:grid; grid-template-columns:2fr 1fr; gap:var(--space-3);">
+    <div class="grid-2col">
       <div class="form-group" style="margin:0;">
         <label for="nome">Nome do Produto <span style="color:var(--color-danger);">*</span></label>
         <input id="nome" type="text" name="nome" class="form-input"
@@ -105,7 +105,7 @@
                maxlength="50" required placeholder="ml, kg, dose...">
       </div>
     </div>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-3); margin-top:var(--space-3);">
+    <div class="grid-2col" style="margin-top:var(--space-3);">
       <div class="form-group" style="margin:0;">
         <label for="categoria">Categoria <span style="color:var(--color-danger);">*</span></label>
         <select id="categoria" name="categoria" class="form-input" required>

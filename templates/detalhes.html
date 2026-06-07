@@ -223,7 +223,7 @@
 
 <!-- ── Histórico sanitário (largura total) ─────────────── -->
 <div style="margin-bottom:var(--space-8);">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4);">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4);">
     <h2 style="margin:0;">Histórico Sanitário</h2>
     {% if not animal[5] %}
       <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}"

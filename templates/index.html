@@ -66,12 +66,12 @@
 
 <!-- ── Busca ───────────────────────────────────────────── -->
 <form action="{{ url_for('operacional.painel') }}" method="GET"
-      style="display:flex; gap:var(--space-2); margin-bottom:var(--space-4); align-items:center;">
+      style="display:flex; flex-wrap:wrap; gap:var(--space-2); margin-bottom:var(--space-4); align-items:center;">
   <input type="hidden" name="status" value="{{ status }}">
   <input type="text" name="busca" class="form-input"
          placeholder="Buscar pelo número do brinco..."
          value="{{ busca }}"
-         style="max-width:320px;">
+         style="flex:1; min-width:180px;">
   <button type="submit" class="btn btn-secondary btn-sm">🔍 Buscar</button>
   {% if busca or status != 'todos' %}
     <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">Limpar</a>
@@ -79,14 +79,14 @@
 </form>
 
 <!-- ── Filtros de status ───────────────────────────────── -->
-<div style="display:flex; gap:var(--space-1); align-items:center; margin-bottom:var(--space-5);">
-  <span class="label" style="margin-right:var(--space-2);">Exibir:</span>
+<div style="display:flex; flex-wrap:wrap; gap:var(--space-2); align-items:center; margin-bottom:var(--space-5);">
+  <span class="label">Exibir:</span>
   <a href="{{ url_for('operacional.painel', status='todos',    busca=busca) }}"
      class="btn btn-sm {% if status == 'todos'    %}btn-primary{% else %}btn-secondary{% endif %}">Todos</a>
   <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca) }}"
-     class="btn btn-sm {% if status == 'ativos'   %}btn-primary{% else %}btn-secondary{% endif %}">Apenas Ativos</a>
+     class="btn btn-sm {% if status == 'ativos'   %}btn-primary{% else %}btn-secondary{% endif %}">Ativos</a>
   <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca) }}"
-     class="btn btn-sm {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}">Apenas Vendidos</a>
+     class="btn btn-sm {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}">Vendidos</a>
   <a href="{{ url_for('operacional.lixeira') }}"
      class="btn btn-sm btn-ghost" style="margin-left:auto;">🗑️ Lixeira</a>
 </div>

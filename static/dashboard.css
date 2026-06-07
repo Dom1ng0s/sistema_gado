@@ -127,3 +127,27 @@
 .praca-nome   { font-weight: bold; color: var(--color-musgo); }
 .preco-boi    { color: var(--primary-color); font-weight: bold; }
 .preco-novilha{ color: #1565c0; }
+
+/* ── Responsividade ──────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Mini-widget de cotação: oculto no cabeçalho mobile */
+  #mini-widget { display: none !important; }
+
+  /* Modal de cotações: ocupa quase toda a tela */
+  .modal-content {
+    width: 95%;
+    max-height: 85vh;
+    padding: 20px 16px;
+  }
+
+  /* Tabela de cotações dentro do modal: scroll horizontal */
+  .tabela-cotacao {
+    font-size: 0.8rem;
+  }
+
+  .tabela-cotacao th,
+  .tabela-cotacao td {
+    padding: 6px 8px;
+  }
+}

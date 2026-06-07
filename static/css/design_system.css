@@ -737,3 +737,174 @@ textarea:not(.form-textarea):focus {
 @keyframes spinner {
   to { transform: rotate(360deg); }
 }
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE — RESPONSIVIDADE
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Utilitários de grid responsivos ─────────────────────── */
+.grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.grid-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.grid-sidebar {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+/* ── Nav: estrutura do lado direito ──────────────────────── */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Hamburger — oculto no desktop ──────────────────────── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  padding: var(--space-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.nav-hamburger:hover { background: var(--color-surface-raised); }
+
+.nav-hamburger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--color-ink-secondary);
+  border-radius: 2px;
+  transition: transform var(--transition-normal), opacity var(--transition-normal);
+}
+
+.nav-hamburger[aria-expanded="true"] span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.nav-hamburger[aria-expanded="true"] span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.nav-hamburger[aria-expanded="true"] span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ── Breakpoint principal: 768px ─────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Nav */
+  .nav {
+    padding: 0 var(--space-4);
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 56px;
+    gap: 0;
+    column-gap: var(--space-3);
+  }
+
+  .nav-logo {
+    flex: 1;
+    height: 56px;
+    align-items: center;
+  }
+
+  .nav-right { height: 56px; }
+
+  .nav-hamburger { display: flex; }
+
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    flex: unset;
+    gap: 0;
+    padding: var(--space-2) 0 var(--space-3);
+    border-top: 0.5px solid var(--color-border);
+  }
+
+  .nav-links.open { display: flex; }
+
+  .nav-link {
+    padding: var(--space-3) var(--space-3);
+    border-radius: var(--radius-md);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    font-size: var(--text-base);
+  }
+
+  /* Page layout */
+  .page-container {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
+
+  /* Títulos */
+  .page-title { font-size: var(--text-xl); }
+
+  /* Grid métricas — 2 colunas em tablet */
+  .grid-metrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
+
+  /* Grid de cards — coluna única */
+  .grid-content { grid-template-columns: 1fr; }
+
+  /* Cards */
+  .card-header,
+  .card-body { padding: var(--space-4) var(--space-4); }
+
+  /* Grid utilities — colapso para coluna única */
+  .grid-2col,
+  .grid-3col,
+  .grid-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  /* form-container — reduz padding excessivo */
+  .form-container {
+    padding: var(--space-5) var(--space-4);
+    margin: var(--space-4) 0;
+  }
+}
+
+/* ── Breakpoint estreito: 480px ──────────────────────────── */
+@media (max-width: 480px) {
+
+  .page-container {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .metric-value    { font-size: var(--text-xl); }
+  .metric-card     { padding: var(--space-4) var(--space-4); }
+
+  h1, .page-title  { font-size: var(--text-xl); }
+  h2               { font-size: var(--text-lg); }
+  h3               { font-size: var(--text-base); }
+}

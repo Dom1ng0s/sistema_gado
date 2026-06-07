@@ -82,3 +82,44 @@
 .b-vermelho{ border-left-color: var(--danger-color); }
 .b-laranja { border-left-color: var(--accent-color); }
 .b-roxo    { border-left-color: #9c27b0; }
+
+/* ── Grid anual de 4 métricas ────────────────────────────── */
+.fin-ano-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-3, 12px);
+    margin-bottom: var(--space-6, 24px);
+}
+
+/* ── Responsividade ──────────────────────────────────────── */
+@media (max-width: 760px) {
+    .fin-ano-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .painel-dividido {
+        flex-direction: column;
+        gap: 24px;
+        margin: 24px auto;
+    }
+
+    .linha-vertical { display: none; }
+
+    .lado-esquerdo,
+    .lado-direito {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .grid-anual { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 480px) {
+    .fin-ano-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .grid-anual { grid-template-columns: 1fr; }
+
+    .box-resumo h2 { font-size: 1.8rem; }
+}
