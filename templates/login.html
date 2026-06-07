@@ -19,7 +19,7 @@
         /* ── Shell ───────────────────────────────── */
         .shell {
             display: grid;
-            grid-template-columns: 46% 54%;
+            grid-template-columns: 42% 58%;
             min-height: 100vh;
         }
 
@@ -182,20 +182,19 @@
             color: rgba(255,255,255,0.2);
         }
 
-        /* ── Form Panel ──────────────────────────��─ */
+        /* ── Form Panel ─────────────────────────── */
         .form-side {
             background: var(--color-surface);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 60px 48px;
-            /* subtle left border */
+            padding: 60px 64px;
             border-left: 0.5px solid var(--color-border);
         }
 
         .form-box {
             width: 100%;
-            max-width: 352px;
+            max-width: 440px;
             animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
 
@@ -206,43 +205,43 @@
 
         /* Form heading */
         .form-heading {
-            margin-bottom: 32px;
+            margin-bottom: 36px;
         }
 
         .form-heading h2 {
             font-family: var(--font-display);
-            font-size: 26px;
+            font-size: 32px;
             font-weight: 600;
             color: var(--color-ink);
             letter-spacing: -0.02em;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         .form-heading p {
-            font-size: 13.5px;
+            font-size: var(--text-sm);
             color: var(--color-ink-tertiary);
         }
 
         /* Fields */
         .field {
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
 
         .field-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         .field-label {
-            font-size: 12.5px;
+            font-size: var(--text-sm);
             font-weight: 500;
             color: var(--color-ink-secondary);
         }
 
         .field-aside {
-            font-size: 12px;
+            font-size: var(--text-sm);
             color: var(--color-ink-disabled);
             text-decoration: none;
             transition: color 150ms;
@@ -252,12 +251,12 @@
 
         .field-input {
             font-family: var(--font-body);
-            font-size: 13.5px;
+            font-size: var(--text-base);
             color: var(--color-ink);
             background: var(--color-surface-raised);
             border: 0.5px solid var(--color-border-strong);
             border-radius: var(--radius-md);
-            padding: 10px 14px;
+            padding: 12px 16px;
             width: 100%;
             outline: none;
             transition: border-color 150ms, box-shadow 150ms, background 150ms;
@@ -274,15 +273,15 @@
         /* Submit */
         .btn-enter {
             width: 100%;
-            padding: 11px 16px;
+            padding: 14px 16px;
             background: var(--color-primary);
             color: #fff;
             border: none;
             border-radius: var(--radius-md);
             font-family: var(--font-body);
-            font-size: 13.5px;
+            font-size: var(--text-base);
             font-weight: 500;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.04em;
             cursor: pointer;
             margin-top: 8px;
             position: relative;
@@ -342,12 +341,12 @@
         .btn-register {
             display: block;
             width: 100%;
-            padding: 10px 16px;
+            padding: 13px 16px;
             background: transparent;
             border: 0.5px solid var(--color-border-strong);
             border-radius: var(--radius-md);
             font-family: var(--font-body);
-            font-size: 13px;
+            font-size: var(--text-sm);
             font-weight: 400;
             color: var(--color-ink-secondary);
             text-align: center;
@@ -366,9 +365,9 @@
             display: flex;
             align-items: flex-start;
             gap: 8px;
-            padding: 10px 12px;
+            padding: 12px 14px;
             border-radius: var(--radius-md);
-            font-size: 13px;
+            font-size: var(--text-sm);
             line-height: 1.5;
             margin-bottom: 20px;
         }

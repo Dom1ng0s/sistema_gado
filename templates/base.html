@@ -5,11 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}SGG{% endblock %} — Sistema de Gestão de Gado</title>
 
-  <!-- Design System (sempre primeiro) -->
+  <!-- Design System único -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}">
-
-  <!-- CSS legado (compatibilidade) -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
   {% block extra_css %}{% endblock %}
 
