@@ -2,63 +2,541 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Sistema Gado</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGG — Acesso ao Sistema</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--color-surface);
+            -webkit-font-smoothing: antialiased;
+            padding: 0;
+        }
+
+        /* ── Shell ───────────────────────────────── */
+        .shell {
+            display: grid;
+            grid-template-columns: 46% 54%;
+            min-height: 100vh;
+        }
+
+        /* ── Brand Panel ─────────────────────────── */
+        .brand {
+            background: #162D06;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 52px 56px;
+        }
+
+        /* Topographic contour lines */
+        .brand-topo {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.07;
+            pointer-events: none;
+        }
+
+        /* Radial glow — upper left */
+        .brand::before {
+            content: '';
+            position: absolute;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(99,153,34,0.22) 0%, transparent 65%);
+            top: -200px;
+            left: -200px;
+            pointer-events: none;
+        }
+
+        /* Bottom-right warm glow */
+        .brand::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(239,159,39,0.08) 0%, transparent 70%);
+            bottom: -100px;
+            right: -100px;
+            pointer-events: none;
+        }
+
+        .brand-inner {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Logomark */
+        .brand-logomark {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-mark-box {
+            width: 38px;
+            height: 38px;
+            background: var(--color-primary-mid);
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-display);
+            font-size: 17px;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: -0.02em;
+            flex-shrink: 0;
+        }
+
+        .brand-mark-label {
+            font-family: var(--font-display);
+            font-size: 13px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.45);
+            letter-spacing: 0.01em;
+            line-height: 1.4;
+        }
+
+        /* Main headline */
+        .brand-body {
+            margin-top: auto;
+            padding-top: 48px;
+        }
+
+        .brand-eyebrow {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--color-primary-mid);
+            margin-bottom: 16px;
+        }
+
+        .brand-headline {
+            font-family: var(--font-display);
+            font-size: 42px;
+            font-weight: 600;
+            color: #fff;
+            line-height: 1.15;
+            letter-spacing: -0.025em;
+            margin-bottom: 20px;
+        }
+
+        .brand-headline em {
+            font-style: normal;
+            color: var(--color-primary-light);
+        }
+
+        .brand-desc {
+            font-size: 13.5px;
+            color: rgba(255,255,255,0.38);
+            line-height: 1.75;
+            max-width: 290px;
+            margin-bottom: 40px;
+        }
+
+        /* Feature list */
+        .feature-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-pip {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--color-primary-mid);
+            flex-shrink: 0;
+            opacity: 0.8;
+        }
+
+        .feature-item span {
+            font-size: 12.5px;
+            color: rgba(255,255,255,0.45);
+            letter-spacing: 0.01em;
+        }
+
+        /* Footer strip */
+        .brand-foot {
+            margin-top: 48px;
+            padding-top: 20px;
+            border-top: 0.5px solid rgba(255,255,255,0.08);
+            font-size: 11px;
+            color: rgba(255,255,255,0.2);
+        }
+
+        /* ── Form Panel ──────────────────────────��─ */
+        .form-side {
+            background: var(--color-surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 48px;
+            /* subtle left border */
+            border-left: 0.5px solid var(--color-border);
+        }
+
+        .form-box {
+            width: 100%;
+            max-width: 352px;
+            animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Form heading */
+        .form-heading {
+            margin-bottom: 32px;
+        }
+
+        .form-heading h2 {
+            font-family: var(--font-display);
+            font-size: 26px;
+            font-weight: 600;
+            color: var(--color-ink);
+            letter-spacing: -0.02em;
+            margin-bottom: 6px;
+        }
+
+        .form-heading p {
+            font-size: 13.5px;
+            color: var(--color-ink-tertiary);
+        }
+
+        /* Fields */
+        .field {
+            margin-bottom: 16px;
+        }
+
+        .field-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .field-label {
+            font-size: 12.5px;
+            font-weight: 500;
+            color: var(--color-ink-secondary);
+        }
+
+        .field-aside {
+            font-size: 12px;
+            color: var(--color-ink-disabled);
+            text-decoration: none;
+            transition: color 150ms;
+        }
+
+        .field-aside:hover { color: var(--color-primary); }
+
+        .field-input {
+            font-family: var(--font-body);
+            font-size: 13.5px;
+            color: var(--color-ink);
+            background: var(--color-surface-raised);
+            border: 0.5px solid var(--color-border-strong);
+            border-radius: var(--radius-md);
+            padding: 10px 14px;
+            width: 100%;
+            outline: none;
+            transition: border-color 150ms, box-shadow 150ms, background 150ms;
+        }
+
+        .field-input:focus {
+            background: var(--color-surface);
+            border-color: var(--color-primary-mid);
+            box-shadow: 0 0 0 3px var(--color-primary-bg);
+        }
+
+        .field-input::placeholder { color: var(--color-ink-disabled); }
+
+        /* Submit */
+        .btn-enter {
+            width: 100%;
+            padding: 11px 16px;
+            background: var(--color-primary);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: var(--font-body);
+            font-size: 13.5px;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            margin-top: 8px;
+            position: relative;
+            transition: background 150ms, box-shadow 150ms, transform 80ms;
+            box-shadow: 0 1px 3px rgba(59,109,17,0.35);
+        }
+
+        .btn-enter:hover {
+            background: var(--color-primary-dark);
+            box-shadow: 0 2px 8px rgba(59,109,17,0.45);
+        }
+
+        .btn-enter:active { transform: scale(0.99); }
+
+        .btn-enter.loading {
+            color: transparent;
+            pointer-events: none;
+            opacity: 0.75;
+        }
+
+        .btn-enter.loading::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            top: 50%; left: 50%;
+            margin: -7.5px 0 0 -7.5px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.65s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Divider */
+        .sep {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .sep-line {
+            flex: 1;
+            height: 0.5px;
+            background: var(--color-border);
+        }
+
+        .sep-text {
+            font-size: 11px;
+            color: var(--color-ink-disabled);
+            letter-spacing: 0.06em;
+        }
+
+        /* Register link */
+        .btn-register {
+            display: block;
+            width: 100%;
+            padding: 10px 16px;
+            background: transparent;
+            border: 0.5px solid var(--color-border-strong);
+            border-radius: var(--radius-md);
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--color-ink-secondary);
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 150ms, border-color 150ms, color 150ms;
+        }
+
+        .btn-register:hover {
+            background: var(--color-surface-raised);
+            color: var(--color-ink);
+        }
+
+        /* Flash / error messages */
+        .flash {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .flash-error {
+            background: var(--color-danger-bg);
+            color: var(--color-danger-dark);
+            border-left: 3px solid var(--color-danger);
+        }
+
+        .flash-success {
+            background: var(--color-success-bg);
+            color: var(--color-primary-dark);
+            border-left: 3px solid var(--color-primary);
+        }
+
+        /* ── Mobile ──────────────────────────────── */
+        @media (max-width: 800px) {
+            .shell { grid-template-columns: 1fr; }
+            .brand { display: none; }
+            .form-side {
+                border-left: none;
+                padding: 48px 24px;
+                background: var(--color-surface-sunken);
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="auth-card login-mode">
-        <h2>🤠 Acesso ao Rebanho</h2>
+<div class="shell">
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="{{ 'alert-error' if category == 'error' else 'alert-success' }}" style="{% if category != 'error' %}background:#EAF3DE;color:#3B6D11;border:1px solid #C0DD97;{% endif %}padding:10px;border-radius:5px;margin-bottom:15px;font-size:14px;">{{ message }}</div>
-                {% endfor %}
+    <!-- ── Brand Panel ─────────────────────────────── -->
+    <aside class="brand">
+        <!-- Topographic contour SVG -->
+        <svg class="brand-topo" viewBox="0 0 480 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+            <g stroke="white" stroke-width="1.2" fill="none">
+                <path d="M -40 55  C 60 35,  160 75,  240 50  S 380 20,  520 45"/>
+                <path d="M -40 95  C 40 70,  130 105, 240 88  S 360 65,  520 85"/>
+                <path d="M -40 138 C 70 115, 150 148, 240 130 S 370 108, 520 128"/>
+                <path d="M -40 182 C 55 158, 145 192, 240 172 S 365 150, 520 170"/>
+                <path d="M -40 230 C 80 210, 160 240, 240 222 S 350 200, 520 218"/>
+                <path d="M -40 278 C 50 255, 140 285, 240 265 S 370 245, 520 265"/>
+                <path d="M -40 328 C 65 308, 155 335, 240 315 S 355 295, 520 315"/>
+                <path d="M -40 380 C 75 360, 160 388, 240 368 S 360 350, 520 368"/>
+                <path d="M -40 435 C 55 415, 145 440, 240 422 S 368 402, 520 422"/>
+                <path d="M -40 492 C 68 472, 158 495, 240 477 S 362 458, 520 478"/>
+                <path d="M -40 550 C 60 530, 155 552, 240 534 S 358 516, 520 535"/>
+                <path d="M -40 612 C 72 592, 160 610, 240 594 S 355 576, 520 595"/>
+                <path d="M -40 672 C 58 654, 150 670, 240 654 S 360 637, 520 655"/>
+                <path d="M -40 735 C 65 718, 155 730, 240 715 S 358 700, 520 718"/>
+                <path d="M -40 800 C 55 782, 148 793, 240 778 S 360 764, 520 782"/>
+                <path d="M -40 862 C 70 845, 158 855, 240 840 S 355 826, 520 844"/>
+            </g>
+        </svg>
+
+        <div class="brand-inner">
+            <!-- Logo -->
+            <div class="brand-logomark">
+                <div class="brand-mark-box">S</div>
+                <span class="brand-mark-label">Sistema de<br>Gestão de Gado</span>
+            </div>
+
+            <!-- Headline -->
+            <div class="brand-body">
+                <p class="brand-eyebrow">ERP Zootécnico</p>
+                <h1 class="brand-headline">
+                    Gestão <em>inteligente</em><br>do seu rebanho
+                </h1>
+                <p class="brand-desc">
+                    Controle completo da pecuária de corte — do pasto ao fluxo de caixa — com lógica de cálculo no banco de dados para máxima performance.
+                </p>
+
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <div class="feature-pip"></div>
+                        <span>GMD por animal em tempo real</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-pip"></div>
+                        <span>Gestão de pastos e módulos</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-pip"></div>
+                        <span>Fluxo de caixa consolidado</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-pip"></div>
+                        <span>Hereditariedade e reprodução</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-pip"></div>
+                        <span>Estoque de medicamentos e vacinas</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="brand-foot">SGG — Sistema de Gestão de Gado &copy; 2026</div>
+        </div>
+    </aside>
+
+    <!-- ── Form Panel ──────────────────────────────── -->
+    <main class="form-side">
+        <div class="form-box">
+
+            <div class="form-heading">
+                <h2>Bem-vindo de volta</h2>
+                <p>Entre com seu usuário ou email para continuar</p>
+            </div>
+
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash {{ 'flash-success' if category == 'success' else 'flash-error' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if mensagem %}
+                <div class="flash flash-error">{{ mensagem }}</div>
             {% endif %}
-        {% endwith %}
 
-        {% if mensagem %}
-            <div class="alert-error">{{ mensagem }}</div>
-        {% endif %}
+            <!-- Form -->
+            <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <form method="POST" action="{{ url_for('auth.login') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-group">
-                <label>Usuário ou Email</label>
-                <input type="text" name="username" required placeholder="Usuário ou email">
+                <div class="field">
+                    <div class="field-row">
+                        <label class="field-label" for="username">Usuário ou Email</label>
+                    </div>
+                    <input type="text" id="username" name="username" class="field-input"
+                           required autocomplete="username" placeholder="Digite seu usuário ou email" autofocus>
+                </div>
+
+                <div class="field">
+                    <div class="field-row">
+                        <label class="field-label" for="password">Senha</label>
+                        <a href="{{ url_for('auth.esqueci_senha') }}" class="field-aside">Esqueceu?</a>
+                    </div>
+                    <input type="password" id="password" name="password" class="field-input"
+                           required autocomplete="current-password" placeholder="••••••••">
+                </div>
+
+                <button type="submit" class="btn-enter" id="btnEnter">
+                    Entrar no Sistema
+                </button>
+            </form>
+
+            <div class="sep">
+                <div class="sep-line"></div>
+                <span class="sep-text">ou</span>
+                <div class="sep-line"></div>
             </div>
-            <div class="form-group">
-                <label>Senha</label>
-                <input type="password" name="password" required placeholder="Digite sua senha">
-            </div>
-            <button type="submit" class="btn-primary">ENTRAR NO SISTEMA</button>
-            <div style="text-align:center;margin-top:10px;">
-                <a href="{{ url_for('auth.esqueci_senha') }}" class="link-secondary">Esqueceu sua senha?</a>
-            </div>
-            <a href="{{ url_for('auth.novo_usuario') }}" class="btn btn-secondary" style="margin-top: 10px; display: block; text-align: center;">
-                👤 Não Tenho Conta
+
+            <a href="{{ url_for('auth.novo_usuario') }}" class="btn-register">
+                Criar nova conta
             </a>
-        </form>
-    </div>
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const formularios = document.querySelectorAll("form");
-        
-        formularios.forEach(form => {
-            form.addEventListener("submit", function(event) {
-                const botaoSubmit = form.querySelector("button[type='submit']");
-                
-                if (botaoSubmit) {
-                    if (botaoSubmit.classList.contains("btn-loading")) {
-                        event.preventDefault();
-                        return;
-                    }
-                    botaoSubmit.classList.add("btn-loading");
-                    botaoSubmit.setAttribute("disabled", "true");
-                }
-            });
-        });
+
+        </div>
+    </main>
+
+</div>
+
+<script>
+    document.getElementById('loginForm').addEventListener('submit', function () {
+        document.getElementById('btnEnter').classList.add('loading');
     });
 </script>
 </body>
