@@ -280,13 +280,13 @@ const pesagens = pesagensRaw.slice().reverse();
 
 const chart = echarts.init(document.getElementById('chartPeso'));
 chart.setOption({
-  textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' },
+  textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A' },
   grid: { top: 20, right: 20, bottom: 40, left: 58, containLabel: false },
   tooltip: {
     trigger: 'axis',
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'DM Sans, sans-serif', fontSize: 13 },
+    textStyle: { color: '#FAFAF8', fontFamily: 'Rubik, sans-serif', fontSize: 13 },
     formatter: p => `${p[0].axisValue}<br/><strong>${p[0].value} kg</strong>`
   },
   xAxis: {

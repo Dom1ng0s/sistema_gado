@@ -88,14 +88,14 @@ const valores = ranking.map(r => ({
 
 const chart = echarts.init(document.getElementById('chartGMD'));
 chart.setOption({
-  textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' },
+  textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A' },
   grid: { top: 10, right: 80, bottom: 30, left: 20, containLabel: true },
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'shadow' },
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'DM Sans, sans-serif', fontSize: 13 },
+    textStyle: { color: '#FAFAF8', fontFamily: 'Rubik, sans-serif', fontSize: 13 },
     formatter: p => `${p[0].name}<br/><strong>${Number(p[0].value).toFixed(3)} kg/dia</strong>`
   },
   xAxis: {

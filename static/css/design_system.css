@@ -1,10 +1,10 @@
 /* ============================================================
    SGG — Design System
    Estética: rústico-profissional
-   Fontes: Playfair Display (display) + DM Sans (corpo)
+   Fontes: Playfair Display (display) + Rubik (corpo)
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=DM+Sans:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Rubik:wght@400;500;600&display=swap');
 
 /* ── Tokens ─────────────────────────────────────────────── */
 :root {
@@ -35,10 +35,10 @@
   --color-warning-bg:     #FAEEDA;
 
   /* Neutros */
-  --color-ink:            #1C1C1A;
-  --color-ink-secondary:  #4A4A46;
-  --color-ink-tertiary:   #888780;
-  --color-ink-disabled:   #B4B2A9;
+  --color-ink:            #111110;
+  --color-ink-secondary:  #2E2E2B;
+  --color-ink-tertiary:   #5C5B55;
+  --color-ink-disabled:   #999890;
 
   --color-surface:        #FFFFFF;
   --color-surface-raised: #F7F5F0;
@@ -48,18 +48,18 @@
 
   /* Tipografia */
   --font-display:  'Playfair Display', Georgia, serif;
-  --font-body:     'DM Sans', system-ui, sans-serif;
+  --font-body:     'Rubik', system-ui, sans-serif;
 
-  --text-xs:   12px;
-  --text-sm:   14px;
-  --text-base: 16px;
-  --text-md:   18px;
-  --text-lg:   21px;
-  --text-xl:   27px;
-  --text-2xl:  36px;
+  --text-xs:   13px;
+  --text-sm:   15px;
+  --text-base: 17px;
+  --text-md:   19px;
+  --text-lg:   22px;
+  --text-xl:   28px;
+  --text-2xl:  37px;
 
-  --weight-light:  300;
-  --weight-normal: 400;
+  --weight-light:  400;
+  --weight-normal: 500;
   --weight-medium: 500;
   --weight-semi:   600;
 
@@ -110,6 +110,7 @@ body {
   color: var(--color-ink);
   background-color: var(--color-surface-sunken);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ── Tipografia ──────────────────────────────────────────── */

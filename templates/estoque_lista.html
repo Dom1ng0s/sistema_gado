@@ -244,12 +244,12 @@ const catData = Object.entries(catMap).map(([k, v]) => ({
 
 const chart = echarts.init(document.getElementById('chartCategorias'));
 chart.setOption({
-  textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' },
+  textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A' },
   tooltip: {
     trigger: 'item',
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'DM Sans, sans-serif', fontSize: 12 },
+    textStyle: { color: '#FAFAF8', fontFamily: 'Rubik, sans-serif', fontSize: 12 },
     formatter: p => `${p.name}: <strong>${p.value}</strong>`
   },
   legend: { show: false },

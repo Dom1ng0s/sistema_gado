@@ -123,19 +123,19 @@ const serieF = pontosProgenie.filter(p => p.sexo === 'F').map(p => ({
 
 const chart = echarts.init(document.getElementById('chartProgenie'));
 chart.setOption({
-  textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' },
+  textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A' },
   grid: { top: 20, right: 30, bottom: 50, left: 60, containLabel: false },
   tooltip: {
     trigger: 'item',
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'DM Sans, sans-serif', fontSize: 13 },
+    textStyle: { color: '#FAFAF8', fontFamily: 'Rubik, sans-serif', fontSize: 13 },
     formatter: p => `${p.name}<br/><strong>${Number(p.value[1]).toFixed(3)} kg/dia</strong>`
   },
   legend: {
     data: ['Macho', 'Fêmea'],
     bottom: 0,
-    textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A', fontSize: 12 }
+    textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A', fontSize: 12 }
   },
   xAxis: {
     type: 'time',

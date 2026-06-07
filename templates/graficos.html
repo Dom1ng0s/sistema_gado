@@ -75,11 +75,11 @@ const PALETAS = {
 };
 
 const ECHART_DEFAULTS = {
-  textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#1C1C1A' },
+  textStyle: { fontFamily: 'Rubik, sans-serif', color: '#1C1C1A' },
   tooltip: {
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'DM Sans, sans-serif', fontSize: 13 }
+    textStyle: { color: '#FAFAF8', fontFamily: 'Rubik, sans-serif', fontSize: 13 }
   }
 };
 
@@ -97,7 +97,7 @@ function desenharSexo(paleta) {
     tooltip: { ...ECHART_DEFAULTS.tooltip, trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     legend: {
       orient: 'horizontal', bottom: 0,
-      textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' }
+      textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A' }
     },
     series: [{
       type: 'pie',
@@ -107,7 +107,7 @@ function desenharSexo(paleta) {
         { name: 'Machos', value: M, itemStyle: { color: paleta.sexo[0] } },
         { name: 'Fêmeas', value: F, itemStyle: { color: paleta.sexo[1] } }
       ],
-      label: { show: true, formatter: '{b}\n{c} ({d}%)', fontFamily: 'DM Sans, sans-serif' },
+      label: { show: true, formatter: '{b}\n{c} ({d}%)', fontFamily: 'Rubik, sans-serif' },
       emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.2)' } }
     }]
   });
@@ -129,14 +129,14 @@ function desenharPeso(paleta) {
     tooltip: { ...ECHART_DEFAULTS.tooltip, trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     legend: {
       orient: 'horizontal', bottom: 0,
-      textStyle: { fontFamily: 'DM Sans, sans-serif', color: '#3D3D3A' }
+      textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A' }
     },
     series: [{
       type: 'pie',
       radius: ['40%', '68%'],
       center: ['50%', '46%'],
       data: series,
-      label: { show: true, formatter: '{b}\n{c} ({d}%)', fontFamily: 'DM Sans, sans-serif' },
+      label: { show: true, formatter: '{b}\n{c} ({d}%)', fontFamily: 'Rubik, sans-serif' },
       emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.2)' } }
     }]
   });
