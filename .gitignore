@@ -4,3 +4,4 @@ __pycache__/
 .env
 CLAUDE.md
 /.claude/
+seed_domingos.py
