@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Senha - Sistema Gado</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+</head>
+<body>
+    <div class="auth-card login-mode">
+        <h2>Recuperar Senha</h2>
+        <p class="subtitle">Digite o email cadastrado. Enviaremos um código de verificação.</p>
+
+        {% if mensagem %}
+            <div class="alert-error">{{ mensagem }}</div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('auth.esqueci_senha') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required autofocus placeholder="seu@email.com">
+            </div>
+            <button type="submit" class="btn-primary" id="btnEnviar">ENVIAR CÓDIGO</button>
+        </form>
+
+        <div style="text-align:center;margin-top:15px;">
+            <a href="{{ url_for('auth.login') }}" class="link-secondary">Voltar ao login</a>
+        </div>
+    </div>
+
+    <script>
+        document.querySelector('form').addEventListener('submit', function() {
+            const btn = document.getElementById('btnEnviar');
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+        });
+    </script>
+</body>
+</html>

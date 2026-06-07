@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Senha - Sistema Gado</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+    <style>
+        .strength-bar {
+            height: 4px;
+            border-radius: 2px;
+            background: #e0e0e0;
+            margin-top: -10px;
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+        .strength-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s, background 0.3s;
+            width: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card login-mode">
+        <h2>Nova Senha</h2>
+        <p class="subtitle">Crie uma nova senha para sua conta.</p>
+
+        {% if mensagem %}
+            <div class="alert-error">{{ mensagem }}</div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('auth.nova_senha') }}" id="formSenha">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="password">Nova Senha</label>
+                <input type="password" id="password" name="password" required autofocus
+                       placeholder="Mínimo 6 caracteres" minlength="6">
+                <div class="strength-bar"><div class="strength-bar-fill" id="strengthFill"></div></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password_confirm">Confirmar Senha</label>
+                <input type="password" id="password_confirm" name="password_confirm" required
+                       placeholder="Repita a nova senha">
+                <small id="matchMsg" style="display:none;font-size:12px;margin-top:-10px;display:block;"></small>
+            </div>
+
+            <button type="submit" class="btn-primary" id="btnSalvar">SALVAR NOVA SENHA</button>
+        </form>
+    </div>
+
+    <script>
+        const pwInput   = document.getElementById('password');
+        const cfInput   = document.getElementById('password_confirm');
+        const fill      = document.getElementById('strengthFill');
+        const matchMsg  = document.getElementById('matchMsg');
+        const btn       = document.getElementById('btnSalvar');
+
+        pwInput.addEventListener('input', () => {
+            const v = pwInput.value;
+            let score = 0;
+            if (v.length >= 6)  score++;
+            if (v.length >= 10) score++;
+            if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+            if (/\d/.test(v))   score++;
+            if (/[^A-Za-z0-9]/.test(v)) score++;
+
+            const pct   = (score / 5) * 100;
+            const color = score <= 1 ? '#E24B4A' : score <= 3 ? '#EF9F27' : '#639922';
+            fill.style.width = pct + '%';
+            fill.style.background = color;
+            validate();
+        });
+
+        cfInput.addEventListener('input', validate);
+
+        function validate() {
+            const match = pwInput.value === cfInput.value;
+            if (cfInput.value) {
+                matchMsg.style.display = 'block';
+                matchMsg.textContent   = match ? 'Senhas coincidem' : 'Senhas não coincidem';
+                matchMsg.style.color   = match ? '#3B6D11' : '#E24B4A';
+            } else {
+                matchMsg.style.display = 'none';
+            }
+            btn.disabled = !match || pwInput.value.length < 6;
+        }
+
+        document.getElementById('formSenha').addEventListener('submit', () => {
+            btn.disabled = true;
+            btn.textContent = 'Salvando...';
+        });
+    </script>
+</body>
+</html>

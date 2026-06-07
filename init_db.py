@@ -483,6 +483,32 @@ try:
     GROUP BY p.id, p.user_id, p.nome, p.unidade, p.categoria, p.estoque_minimo;
     """)
 
+    # ==============================================================================
+    # ETAPA 1.9: AUTENTICAÇÃO — EMAIL E RESET DE SENHA
+    # ==============================================================================
+    print(" Adicionando coluna email em 'usuarios'...")
+    try:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN email VARCHAR(255) UNIQUE")
+        print("   -> Coluna 'email' adicionada.")
+    except mysql.connector.Error as err:
+        if err.errno == 1060:
+            print("   -> Coluna 'email' já existe.")
+        else:
+            print(f"   Alerta email: {err}")
+
+    print(" Criando tabela 'password_reset_tokens'...")
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        code CHAR(6) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used TINYINT(1) DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE
+    );
+    """)
+
     # 2.2 View Financeira (Fluxo de Caixa)
     print(" [5/6] Atualizando View de Inteligência Financeira (Fluxo de Caixa)...")
     cursor.execute("""

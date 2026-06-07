@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificar Código - Sistema Gado</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+    <style>
+        .otp-wrap {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .otp-wrap input {
+            width: 46px;
+            height: 54px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            border: 2px solid var(--color-terra);
+            border-radius: 8px;
+            padding: 0;
+            margin-bottom: 0;
+            transition: border-color 0.15s;
+            color: var(--color-musgo);
+        }
+        .otp-wrap input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            background: #f6faf0;
+        }
+        .otp-wrap input.filled {
+            border-color: var(--primary-color);
+            background: #f0f7e8;
+        }
+        .countdown {
+            font-size: 13px;
+            color: var(--color-musgo);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .countdown.expired {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+        .email-hint {
+            font-size: 14px;
+            color: var(--color-musgo);
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card login-mode" style="max-width:380px;">
+        <h2>Verificar Código</h2>
+        <p class="email-hint">Código enviado para <strong>{{ email_mascarado }}</strong></p>
+
+        {% if mensagem %}
+            <div class="alert-error">{{ mensagem }}</div>
+        {% endif %}
+
+        <div class="countdown" id="countdown"></div>
+
+        <form method="POST" action="{{ url_for('auth.verificar_codigo') }}" id="formOTP">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="codigo" id="codigoFinal">
+
+            <div class="otp-wrap" id="otpWrap">
+                <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" autocomplete="one-time-code">
+                <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
+                <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
+                <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
+                <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
+                <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
+            </div>
+
+            <button type="submit" class="btn-primary" id="btnVerificar" disabled>VERIFICAR</button>
+        </form>
+
+        <div style="text-align:center;margin-top:14px;">
+            <a href="{{ url_for('auth.esqueci_senha') }}" class="link-secondary">Reenviar código</a>
+        </div>
+    </div>
+
+    <script>
+        const digits = document.querySelectorAll('.otp-digit');
+        const finalInput = document.getElementById('codigoFinal');
+        const btn = document.getElementById('btnVerificar');
+        const form = document.getElementById('formOTP');
+
+        digits[0].focus();
+
+        digits.forEach((input, i) => {
+            input.addEventListener('input', () => {
+                input.value = input.value.replace(/\D/g, '').slice(-1);
+                input.classList.toggle('filled', input.value !== '');
+                if (input.value && i < digits.length - 1) digits[i + 1].focus();
+                updateCode();
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace') {
+                    if (!input.value && i > 0) {
+                        digits[i - 1].value = '';
+                        digits[i - 1].classList.remove('filled');
+                        digits[i - 1].focus();
+                        updateCode();
+                    }
+                }
+            });
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+                [...paste].slice(0, 6).forEach((ch, j) => {
+                    if (digits[i + j]) {
+                        digits[i + j].value = ch;
+                        digits[i + j].classList.add('filled');
+                    }
+                });
+                updateCode();
+                const next = Math.min(i + paste.length, digits.length - 1);
+                digits[next].focus();
+            });
+        });
+
+        function updateCode() {
+            const code = [...digits].map(d => d.value).join('');
+            finalInput.value = code;
+            btn.disabled = code.length < 6;
+        }
+
+        // Countdown
+        let remaining = {{ expires_in_seconds | default(900) }};
+        const countdownEl = document.getElementById('countdown');
+
+        function tick() {
+            if (remaining <= 0) {
+                countdownEl.textContent = 'Código expirado. Solicite um novo.';
+                countdownEl.classList.add('expired');
+                btn.disabled = true;
+                digits.forEach(d => d.disabled = true);
+                return;
+            }
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+            countdownEl.textContent = `Expira em ${m}:${s.toString().padStart(2, '0')}`;
+            remaining--;
+            setTimeout(tick, 1000);
+        }
+        tick();
+
+        form.addEventListener('submit', () => {
+            btn.disabled = true;
+            btn.textContent = 'Verificando...';
+        });
+    </script>
+</body>
+</html>

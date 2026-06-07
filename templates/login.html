@@ -10,6 +10,14 @@
     <div class="auth-card login-mode">
         <h2>🤠 Acesso ao Rebanho</h2>
 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="{{ 'alert-error' if category == 'error' else 'alert-success' }}" style="{% if category != 'error' %}background:#EAF3DE;color:#3B6D11;border:1px solid #C0DD97;{% endif %}padding:10px;border-radius:5px;margin-bottom:15px;font-size:14px;">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         {% if mensagem %}
             <div class="alert-error">{{ mensagem }}</div>
         {% endif %}
@@ -25,6 +33,9 @@
                 <input type="password" name="password" required placeholder="Digite sua senha">
             </div>
             <button type="submit" class="btn-primary">ENTRAR NO SISTEMA</button>
+            <div style="text-align:center;margin-top:10px;">
+                <a href="{{ url_for('auth.esqueci_senha') }}" class="link-secondary">Esqueceu sua senha?</a>
+            </div>
             <a href="{{ url_for('auth.novo_usuario') }}" class="btn btn-secondary" style="margin-top: 10px; display: block; text-align: center;">
                 👤 Não Tenho Conta
             </a>
