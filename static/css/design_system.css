@@ -50,13 +50,13 @@
   --font-display:  'Playfair Display', Georgia, serif;
   --font-body:     'DM Sans', system-ui, sans-serif;
 
-  --text-xs:   11px;
-  --text-sm:   13px;
-  --text-base: 15px;
-  --text-md:   17px;
-  --text-lg:   20px;
-  --text-xl:   26px;
-  --text-2xl:  34px;
+  --text-xs:   12px;
+  --text-sm:   14px;
+  --text-base: 16px;
+  --text-md:   18px;
+  --text-lg:   21px;
+  --text-xl:   27px;
+  --text-2xl:  36px;
 
   --weight-light:  300;
   --weight-normal: 400;
@@ -182,7 +182,7 @@ h3 { font-size: var(--text-lg); font-weight: var(--weight-medium); }
 
 .nav-link {
   font-size: var(--text-sm);
-  font-weight: var(--weight-normal);
+  font-weight: var(--weight-medium);
   color: var(--color-ink-secondary);
   text-decoration: none;
   padding: var(--space-2) var(--space-3);
@@ -381,6 +381,7 @@ tbody tr:hover { background: var(--color-primary-bg); }
 tbody td {
   padding: var(--space-3) var(--space-4);
   color: var(--color-ink);
+  font-size: var(--text-base);
 }
 
 .td-primary { font-weight: var(--weight-medium); }
@@ -486,7 +487,7 @@ tbody td {
 .form-select,
 .form-textarea {
   font-family: var(--font-body);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   color: var(--color-ink);
   background: var(--color-surface);
   border: 0.5px solid var(--color-border-strong);

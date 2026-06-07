@@ -2,160 +2,287 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Novo Usuário - Sistema Gado</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGG — Criar Conta</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-body);
+            background: var(--color-surface-sunken);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 40px 24px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .auth-card {
+            background: var(--color-surface);
+            border-radius: var(--radius-xl);
+            border: 0.5px solid var(--color-border);
+            box-shadow: var(--shadow-md);
+            padding: 44px 40px;
+            width: 100%;
+            max-width: 440px;
+            animation: rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+
+        .auth-mark {
+            width: 34px; height: 34px;
+            background: var(--color-primary);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-display); font-size: 15px; font-weight: 600; color: #fff;
+            flex-shrink: 0;
+        }
+
+        .auth-brand-text { font-family: var(--font-display); font-size: 13px; color: var(--color-ink-tertiary); }
+
+        .auth-heading { margin-bottom: 28px; }
+
+        .auth-heading h1 {
+            font-family: var(--font-display);
+            font-size: var(--text-xl);
+            font-weight: 600;
+            color: var(--color-ink);
+            letter-spacing: -0.02em;
+            margin-bottom: 6px;
+        }
+
+        .auth-heading p { font-size: var(--text-sm); color: var(--color-ink-tertiary); }
+
+        .field { margin-bottom: 16px; }
+
+        .field-label {
+            display: block;
+            font-size: var(--text-sm);
+            font-weight: 500;
+            color: var(--color-ink-secondary);
+            margin-bottom: 6px;
+        }
+
+        .field-label .opt {
+            font-size: var(--text-xs);
+            font-weight: 400;
+            color: var(--color-ink-disabled);
+            margin-left: 4px;
+        }
+
+        .field-input {
+            font-family: var(--font-body);
+            font-size: var(--text-base);
+            color: var(--color-ink);
+            background: var(--color-surface-raised);
+            border: 0.5px solid var(--color-border-strong);
+            border-radius: var(--radius-md);
+            padding: 10px 14px;
+            width: 100%;
+            outline: none;
+            transition: border-color 150ms, box-shadow 150ms, background 150ms;
+        }
+
+        .field-input:focus {
+            background: var(--color-surface);
+            border-color: var(--color-primary-mid);
+            box-shadow: 0 0 0 3px var(--color-primary-bg);
+        }
+
+        .field-input::placeholder { color: var(--color-ink-disabled); }
+
+        .field-hint { font-size: var(--text-xs); color: var(--color-ink-tertiary); margin-top: 5px; display: block; }
+
+        .section-sep {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0 20px;
+        }
+
+        .section-sep-line { flex: 1; height: 0.5px; background: var(--color-border); }
+
+        .section-sep-text {
+            font-size: var(--text-xs);
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--color-ink-tertiary);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 11px 16px;
+            background: var(--color-primary);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: var(--font-body);
+            font-size: var(--text-base);
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background 150ms, box-shadow 150ms, transform 80ms;
+            box-shadow: 0 1px 3px rgba(59,109,17,0.3);
+        }
+
+        .btn-submit:hover { background: var(--color-primary-dark); box-shadow: 0 2px 8px rgba(59,109,17,0.4); }
+        .btn-submit:active { transform: scale(0.99); }
+        .btn-submit:disabled { opacity: 0.65; pointer-events: none; }
+
+        .sep { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+        .sep-line { flex: 1; height: 0.5px; background: var(--color-border); }
+        .sep-text { font-size: var(--text-xs); color: var(--color-ink-disabled); letter-spacing: 0.06em; }
+
+        .btn-login {
+            display: block;
+            width: 100%;
+            padding: 10px 16px;
+            background: transparent;
+            border: 0.5px solid var(--color-border-strong);
+            border-radius: var(--radius-md);
+            font-family: var(--font-body);
+            font-size: var(--text-sm);
+            color: var(--color-ink-secondary);
+            text-align: center;
+            text-decoration: none;
+            transition: background 150ms, color 150ms;
+        }
+
+        .btn-login:hover { background: var(--color-surface-raised); color: var(--color-ink); }
+
+        .flash { padding: 10px 12px; border-radius: var(--radius-md); font-size: var(--text-sm); line-height: 1.5; margin-bottom: 20px; }
+        .flash-error   { background: var(--color-danger-bg);  color: var(--color-danger-dark);  border-left: 3px solid var(--color-danger); }
+        .flash-success { background: var(--color-success-bg); color: var(--color-primary-dark); border-left: 3px solid var(--color-primary); }
+    </style>
 </head>
 <body>
-    <div class="form-container">
-        <h2 style="text-align: center; color: var(--primary-color);">Criar Conta</h2>
-        
+    <div class="auth-card">
+        <div class="auth-brand">
+            <div class="auth-mark">S</div>
+            <span class="auth-brand-text">Sistema de Gestão de Gado</span>
+        </div>
+
+        <div class="auth-heading">
+            <h1>Criar Conta</h1>
+            <p>Preencha os dados para começar a usar o sistema.</p>
+        </div>
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert {{ 'alert-error' if category == 'error' else 'alert-success' }}">{{ message }}</div>
+                    <div class="flash {{ 'flash-error' if category == 'error' else 'flash-success' }}">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('auth.novo_usuario') }}">
+        {% if mensagem %}
+            <div class="flash flash-error">{{ mensagem }}</div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('auth.novo_usuario') }}" id="formCadastro">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-group">
-                <label for="username">Usuário</label>
-                <input type="text" id="username" name="username" required placeholder="Escolha um nome de usuário">
+
+            <!-- Acesso -->
+            <div class="field">
+                <label class="field-label" for="username">Usuário</label>
+                <input type="text" id="username" name="username" class="field-input"
+                       required autocomplete="username" placeholder="Escolha um nome de usuário">
             </div>
-            <div class="form-group">
-                <label for="password">Senha</label>
-                <input type="password" id="password" name="password" required placeholder="Crie uma senha forte">
+            <div class="field">
+                <label class="field-label" for="password">Senha</label>
+                <input type="password" id="password" name="password" class="field-input"
+                       required placeholder="Mínimo 6 caracteres" minlength="6">
             </div>
-            <div class="form-group">
-                <label for="email">Email para recuperação <span style="color:#888780;font-weight:400;">(opcional)</span></label>
-                <input type="email" id="email" name="email" placeholder="seu@email.com">
-                <small style="color:#888780;display:block;margin-top:-10px;margin-bottom:5px;font-size:0.85em;">Usado apenas para redefinição de senha.</small>
+            <div class="field">
+                <label class="field-label" for="email">Email <span class="opt">(opcional)</span></label>
+                <input type="email" id="email" name="email" class="field-input" placeholder="seu@email.com">
+                <span class="field-hint">Usado apenas para redefinição de senha.</span>
             </div>
 
-            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
-            <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--color-musgo);">Dados da Propriedade</h3>
-
-            <div class="form-group">
-                <label for="nome_fazenda">Nome da Fazenda</label>
-                <input type="text" id="nome_fazenda" name="nome_fazenda" placeholder="Ex: Fazenda Boa Esperança">
+            <!-- Fazenda -->
+            <div class="section-sep">
+                <div class="section-sep-line"></div>
+                <span class="section-sep-text">Dados da Propriedade</span>
+                <div class="section-sep-line"></div>
             </div>
-            <div class="form-group">
-                <label for="inputCidade">Cidade - UF</label>
-                <input type="text" id="inputCidade" name="cidade_estado" list="listaCidades" placeholder="Aguarde, carregando cidades...">
+
+            <div class="field">
+                <label class="field-label" for="nome_fazenda">Nome da Fazenda <span class="opt">(opcional)</span></label>
+                <input type="text" id="nome_fazenda" name="nome_fazenda" class="field-input"
+                       placeholder="Ex: Fazenda Boa Esperança">
+            </div>
+            <div class="field">
+                <label class="field-label" for="inputCidade">Cidade — UF <span class="opt">(opcional)</span></label>
+                <input type="text" id="inputCidade" name="cidade_estado" list="listaCidades"
+                       class="field-input" placeholder="Aguarde, carregando cidades...">
                 <datalist id="listaCidades"></datalist>
-                <small id="statusIBGE" style="color: #666; display: block; margin-top: 5px;">Buscando cidades...</small>
+                <span class="field-hint" id="statusIBGE">Buscando cidades...</span>
             </div>
-            <div class="form-group">
-                <label for="area_total">Área Total (Hectares)</label>
-                <input type="number" step="0.01" id="area_total" name="area_total" placeholder="Ex: 150.5">
+            <div class="field">
+                <label class="field-label" for="area_total">Área Total (ha) <span class="opt">(opcional)</span></label>
+                <input type="number" step="0.01" id="area_total" name="area_total"
+                       class="field-input" placeholder="Ex: 150.5">
             </div>
 
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Cadastrar</button>
+            <button type="submit" class="btn-submit" id="btnCadastrar">Criar Conta</button>
         </form>
 
-        <div style="text-align: center; margin-top: 20px;">
-            <a href="{{ url_for('auth.login') }}" style="color: var(--primary-color); text-decoration: none;">Já tem uma conta? Faça Login</a>
+        <div class="sep">
+            <div class="sep-line"></div>
+            <span class="sep-text">ou</span>
+            <div class="sep-line"></div>
         </div>
+
+        <a href="{{ url_for('auth.login') }}" class="btn-login">Já tenho uma conta</a>
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // --- 1. TOASTS (Notificações Flutuantes) ---
-            const alertas = document.querySelectorAll('.alert, .alert-error');
-            if (alertas.length > 0) {
-                let container = document.getElementById('toast-container');
-                if (!container) {
-                    container = document.createElement('div');
-                    container.id = 'toast-container';
-                    document.body.appendChild(container);
-                }
-                alertas.forEach(alerta => {
-                    alerta.style.display = 'none';
-                    const isError = alerta.classList.contains('alert-error') || 
-                                   (alerta.style.color && alerta.style.color.includes('danger')) ||
-                                   alerta.innerText.includes('Erro') || alerta.innerText.includes('❌');
-                    const toast = document.createElement('div');
-                    toast.className = 'toast ' + (isError ? 'error' : 'success');
-                    toast.innerText = alerta.innerText.replace('❌', '').replace('✅', '').trim();
-                    container.appendChild(toast);
-                    setTimeout(() => {
-                        toast.style.animation = 'fadeOutToast 0.5s ease-out forwards';
-                        setTimeout(() => toast.remove(), 500);
-                    }, 4000);
-                });
-            }
-
-            // --- 2. PREVENÇÃO DE DUPLO CLIQUE ---
-            const formularios = document.querySelectorAll("form");
-            formularios.forEach(form => {
-                form.addEventListener("submit", function(event) {
-                    const botaoSubmit = form.querySelector("button[type='submit']");
-                    if (botaoSubmit) {
-                        if (botaoSubmit.classList.contains("btn-loading")) {
-                            event.preventDefault();
-                            return;
-                        }
-                        botaoSubmit.classList.add("btn-loading");
-                        botaoSubmit.setAttribute("disabled", "true");
-                        botaoSubmit.innerText = "Processando...";
-                    }
-                });
+        document.addEventListener("DOMContentLoaded", function () {
+            // Prevenir duplo clique
+            document.getElementById('formCadastro').addEventListener('submit', function () {
+                const btn = document.getElementById('btnCadastrar');
+                btn.disabled = true;
+                btn.textContent = 'Criando conta...';
             });
 
-            // --- 3. CACHE LOCAL DO IBGE (30 DIAS) ---
-            const dataList = document.getElementById('listaCidades');
+            // Cache IBGE (30 dias)
+            const dataList  = document.getElementById('listaCidades');
             const statusMsg = document.getElementById('statusIBGE');
             const inputCidade = document.getElementById('inputCidade');
-            const url_api = "{{ url_for('api.proxy_cidades') }}";
-            
-            const CACHE_KEY_CIDADES = 'cache_ibge_cidades';
-            const TEMPO_CACHE_CIDADES = 30 * 24 * 60 * 60 * 1000; 
+            const url_api   = "{{ url_for('api.proxy_cidades') }}";
+            const CACHE_KEY = 'cache_ibge_cidades';
+            const TTL       = 30 * 24 * 60 * 60 * 1000;
 
-            if (dataList && statusMsg && inputCidade) {
-                function renderizarCidades(cidades) {
-                    let options = '';
-                    cidades.sort((a, b) => a.nome.localeCompare(b.nome));
-                    cidades.forEach(c => {
-                        options += `<option value="${c.nome} - ${c.uf}">`;
+            function renderCidades(cidades) {
+                cidades.sort((a, b) => a.nome.localeCompare(b.nome));
+                dataList.innerHTML = cidades.map(c => `<option value="${c.nome} - ${c.uf}">`).join('');
+                statusMsg.textContent = '';
+                if (!inputCidade.value) inputCidade.placeholder = 'Digite sua cidade...';
+            }
+
+            const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+            if (cache && Date.now() - cache.timestamp < TTL) {
+                renderCidades(cache.dados);
+            } else {
+                fetch(url_api)
+                    .then(r => r.json())
+                    .then(cidades => {
+                        if (cidades.error) throw new Error(cidades.error);
+                        localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), dados: cidades }));
+                        renderCidades(cidades);
+                    })
+                    .catch(() => {
+                        statusMsg.textContent = 'Erro ao carregar cidades. Digite manualmente.';
+                        statusMsg.style.color = 'var(--color-danger)';
                     });
-                    dataList.innerHTML = options;
-                    statusMsg.innerText = '';
-                    if (!inputCidade.value) {
-                        inputCidade.placeholder = "Digite sua cidade...";
-                    }
-                }
-
-                function carregarCidades() {
-                    const cacheSalvo = localStorage.getItem(CACHE_KEY_CIDADES);
-                    if (cacheSalvo) {
-                        const cache = JSON.parse(cacheSalvo);
-                        const tempoPassado = Date.now() - cache.timestamp;
-                        if (tempoPassado < TEMPO_CACHE_CIDADES) {
-                            console.log("⚡ Cidades carregadas do LocalStorage");
-                            renderizarCidades(cache.dados);
-                            return; 
-                        }
-                    }
-                    console.log("🌍 Buscando cidades no IBGE...");
-                    fetch(url_api)
-                        .then(res => res.json())
-                        .then(cidades => {
-                            if (cidades.error) throw new Error(cidades.error);
-                            localStorage.setItem(CACHE_KEY_CIDADES, JSON.stringify({
-                                timestamp: Date.now(),
-                                dados: cidades
-                            }));
-                            renderizarCidades(cidades);
-                        })
-                        .catch(err => {
-                            console.error(err);
-                            statusMsg.innerText = "Erro ao carregar lista. Digite manualmente.";
-                            statusMsg.style.color = "var(--danger-color)";
-                        });
-                }
-                carregarCidades();
             }
         });
     </script>

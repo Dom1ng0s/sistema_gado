@@ -3,62 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nova Senha - Sistema Gado</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+    <title>SGG — Nova Senha</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}">
     <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: var(--font-body);
+            background: var(--color-surface-sunken);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .auth-card {
+            background: var(--color-surface);
+            border-radius: var(--radius-xl);
+            border: 0.5px solid var(--color-border);
+            box-shadow: var(--shadow-md);
+            padding: 44px 40px;
+            width: 100%;
+            max-width: 400px;
+            animation: rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+
+        .auth-mark {
+            width: 34px; height: 34px;
+            background: var(--color-primary);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-display); font-size: 15px; font-weight: 600; color: #fff;
+            flex-shrink: 0;
+        }
+
+        .auth-brand-text { font-family: var(--font-display); font-size: 13px; color: var(--color-ink-tertiary); }
+
+        .auth-heading { margin-bottom: 28px; }
+
+        .auth-heading h1 {
+            font-family: var(--font-display);
+            font-size: var(--text-xl);
+            font-weight: 600;
+            color: var(--color-ink);
+            letter-spacing: -0.02em;
+            margin-bottom: 6px;
+        }
+
+        .auth-heading p { font-size: var(--text-sm); color: var(--color-ink-tertiary); line-height: 1.6; }
+
+        .field { margin-bottom: 18px; }
+
+        .field-label { display: block; font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-secondary); margin-bottom: 6px; }
+
+        .field-input {
+            font-family: var(--font-body);
+            font-size: var(--text-base);
+            color: var(--color-ink);
+            background: var(--color-surface-raised);
+            border: 0.5px solid var(--color-border-strong);
+            border-radius: var(--radius-md);
+            padding: 10px 14px;
+            width: 100%;
+            outline: none;
+            transition: border-color 150ms, box-shadow 150ms, background 150ms;
+        }
+
+        .field-input:focus {
+            background: var(--color-surface);
+            border-color: var(--color-primary-mid);
+            box-shadow: 0 0 0 3px var(--color-primary-bg);
+        }
+
+        .field-input::placeholder { color: var(--color-ink-disabled); }
+
         .strength-bar {
-            height: 4px;
-            border-radius: 2px;
-            background: #e0e0e0;
-            margin-top: -10px;
-            margin-bottom: 14px;
+            height: 3px;
+            background: var(--color-surface-sunken);
+            border-radius: var(--radius-pill);
+            margin-top: 6px;
             overflow: hidden;
         }
-        .strength-bar-fill {
+
+        .strength-fill {
             height: 100%;
-            border-radius: 2px;
-            transition: width 0.3s, background 0.3s;
+            border-radius: var(--radius-pill);
             width: 0;
+            transition: width 0.25s, background 0.25s;
         }
+
+        .match-msg { font-size: var(--text-xs); margin-top: 5px; display: block; min-height: 16px; }
+
+        .btn-submit {
+            width: 100%;
+            padding: 11px 16px;
+            background: var(--color-primary);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: var(--font-body);
+            font-size: var(--text-base);
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 4px;
+            transition: background 150ms, box-shadow 150ms, transform 80ms;
+            box-shadow: 0 1px 3px rgba(59,109,17,0.3);
+        }
+
+        .btn-submit:hover { background: var(--color-primary-dark); box-shadow: 0 2px 8px rgba(59,109,17,0.4); }
+        .btn-submit:active { transform: scale(0.99); }
+        .btn-submit:disabled { opacity: 0.5; pointer-events: none; }
+
+        .flash { padding: 10px 12px; border-radius: var(--radius-md); font-size: var(--text-sm); line-height: 1.5; margin-bottom: 20px; }
+        .flash-error { background: var(--color-danger-bg); color: var(--color-danger-dark); border-left: 3px solid var(--color-danger); }
     </style>
 </head>
 <body>
-    <div class="auth-card login-mode">
-        <h2>Nova Senha</h2>
-        <p class="subtitle">Crie uma nova senha para sua conta.</p>
+    <div class="auth-card">
+        <div class="auth-brand">
+            <div class="auth-mark">S</div>
+            <span class="auth-brand-text">Sistema de Gestão de Gado</span>
+        </div>
+
+        <div class="auth-heading">
+            <h1>Nova Senha</h1>
+            <p>Crie uma senha segura com pelo menos 6 caracteres.</p>
+        </div>
 
         {% if mensagem %}
-            <div class="alert-error">{{ mensagem }}</div>
+            <div class="flash flash-error">{{ mensagem }}</div>
         {% endif %}
 
         <form method="POST" action="{{ url_for('auth.nova_senha') }}" id="formSenha">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-            <div class="form-group">
-                <label for="password">Nova Senha</label>
-                <input type="password" id="password" name="password" required autofocus
-                       placeholder="Mínimo 6 caracteres" minlength="6">
-                <div class="strength-bar"><div class="strength-bar-fill" id="strengthFill"></div></div>
+            <div class="field">
+                <label class="field-label" for="password">Nova Senha</label>
+                <input type="password" id="password" name="password" class="field-input"
+                       required autofocus placeholder="Mínimo 6 caracteres" minlength="6">
+                <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
             </div>
 
-            <div class="form-group">
-                <label for="password_confirm">Confirmar Senha</label>
-                <input type="password" id="password_confirm" name="password_confirm" required
-                       placeholder="Repita a nova senha">
-                <small id="matchMsg" style="display:none;font-size:12px;margin-top:-10px;display:block;"></small>
+            <div class="field">
+                <label class="field-label" for="password_confirm">Confirmar Senha</label>
+                <input type="password" id="password_confirm" name="password_confirm" class="field-input"
+                       required placeholder="Repita a nova senha">
+                <span class="match-msg" id="matchMsg"></span>
             </div>
 
-            <button type="submit" class="btn-primary" id="btnSalvar">SALVAR NOVA SENHA</button>
+            <button type="submit" class="btn-submit" id="btnSalvar" disabled>Salvar Nova Senha</button>
         </form>
     </div>
 
     <script>
-        const pwInput   = document.getElementById('password');
-        const cfInput   = document.getElementById('password_confirm');
-        const fill      = document.getElementById('strengthFill');
-        const matchMsg  = document.getElementById('matchMsg');
-        const btn       = document.getElementById('btnSalvar');
+        const pwInput  = document.getElementById('password');
+        const cfInput  = document.getElementById('password_confirm');
+        const fill     = document.getElementById('strengthFill');
+        const matchMsg = document.getElementById('matchMsg');
+        const btn      = document.getElementById('btnSalvar');
 
         pwInput.addEventListener('input', () => {
             const v = pwInput.value;
@@ -68,11 +179,8 @@
             if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
             if (/\d/.test(v))   score++;
             if (/[^A-Za-z0-9]/.test(v)) score++;
-
-            const pct   = (score / 5) * 100;
-            const color = score <= 1 ? '#E24B4A' : score <= 3 ? '#EF9F27' : '#639922';
-            fill.style.width = pct + '%';
-            fill.style.background = color;
+            fill.style.width      = (score / 5 * 100) + '%';
+            fill.style.background = score <= 1 ? 'var(--color-danger)' : score <= 3 ? 'var(--color-accent)' : 'var(--color-primary-mid)';
             validate();
         });
 
@@ -81,11 +189,10 @@
         function validate() {
             const match = pwInput.value === cfInput.value;
             if (cfInput.value) {
-                matchMsg.style.display = 'block';
-                matchMsg.textContent   = match ? 'Senhas coincidem' : 'Senhas não coincidem';
-                matchMsg.style.color   = match ? '#3B6D11' : '#E24B4A';
+                matchMsg.textContent = match ? 'Senhas coincidem' : 'Senhas não coincidem';
+                matchMsg.style.color = match ? 'var(--color-primary)' : 'var(--color-danger)';
             } else {
-                matchMsg.style.display = 'none';
+                matchMsg.textContent = '';
             }
             btn.disabled = !match || pwInput.value.length < 6;
         }
