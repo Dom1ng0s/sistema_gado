@@ -81,7 +81,10 @@ def novo_usuario():
             cidade     = request.form.get('cidade_estado', '').strip()
             area       = request.form.get('area_total') or 0
 
-            if email and ('@' not in email or '.' not in email.split('@')[-1]):
+            if not email:
+                return render_template('novo_usuario.html', mensagem="Email é obrigatório."), 400
+
+            if '@' not in email or '.' not in email.split('@')[-1]:
                 return render_template('novo_usuario.html', mensagem="Email inválido."), 400
 
             with get_db_cursor() as cursor:
@@ -90,15 +93,14 @@ def novo_usuario():
                     mensagem = f"Usuário '{novo_user}' já existe."
                     return render_template('novo_usuario.html', mensagem=mensagem), 400
 
-                if email:
-                    cursor.execute("SELECT id FROM usuarios WHERE email = %s", (email,))
-                    if cursor.fetchone():
-                        return render_template('novo_usuario.html', mensagem="Este email já está cadastrado."), 400
+                cursor.execute("SELECT id FROM usuarios WHERE email = %s", (email,))
+                if cursor.fetchone():
+                    return render_template('novo_usuario.html', mensagem="Este email já está cadastrado."), 400
 
                 hash_s = generate_password_hash(nova_senha)
                 cursor.execute(
                     "INSERT INTO usuarios (username, password_hash, email) VALUES (%s, %s, %s)",
-                    (novo_user, hash_s, email if email else None)
+                    (novo_user, hash_s, email)
                 )
                 user_id = cursor.lastrowid
                 cursor.execute(
@@ -223,6 +225,28 @@ def nova_senha():
             return render_template('nova_senha.html', mensagem="Erro ao salvar a senha. Tente novamente.")
 
     return render_template('nova_senha.html')
+
+
+@auth_bp.route('/conta/apagar', methods=['POST'])
+@login_required
+def apagar_conta():
+    confirmacao = request.form.get('confirmacao', '').strip()
+    if confirmacao != current_user.username:
+        flash('Confirmação incorreta. Digite seu nome de usuário exatamente.', 'error')
+        return redirect(url_for('configuracoes.settings'))
+
+    user_id = current_user.id
+    try:
+        logout_user()
+        session.clear()
+        with get_db_cursor() as cursor:
+            cursor.execute("DELETE FROM usuarios WHERE id = %s", (user_id,))
+        flash('Conta excluída com sucesso.', 'success')
+    except Exception as e:
+        logger.error(f"Erro ao apagar conta user_id={user_id}: {e}", exc_info=True)
+        flash('Erro ao excluir a conta. Tente novamente.', 'error')
+
+    return redirect(url_for('auth.login'))
 
 
 def _mascara_email(email: str) -> str:

@@ -41,6 +41,52 @@
             <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;">Salvar Configurações</button>
         </form>
     </div>
+
+    <!-- Zona de Perigo -->
+    <div style="max-width:600px; margin:var(--space-6) auto 0;">
+        <div style="border:1px solid var(--color-danger); border-radius:var(--radius-lg); padding:var(--space-5);">
+            <h3 style="color:var(--color-danger); margin:0 0 var(--space-2);">Zona de Perigo</h3>
+            <p style="font-size:var(--text-sm); color:var(--color-ink-secondary); margin:0 0 var(--space-4);">
+                A exclusão da conta é permanente e remove todos os seus dados do sistema. Esta ação não pode ser desfeita.
+            </p>
+            <button type="button" class="btn btn-sm"
+                    style="background:var(--color-danger); color:#fff; border:none;"
+                    onclick="document.getElementById('modal-apagar').style.display='flex'">
+                Excluir minha conta
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de confirmação -->
+    <div id="modal-apagar"
+         style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5);
+                align-items:center; justify-content:center; z-index:9999; padding:var(--space-4);">
+        <div style="background:var(--color-surface); border-radius:var(--radius-xl);
+                    padding:var(--space-6); max-width:420px; width:100%;
+                    box-shadow:var(--shadow-lg);">
+            <h3 style="margin:0 0 var(--space-2); color:var(--color-danger);">Excluir conta?</h3>
+            <p style="font-size:var(--text-sm); color:var(--color-ink-secondary); margin:0 0 var(--space-4);">
+                Para confirmar, digite seu nome de usuário:
+                <strong>{{ current_user.username }}</strong>
+            </p>
+            <form method="POST" action="{{ url_for('auth.apagar_conta') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="confirmacao" class="form-input"
+                       placeholder="Digite seu usuário" autocomplete="off"
+                       style="margin-bottom:var(--space-4);">
+                <div style="display:flex; gap:var(--space-3); justify-content:flex-end;">
+                    <button type="button" class="btn btn-ghost btn-sm"
+                            onclick="document.getElementById('modal-apagar').style.display='none'">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-sm"
+                            style="background:var(--color-danger); color:#fff; border:none;">
+                        Excluir permanentemente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 {% endblock %}
 
 {% block scripts %}
