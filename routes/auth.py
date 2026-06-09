@@ -11,7 +11,7 @@ from extensions import limiter
 from models import User
 from repositories import auth_repository
 from routes.validators import validate
-from utils.email_service import send_reset_code
+from utils.email_service import send_reset_code, send_welcome_email
 
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
@@ -107,6 +107,11 @@ def novo_usuario():
                     "INSERT INTO configuracoes (user_id, nome_fazenda, cidade_estado, area_total) VALUES (%s, %s, %s, %s)",
                     (user_id, nome_fazenda, cidade, area)
                 )
+
+            try:
+                send_welcome_email(email, novo_user)
+            except Exception as mail_err:
+                logger.warning(f"Email de boas-vindas não enviado para {email}: {mail_err}")
 
             return redirect(url_for('auth.login'))
 
