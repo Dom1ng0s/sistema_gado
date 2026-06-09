@@ -4,6 +4,8 @@
 
 Solução web para pecuaristas que precisam controlar rebanho, calcular **GMD (Ganho Médio Diário)**, gerenciar pastos, rastrear hereditariedade e acompanhar o **fluxo de caixa** da fazenda — tudo em um só lugar, com lógica de cálculo delegada ao banco de dados para máxima performance.
 
+**Acesso online:** [sistemadogado.up.railway.app](https://sistemadogado.up.railway.app/)
+
 ---
 
 ## Capturas de Tela
@@ -92,7 +94,7 @@ repositories/
 | Autenticação | Flask-Login |
 | Segurança | Flask-WTF (CSRF), Flask-Limiter, Werkzeug |
 | Testes | Pytest |
-| Config | python-dotenv |
+| Deploy | Railway (Gunicorn) |
 
 ---
 
@@ -154,6 +156,13 @@ DB_USER=seu_usuario
 DB_PASSWORD=sua_senha
 DB_NAME=sistema_gado
 SECRET_KEY=chave_secreta_longa
+
+# Email (necessário para recuperação de senha)
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=seu@email.com
+MAIL_PASSWORD=senha_de_app
+MAIL_FROM=SGG Sistema <seu@email.com>
 ```
 
 ### 5. Inicialize o banco de dados
@@ -173,7 +182,7 @@ python seed_db.py
 ### 7. Execute a aplicação
 
 ```bash
-flask run
+python app.py
 ```
 
 Acesse em: **http://localhost:5000**
@@ -182,11 +191,60 @@ Acesse em: **http://localhost:5000**
 
 ## Testes
 
-```bash
-pytest
+Os testes requerem um banco MySQL local com usuário dedicado:
+
+```sql
+CREATE USER 'gado_test'@'localhost' IDENTIFIED BY 'gado123';
+GRANT ALL PRIVILEGES ON sistema_gado_test.* TO 'gado_test'@'localhost';
 ```
 
-O `conftest.py` sobe um banco de teste isolado com fixtures para cada domínio.
+O `conftest.py` cria e destrói o banco `sistema_gado_test` automaticamente a cada sessão.
+
+```bash
+pytest                                              # todos os testes
+pytest tests/test_auth.py                           # módulo específico
+pytest tests/test_auth.py::test_login_sucesso       # teste único
+```
+
+---
+
+## Deploy (Railway)
+
+O projeto está publicado em **[sistemadogado.up.railway.app](https://sistemadogado.up.railway.app/)** via [Railway](https://railway.app/).
+
+### Configuração do deploy
+
+O servidor de produção usa Gunicorn (definido em `Procfile` e `railway.toml`):
+
+```
+web: gunicorn app:app
+```
+
+### Variáveis de ambiente no Railway
+
+Configure as seguintes variáveis no painel do Railway (mesmas do `.env-example`):
+
+| Variável | Descrição |
+|---|---|
+| `DB_HOST` | Host do MySQL (ex: instância Aiven ou Railway MySQL) |
+| `DB_PORT` | Porta (padrão: 3306) |
+| `DB_USER` | Usuário do banco |
+| `DB_PASSWORD` | Senha do banco |
+| `DB_NAME` | Nome do banco de dados |
+| `SECRET_KEY` | Chave secreta Flask — gere com `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `MAIL_SERVER` | Servidor SMTP (ex: `smtp.gmail.com`) |
+| `MAIL_PORT` | Porta SMTP (ex: `587`) |
+| `MAIL_USERNAME` | Email SMTP |
+| `MAIL_PASSWORD` | Senha de app Gmail (não a senha da conta) |
+| `MAIL_FROM` | Remetente exibido nos emails |
+
+### Banco de dados em produção
+
+Após o primeiro deploy, execute o script de inicialização do banco uma única vez via Railway CLI ou console:
+
+```bash
+python init_db.py
+```
 
 ---
 
@@ -196,7 +254,7 @@ O `conftest.py` sobe um banco de teste isolado com fixtures para cada domínio.
 sistema_gado/
 ├── app.py                    # Factory e registro de blueprints
 ├── db_config.py              # Pool de conexões MySQL
-├── extensions.py             # Login manager, limiter
+├── extensions.py             # Rate limiter
 ├── init_db.py                # DDL: tabelas, views, índices
 ├── seed_db.py                # Dados de demonstração
 ├── models.py                 # User model (Flask-Login)
@@ -210,6 +268,8 @@ sistema_gado/
 │   ├── api.py                # Endpoints JSON
 │   └── validators.py
 ├── repositories/             # Toda query SQL fica aqui
+├── utils/
+│   └── email_service.py      # Envio de código de recuperação de senha
 ├── templates/                # Jinja2
 ├── static/
 │   ├── css/design_system.css
