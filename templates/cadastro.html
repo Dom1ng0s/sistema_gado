@@ -11,6 +11,12 @@
   <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">← Voltar</a>
 </div>
 
+{% if mensagem_ok %}
+  <div class="alert alert-success" style="margin-bottom:var(--space-6);">
+    <span class="alert-icon">✓</span>
+    <div>{{ mensagem_ok }}</div>
+  </div>
+{% endif %}
 {% if mensagem %}
   <div class="alert alert-danger" style="margin-bottom:var(--space-6);">
     <span class="alert-icon">⚠</span>

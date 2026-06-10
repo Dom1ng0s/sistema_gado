@@ -79,7 +79,7 @@ def cadastro():
                 return render_template("cadastro.html", mensagem="Brinco já existe."), 400
 
             animal_repository.cadastrar_animal(brinco, sexo, data, (peso / 30) * val_arr, peso, current_user.id)
-            msg = f"Animal {brinco} cadastrado."
+            return render_template("cadastro.html", mensagem_ok=f"Animal {brinco} cadastrado com sucesso.")
         except Exception as e:
             logger.error(f"Erro cadastro: {e}", exc_info=True)
             msg = f"Erro: {e}"
