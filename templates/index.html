@@ -216,10 +216,10 @@ async function carregarMetricas() {
     gmdEl.textContent = gmd > 0 ? gmd.toFixed(3) : '—';
 
     if (gmd >= 0.8) {
-      deltaGmd.textContent = '↑ Acima da meta (0.800)';
+      deltaGmd.textContent = '↑ Desempenho elevado';
       deltaGmd.className = 'metric-delta up';
     } else if (gmd > 0) {
-      deltaGmd.textContent = '↓ Abaixo da meta (0.800)';
+      deltaGmd.textContent = '↓ Ganho abaixo do ideal';
       deltaGmd.className = 'metric-delta down';
     } else {
       deltaGmd.textContent = 'Sem pesagens registradas';
@@ -240,15 +240,15 @@ async function carregarMetricas() {
         <div class="alert alert-danger">
           <span class="alert-icon">⚠</span>
           <div>
-            <strong>${alertasData.total} animal${alertasData.total > 1 ? 'is' : ''} com GMD crítico (outlier &lt; ${limite} kg/dia)</strong><br>
-            <span style="font-size:var(--text-xs);">${lista}${mais} — abaixo de 2 desvios padrão do rebanho</span>
+            <strong>${alertasData.total} animal${alertasData.total > 1 ? 'is' : ''} com ganho de peso muito abaixo do lote (&lt; ${limite} kg/dia)</strong><br>
+            <span style="font-size:var(--text-xs);">${lista}${mais} — esses animais crescem significativamente menos que os demais; verifique saúde, nutrição e parasitas</span>
           </div>
         </div>`;
     } else if (!alertasData.error && total > 0) {
       alertasDiv.innerHTML = `
         <div class="alert alert-success">
           <span class="alert-icon">✓</span>
-          <div><strong>Nenhum outlier detectado — todos os animais dentro do intervalo esperado do rebanho</strong></div>
+          <div><strong>Ganho de peso homogêneo — todos os animais estão dentro da variação esperada do lote</strong></div>
         </div>`;
     }
 

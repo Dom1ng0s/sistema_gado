@@ -169,6 +169,7 @@ def lote_vendido(prefixo, n, dc_ini, dc_fim, p_media, gmds, dv_dias_min, dv_dias
 lote_vendido('L22', 40, date(2022, 3, 1), date(2022, 5, 31), 242, gmd_cats(40), 390, 430)
 lote_vendido('L23', 60, date(2023, 2, 1), date(2023, 5, 31), 248, gmd_cats(60), 380, 420)
 lote_vendido('L24', 80, date(2024, 1, 15), date(2024, 6, 30), 252, gmd_cats(80), 360, 420)
+lote_vendido('L25', 100, date(2025, 2, 1), date(2025, 8, 31), 258, gmd_cats(100), 310, 390)
 
 # ── Lotes ativos (no pasto) ───────────────────────────────────
 active_meta = []  # (idx, dc, p_ini, gmd)
@@ -181,7 +182,6 @@ def lote_ativo(prefixo, n, dc_ini, dc_fim, p_media, gmds):
         active_meta.append((len(animal_rows), dc, p_ini, gmd))
         a(f"{prefixo}-{i+1:03d}", 'M', dc, pc(dc, p_ini))
 
-lote_ativo('L25', 100, date(2025, 2, 1), date(2025, 8, 31), 258, gmd_cats(100))
 lote_ativo('L26',  60, date(2026, 1, 10), date(2026, 4, 30), 262, gmd_cats(60))
 
 # ══════════════════════════════════════════════════════════════
@@ -335,7 +335,7 @@ custos = []
 d = START
 while d <= TODAY.replace(day=1):
     ano = d.year
-    arr = {2022: 9500, 2023: 10200, 2024: 11000, 2025: 11800, 2026: 12500}.get(ano, 12000)
+    arr = {2022: 5500, 2023: 6000, 2024: 6500, 2025: 7000, 2026: 7500}.get(ano, 7000)
     sal = {2022: 2200, 2023: 2400, 2024: 2600, 2025: 2800, 2026: 3000}.get(ano, 2800)
     custos += [
         (uid, 'Fixo',    'Arrendamento', arr,    d, 'Arrendamento mensal das pastagens'),
@@ -425,10 +425,10 @@ all_female = [aid for aid, _, _ in cow_ids]
 all_born   = [aid for aid, _ in born_ids]
 
 pasto_config = [
-    ('Piquete Norte A',   'Brachiaria Brizantha',   35.0, 50, all_male_active[0:50]),
-    ('Piquete Norte B',   'Brachiaria Brizantha',   35.0, 50, all_male_active[50:100]),
-    ('Piquete Sul A',     'Mombaça',                30.0, 45, all_male_active[100:145]),
-    ('Piquete Sul B',     'Mombaça',                30.0, 45, all_male_active[145:]),
+    ('Piquete Norte A',   'Brachiaria Brizantha',   35.0, 50, all_male_active[0:30]),
+    ('Piquete Norte B',   'Brachiaria Brizantha',   35.0, 50, all_male_active[30:]),
+    ('Piquete Sul A',     'Mombaça',                30.0, 45, []),
+    ('Piquete Sul B',     'Mombaça',                30.0, 45, []),
     ('Piquete Centro A',  'Panicum Maximum',         28.0, 40, []),
     ('Piquete Centro B',  'Panicum Maximum',         28.0, 40, []),
     ('Pasto Matrizes',    'Brachiaria Ruziziensis',  22.0, 30, all_female),

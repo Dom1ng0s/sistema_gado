@@ -206,10 +206,10 @@ function renderizarTudo() {
 
   const deltaGMD = document.getElementById('deltaGMD');
   if (gmd >= 0.8) {
-    deltaGMD.textContent = '↑ Acima da meta (0.800)';
+    deltaGMD.textContent = '↑ Desempenho elevado';
     deltaGMD.className = 'metric-delta up';
   } else if (gmd > 0) {
-    deltaGMD.textContent = '↓ Abaixo da meta (0.800)';
+    deltaGMD.textContent = '↓ Ganho abaixo do ideal';
     deltaGMD.className = 'metric-delta down';
   } else {
     deltaGMD.textContent = 'Sem pesagens registradas';
