@@ -55,9 +55,9 @@
     <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap;">
       <span class="metric-value">{{ indicadores.gmd }}</span>
       <span class="metric-unit">kg/dia</span>
-      {% if gmd_val >= 0.8 %}
+      {% if gmd_val >= 0.6 %}
         <span class="badge badge-success">Ótimo</span>
-      {% elif gmd_val >= 0.6 %}
+      {% elif gmd_val >= 0.4 %}
         <span class="badge badge-warning">Regular</span>
       {% elif gmd_val > 0 %}
         <span class="badge badge-danger">Baixo</span>
@@ -65,7 +65,7 @@
         <span class="badge badge-neutral">—</span>
       {% endif %}
     </div>
-    {% if gmd_val >= 0.8 %}
+    {% if gmd_val >= 0.6 %}
       <div class="metric-delta up">↑ Desempenho elevado</div>
     {% elif gmd_val > 0 %}
       <div class="metric-delta down">↓ Ganho abaixo do ideal</div>

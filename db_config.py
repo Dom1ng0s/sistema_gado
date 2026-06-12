@@ -27,9 +27,9 @@ try:
     connection_pool = mysql.connector.pooling.MySQLConnectionPool(
         pool_name="gado_pool", pool_size=5, **db_settings
     )
-    logger.info("✅ Modo Rápido (Pool) ativado!")
+    logger.info(" Modo Rápido (Pool) ativado!")
 except Error as e:
-    logger.warning(f"⚠️ AVISO: Falha ao criar Pool: {e}")
+    logger.warning(f" AVISO: Falha ao criar Pool: {e}")
     connection_pool = None
 
 def get_db_connection():
@@ -38,7 +38,7 @@ def get_db_connection():
             return connection_pool.get_connection()
         return mysql.connector.connect(**db_settings)
     except Error as e:
-        logger.error(f"❌ ERRO CRÍTICO DE CONEXÃO: {e}")
+        logger.error(f" ERRO CRÍTICO DE CONEXÃO: {e}")
         return None
 
 def close_db_connection(connection):
