@@ -269,3 +269,97 @@ def test_rota_ranking_touros_logado(app):
         r = client.get("/rebanho/ranking-touros")
         assert r.status_code == 200
         _purge(uid)
+
+
+# ── 5.3 — Diagnóstico de prenhez + data prevista de parto ────────────────────
+
+def test_insert_reproducao_calcula_parto_previsto(um):
+    """data_parto_prevista = data_cobertura + 285 dias."""
+    from datetime import date, timedelta
+    vaca_id = _make_animal(um, sexo="F")
+    reproducao_repository.insert_reproducao(
+        um, vaca_id, None, "Touro X", "2026-01-01", None, "aborto"
+    )
+    eventos = reproducao_repository.get_reproducao_by_vaca(vaca_id, um)
+    # índice 8 = data_parto_prevista
+    prevista = eventos[0][8]
+    assert prevista == date(2026, 1, 1) + timedelta(days=285)
+
+
+def test_update_diagnostico_positivo(um):
+    """update_diagnostico salva DG positivo e data."""
+    vaca_id = _make_animal(um, sexo="F")
+    rid = reproducao_repository.insert_reproducao(
+        um, vaca_id, None, "T", "2026-02-01", None, "aborto"
+    )
+    ok = reproducao_repository.update_diagnostico(rid, um, "positivo", "2026-02-28")
+    assert ok is True
+    eventos = reproducao_repository.get_reproducao_by_vaca(vaca_id, um)
+    assert eventos[0][6] == "positivo"           # diagnostico
+    assert str(eventos[0][7]) == "2026-02-28"    # data_diagnostico
+
+
+def test_update_diagnostico_outro_usuario_nao_altera(dois):
+    """update_diagnostico de usuário errado não persiste."""
+    uid_a, uid_b = dois
+    vaca_id = _make_animal(uid_a, sexo="F")
+    rid = reproducao_repository.insert_reproducao(
+        uid_a, vaca_id, None, "T", "2026-03-01", None, "aborto"
+    )
+    ok = reproducao_repository.update_diagnostico(rid, uid_b, "positivo", "2026-03-15")
+    assert ok is False
+    eventos = reproducao_repository.get_reproducao_by_vaca(vaca_id, uid_a)
+    assert eventos[0][6] == "pendente"
+
+
+def test_get_partos_previstos_so_retorna_dg_positivo(um):
+    """get_partos_previstos filtra apenas DG positivo com parto não ocorrido."""
+    from datetime import date, timedelta
+    vaca_id = _make_animal(um, sexo="F")
+    rid = reproducao_repository.insert_reproducao(
+        um, vaca_id, None, "T", date.today().isoformat(), None, "aborto"
+    )
+    # Sem DG — não deve aparecer
+    assert reproducao_repository.get_partos_previstos(um, dias=400) == []
+
+    reproducao_repository.update_diagnostico(rid, um, "positivo", date.today().isoformat())
+    previstos = reproducao_repository.get_partos_previstos(um, dias=400)
+    assert len(previstos) == 1
+
+
+def test_rota_diagnostico_post(app):
+    """Rota POST /reproducao/<id>/diagnostico persiste DG via HTTP."""
+    with app.test_client() as client:
+        from datetime import date
+        uid = _make_user()
+        vaca_id = _make_animal(uid, sexo="F")
+        rid = reproducao_repository.insert_reproducao(
+            uid, vaca_id, None, "T", "2026-05-01", None, "aborto"
+        )
+        _login(client, uid)
+        r = client.post(f"/reproducao/{rid}/diagnostico", data={
+            "vaca_id": vaca_id,
+            "diagnostico": "negativo",
+            "data_diagnostico": "2026-05-28",
+        }, follow_redirects=True)
+        assert r.status_code == 200
+        eventos = reproducao_repository.get_reproducao_by_vaca(vaca_id, uid)
+        assert eventos[0][6] == "negativo"
+        _purge(uid)
+
+
+def test_pagina_reproducao_mostra_data_prevista(app):
+    """Página de reprodução exibe data_parto_prevista calculada."""
+    from datetime import date, timedelta
+    with app.test_client() as client:
+        uid = _make_user()
+        vaca_id = _make_animal(uid, sexo="F")
+        reproducao_repository.insert_reproducao(
+            uid, vaca_id, None, "T", "2026-06-01", None, "aborto"
+        )
+        _login(client, uid)
+        r = client.get(f"/animais/{vaca_id}/reproducao")
+        assert r.status_code == 200
+        esperado = (date(2026, 6, 1) + timedelta(days=285)).isoformat()
+        assert esperado.encode() in r.data
+        _purge(uid)

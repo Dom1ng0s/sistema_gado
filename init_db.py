@@ -324,6 +324,41 @@ try:
     """)
 
     # ==============================================================================
+    # ETAPA 5.3: DIAGNÓSTICO DE PRENHEZ — ALTER reproducao + view partos previstos
+    # ==============================================================================
+    print(" Adicionando colunas de diagnóstico em 'reproducao'...")
+    for col, ddl in [
+        ('diagnostico',       "ALTER TABLE reproducao ADD COLUMN diagnostico ENUM('pendente','positivo','negativo') DEFAULT 'pendente' AFTER data_cobertura"),
+        ('data_diagnostico',  "ALTER TABLE reproducao ADD COLUMN data_diagnostico DATE NULL AFTER diagnostico"),
+        ('data_parto_prevista',"ALTER TABLE reproducao ADD COLUMN data_parto_prevista DATE NULL AFTER data_diagnostico"),
+    ]:
+        try:
+            cursor.execute(ddl)
+            print(f"   -> Coluna '{col}' adicionada.")
+        except mysql.connector.Error as err:
+            if err.errno == 1060:
+                print(f"   -> Coluna '{col}' já existe.")
+            else:
+                print(f"   Alerta '{col}': {err}")
+
+    print(" Criando View vw_partos_previstos...")
+    cursor.execute("""
+    CREATE OR REPLACE VIEW vw_partos_previstos AS
+    SELECT
+        r.id, r.user_id, r.vaca_id,
+        v.brinco AS vaca_brinco,
+        r.data_cobertura,
+        r.data_parto_prevista,
+        r.diagnostico,
+        DATEDIFF(r.data_parto_prevista, CURDATE()) AS dias_restantes
+    FROM reproducao r
+    JOIN animais v ON r.vaca_id = v.id AND v.deleted_at IS NULL
+    WHERE r.diagnostico = 'positivo'
+      AND r.data_parto IS NULL
+      AND r.data_parto_prevista IS NOT NULL;
+    """)
+
+    # ==============================================================================
     # ETAPA 2: INTELIGÊNCIA DE DADOS
     # ==============================================================================
 

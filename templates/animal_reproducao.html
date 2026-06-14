@@ -34,11 +34,15 @@
 .timeline-dot.vivo      { color: var(--color-primary);  background: var(--color-primary); }
 .timeline-dot.natimorto { color: var(--color-accent);   background: var(--color-accent); }
 .timeline-dot.aborto    { color: var(--color-danger);   background: var(--color-danger); }
-.timeline-card {
-  background: var(--color-surface);
-  border: 0.5px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
+.dg-form {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
 }
 </style>
 {% endblock %}
@@ -57,7 +61,6 @@
      class="btn btn-ghost btn-sm">← Ficha do Animal</a>
 </div>
 
-<!-- ── Flash messages ──────────────────────────────── -->
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, msg in messages %}
     <div class="alert {% if category == 'sucesso' %}alert-success{% else %}alert-danger{% endif %}"
@@ -67,6 +70,40 @@
     </div>
   {% endfor %}
 {% endwith %}
+
+<!-- ── Partos previstos nos próximos 60 dias ──────────────── -->
+{% if partos_previstos %}
+<div style="margin-bottom:var(--space-6);">
+  <h2 style="margin-bottom:var(--space-3);">Partos previstos — próximos 60 dias</h2>
+  <div style="display:flex; flex-direction:column; gap:var(--space-2);">
+    {% for p in partos_previstos %}
+    {% set dias = p[4] | int %}
+    <div style="display:flex; align-items:center; gap:var(--space-3);
+                padding:var(--space-3) var(--space-4);
+                background:{% if dias <= 14 %}var(--color-warning-bg){% else %}var(--color-surface-raised){% endif %};
+                border-left:3px solid {% if dias <= 7 %}var(--color-danger){% elif dias <= 14 %}var(--color-accent){% else %}var(--color-primary){% endif %};
+                border-radius:var(--radius-sm);">
+      <span style="font-size:1.2rem;">🐄</span>
+      <div style="flex:1;">
+        <span style="font-weight:var(--weight-semibold);">{{ p[1] }}</span>
+        <span style="color:var(--color-ink-secondary); margin-left:var(--space-2);">
+          · Previsto para {{ p[3] }}
+        </span>
+      </div>
+      {% if dias <= 0 %}
+        <span class="badge badge-danger">Hoje / Atrasado</span>
+      {% elif dias <= 7 %}
+        <span class="badge badge-danger">{{ dias }}d</span>
+      {% elif dias <= 14 %}
+        <span class="badge badge-warning">{{ dias }}d</span>
+      {% else %}
+        <span class="badge badge-success">{{ dias }}d</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 <!-- ── Cards de estatísticas ──────────────────────────── -->
 {% if stats %}
@@ -136,6 +173,32 @@
       </select>
     </div>
 
+    <div id="bloco-bezerro" style="display:none; background:var(--color-primary-bg);
+         border-left:3px solid var(--color-primary); border-radius:var(--radius-md);
+         padding:var(--space-4); margin-top:var(--space-2);">
+      <p class="label" style="margin-bottom:var(--space-3); color:var(--color-primary-dark);">
+        Dados do bezerro nascido
+      </p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
+        <div class="form-group">
+          <label for="brinco_bezerro">Brinco do bezerro <span style="color:var(--color-danger);">*</span></label>
+          <input id="brinco_bezerro" type="text" name="brinco_bezerro" class="form-input"
+                 maxlength="50" placeholder="Ex: B-042" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="sexo_bezerro">Sexo <span style="color:var(--color-danger);">*</span></label>
+          <select id="sexo_bezerro" name="sexo_bezerro" class="form-input">
+            <option value="">— selecione —</option>
+            <option value="M">Macho</option>
+            <option value="F">Fêmea</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size:var(--text-xs); color:var(--color-ink-tertiary); margin:var(--space-2) 0 0;">
+        O bezerro será cadastrado automaticamente com a data de nascimento igual à data de parto e mãe vinculada.
+      </p>
+    </div>
+
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
       <div class="form-group">
         <label for="touro_id">Touro (rebanho)</label>
@@ -164,33 +227,94 @@
 {% if eventos %}
 <div class="timeline">
   {% for e in eventos %}
+  {# e: id, data_cob, data_parto, resultado, touro_brinco, touro_externo,
+         diagnostico, data_diagnostico, data_parto_prevista #}
+  {% set dg = e[6] or 'pendente' %}
   <div class="timeline-item">
     <div class="timeline-dot {{ e[3] }}"></div>
     <div class="timeline-card">
+
+      <!-- Cabeçalho do evento -->
       <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:var(--space-2);">
         <div>
           <span class="label">Cobertura</span>
           <div style="font-size:var(--text-base); font-weight:var(--weight-semibold);">{{ e[1] }}</div>
         </div>
-        {% if e[3] == 'vivo' %}
-          <span class="badge badge-success">Vivo</span>
-        {% elif e[3] == 'natimorto' %}
-          <span class="badge badge-warning">Natimorto</span>
-        {% else %}
-          <span class="badge badge-danger">Aborto</span>
-        {% endif %}
+        <div style="display:flex; gap:var(--space-2); align-items:center; flex-wrap:wrap;">
+          <!-- Badge resultado -->
+          {% if e[3] == 'vivo' %}
+            <span class="badge badge-success">Vivo</span>
+          {% elif e[3] == 'natimorto' %}
+            <span class="badge badge-warning">Natimorto</span>
+          {% else %}
+            <span class="badge badge-danger">Aborto</span>
+          {% endif %}
+          <!-- Badge diagnóstico -->
+          {% if dg == 'positivo' %}
+            <span class="badge badge-success">DG+</span>
+          {% elif dg == 'negativo' %}
+            <span class="badge badge-neutral">DG−</span>
+          {% else %}
+            <span class="badge badge-neutral">DG pendente</span>
+          {% endif %}
+        </div>
       </div>
+
+      <!-- Detalhes: parto, touro, data prevista -->
       <div style="display:flex; flex-wrap:wrap; gap:var(--space-4); margin-top:var(--space-3);
                   font-size:var(--text-sm); color:var(--color-ink-secondary);">
         {% if e[2] %}
           <span>🐄 Parto: <strong style="color:var(--color-ink);">{{ e[2] }}</strong></span>
+        {% elif e[8] and dg == 'positivo' %}
+          <span data-parto-previsto="{{ e[8] }}">
+            🐣 Previsto: <strong style="color:var(--color-ink);" class="parto-previsto-label">{{ e[8] }}</strong>
+            <span class="parto-countdown badge" style="margin-left:var(--space-2);"></span>
+          </span>
         {% endif %}
         {% if e[4] or e[5] %}
           <span>🐂 Touro: <strong style="color:var(--color-ink);">{{ e[4] or e[5] }}</strong></span>
         {% else %}
           <span style="color:var(--color-ink-tertiary);">Touro não informado</span>
         {% endif %}
+        {% if e[7] %}
+          <span>🔬 DG em: <strong style="color:var(--color-ink);">{{ e[7] }}</strong></span>
+        {% endif %}
       </div>
+
+      <!-- Formulário inline de DG (apenas se parto ainda não ocorreu) -->
+      {% if not e[2] %}
+      <div class="dg-form">
+        <form method="POST"
+              action="{{ url_for('operacional.registrar_diagnostico', rep_id=e[0]) }}"
+              style="display:flex; flex-wrap:wrap; gap:var(--space-3); align-items:flex-end; width:100%;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="vaca_id" value="{{ animal[0] }}">
+
+          <div>
+            <label class="label" style="margin-bottom:var(--space-1);">Diagnóstico de Prenhez</label>
+            <div style="display:flex; gap:var(--space-3);">
+              <label style="display:flex; align-items:center; gap:var(--space-1); cursor:pointer;">
+                <input type="radio" name="diagnostico" value="positivo"
+                       {% if dg == 'positivo' %}checked{% endif %}> Positivo
+              </label>
+              <label style="display:flex; align-items:center; gap:var(--space-1); cursor:pointer;">
+                <input type="radio" name="diagnostico" value="negativo"
+                       {% if dg == 'negativo' %}checked{% endif %}> Negativo
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="label" style="margin-bottom:var(--space-1);">Data do DG</label>
+            <input type="date" name="data_diagnostico" class="form-input"
+                   value="{{ e[7] or '' }}" required style="width:auto;">
+          </div>
+
+          <button type="submit" class="btn btn-secondary btn-sm">Salvar DG</button>
+        </form>
+      </div>
+      {% endif %}
+
     </div>
   </div>
   {% endfor %}
@@ -201,4 +325,51 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // Bloco bezerro
+  const selResultado = document.getElementById('resultado');
+  const inpDataParto = document.getElementById('data_parto');
+  const blocoBezerro = document.getElementById('bloco-bezerro');
+  const inpBrinco    = document.getElementById('brinco_bezerro');
+  const selSexo      = document.getElementById('sexo_bezerro');
+
+  function toggleBezerro() {
+    const mostrar = selResultado.value === 'vivo' && inpDataParto.value;
+    blocoBezerro.style.display = mostrar ? '' : 'none';
+    inpBrinco.required = mostrar;
+    selSexo.required   = mostrar;
+  }
+  selResultado.addEventListener('change', toggleBezerro);
+  inpDataParto.addEventListener('change', toggleBezerro);
+  toggleBezerro();
+
+  // Countdown de parto previsto
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  document.querySelectorAll('[data-parto-previsto]').forEach(function (el) {
+    const partes = el.dataset.partoPrevisto.split('-');
+    const dt = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+    const dias = Math.round((dt - hoje) / 86400000);
+    const badge = el.querySelector('.parto-countdown');
+    if (!badge) return;
+    if (dias < 0) {
+      badge.textContent = 'Atrasado';
+      badge.className = 'parto-countdown badge badge-danger';
+    } else if (dias === 0) {
+      badge.textContent = 'Hoje';
+      badge.className = 'parto-countdown badge badge-danger';
+    } else if (dias <= 14) {
+      badge.textContent = dias + 'd';
+      badge.className = 'parto-countdown badge badge-warning';
+    } else {
+      badge.textContent = dias + 'd';
+      badge.className = 'parto-countdown badge badge-success';
+    }
+  });
+}());
+</script>
 {% endblock %}

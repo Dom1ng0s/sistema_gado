@@ -151,6 +151,9 @@ def db_setup():
             touro_id INT NULL,
             touro_externo VARCHAR(200) NULL,
             data_cobertura DATE NOT NULL,
+            diagnostico ENUM('pendente','positivo','negativo') DEFAULT 'pendente',
+            data_diagnostico DATE NULL,
+            data_parto_prevista DATE NULL,
             data_parto DATE NULL,
             resultado ENUM('vivo','natimorto','aborto') NOT NULL,
             user_id INT NOT NULL,
@@ -328,6 +331,22 @@ def db_setup():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE
         )""")
+
+        cursor.execute("""
+        CREATE VIEW vw_partos_previstos AS
+        SELECT
+            r.id, r.user_id, r.vaca_id,
+            v.brinco AS vaca_brinco,
+            r.data_cobertura,
+            r.data_parto_prevista,
+            r.diagnostico,
+            DATEDIFF(r.data_parto_prevista, CURDATE()) AS dias_restantes
+        FROM reproducao r
+        JOIN animais v ON r.vaca_id = v.id AND v.deleted_at IS NULL
+        WHERE r.diagnostico = 'positivo'
+          AND r.data_parto IS NULL
+          AND r.data_parto_prevista IS NOT NULL
+        """)
 
         cursor.execute("""
         CREATE VIEW vw_resultado_lote AS

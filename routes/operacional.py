@@ -407,12 +407,18 @@ def reproducao_animal(id_animal):
     animal = animal_repository.get_animal_by_id(id_animal, current_user.id)
     if not animal:
         return redirect(url_for('operacional.painel'))
-    eventos   = reproducao_repository.get_reproducao_by_vaca(id_animal, current_user.id)
-    stats     = animal_repository.get_historico_reproducao(id_animal, current_user.id)
-    machos    = animal_repository.get_animais_ativos_por_sexo(current_user.id, 'M')
+    eventos          = reproducao_repository.get_reproducao_by_vaca(id_animal, current_user.id)
+    stats            = animal_repository.get_historico_reproducao(id_animal, current_user.id)
+    machos           = animal_repository.get_animais_ativos_por_sexo(current_user.id, 'M')
+    partos_previstos = []
+    try:
+        partos_previstos = reproducao_repository.get_partos_previstos(current_user.id, dias=60)
+    except Exception:
+        pass
     return render_template('animal_reproducao.html',
                            animal=animal, eventos=eventos,
-                           stats=stats, machos=machos)
+                           stats=stats, machos=machos,
+                           partos_previstos=partos_previstos)
 
 
 @operacional_bp.route('/reproducao', methods=['POST'])
@@ -476,6 +482,37 @@ def registrar_reproducao():
     from flask import flash
     flash('Evento reprodutivo registrado com sucesso.', 'sucesso')
     return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))
+
+
+@operacional_bp.route('/reproducao/<int:rep_id>/diagnostico', methods=['POST'])
+@login_required
+def registrar_diagnostico(rep_id):
+    from flask import flash
+    erros = validate(request.form, [
+        ('diagnostico',      {'required': True,  'choices': ['positivo', 'negativo'], 'label': 'Diagnóstico'}),
+        ('data_diagnostico', {'required': True,  'type': 'date',                      'label': 'Data do DG'}),
+    ])
+    id_animal = request.form.get('vaca_id', type=int)
+
+    if erros:
+        for e in erros:
+            flash(e, 'erro')
+    else:
+        try:
+            reproducao_repository.update_diagnostico(
+                rep_id,
+                current_user.id,
+                request.form.get('diagnostico'),
+                request.form.get('data_diagnostico'),
+            )
+            flash('Diagnóstico registrado com sucesso.', 'sucesso')
+        except Exception as e:
+            logger.error(f"Erro DG {rep_id}: {e}", exc_info=True)
+            flash('Erro ao registrar diagnóstico.', 'erro')
+
+    if id_animal:
+        return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))
+    return redirect(url_for('operacional.painel'))
 
 
 @operacional_bp.route('/rebanho/ranking-touros')
