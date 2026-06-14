@@ -1,14 +1,37 @@
-# Sistema de Gestão de Gado (SGG)
+# 🐄 Sistema de Gestão de Gado (SGG)
 
-**ERP Zootécnico de alta performance para pecuária de corte**
+**ERP zootécnico de alta performance para pecuária de corte**
+
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://mysql.com)
+[![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)](https://sistemadogado.up.railway.app)
+[![License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](LICENSE)
 
 Solução web para pecuaristas que precisam controlar rebanho, calcular **GMD (Ganho Médio Diário)**, gerenciar pastos, rastrear hereditariedade e acompanhar o **fluxo de caixa** da fazenda — tudo em um só lugar, com lógica de cálculo delegada ao banco de dados para máxima performance.
 
 **Acesso online:** [sistemadogado.up.railway.app](https://sistemadogado.up.railway.app/)
 
+![Demo do sistema navegando entre dashboard, rebanho, financeiro, pastos e analytics](photos/demo.gif)
+
 ---
 
-## Capturas de Tela
+## Índice
+
+1. [Capturas de tela](#capturas-de-tela)
+2. [O problema que este projeto resolve](#o-problema-que-este-projeto-resolve)
+3. [Funcionalidades](#funcionalidades)
+4. [Requisitos](#requisitos)
+5. [Instalação e execução](#instalação-e-execução)
+6. [Como usar](#como-usar)
+7. [Testes](#testes)
+8. [Arquitetura](#arquitetura)
+9. [Deploy](#deploy-railway)
+10. [Licença](#licença)
+
+---
+
+## Capturas de tela
 
 | Dashboard Financeiro | Análise Zootécnica (GMD) | Analytics do Rebanho |
 |---|---|---|
@@ -17,11 +40,11 @@ Solução web para pecuaristas que precisam controlar rebanho, calcular **GMD (G
 
 ---
 
-## O Problema que Este Projeto Resolve
+## O problema que este projeto resolve
 
 Produtores rurais dependem de indicadores críticos que sistemas genéricos não calculam bem:
 
-- **GMD (Ganho Médio Diário):** quanto cada animal está ganhando de peso por dia. Calculado cruzando pesagens históricas — operação custosa se feita no Python, leve se feita no banco.
+- **GMD (Ganho Médio Diário):** quanto cada animal está ganhando de peso por dia — operação custosa se feita no Python, leve se feita no banco.
 - **Fluxo de Caixa Real:** receitas e despesas unificadas (compra/venda de gado, medicações, vacinações, custos fixos) em uma única visão financeira anual.
 - **Gestão de Pastos:** controle de módulos, ocupação por lote, lotação em UA e dias de descanso por módulo.
 - **Hereditariedade:** rastreio de reprodução, progenitores e ranking de touros por GMD médio dos filhos.
@@ -31,93 +54,68 @@ O SGG resolve isso com uma abordagem **Performance-First**: a lógica pesada fic
 
 ---
 
-## Arquitetura
+## Funcionalidades
 
-![Arquitetura SGG](photos/SGG-Arch.png)
+### Rebanho
+- Cadastro de animais com brinco, sexo, raça, data de compra ou data de nascimento (para animais nascidos na fazenda)
+- Pesagem individual e **pesagem em lote** (todos os animais de uma vez)
+- GMD individual calculado via CTE + window functions no banco
+- Filtros por status (ativo/vendido/lixeira), sexo, raça e lote
+- Soft delete com lixeira e restauração
+- Venda de animais com registro de peso e valor de venda
+- Exportação do rebanho em **CSV** (com GMD e raça incluídos)
 
-### Inteligência no Banco de Dados (Views SQL)
+### Financeiro
+- Fluxo de caixa anual consolidado (compras, vendas, medicações, vacinações, custos operacionais)
+- Agendamento de contas a pagar
+- Custos operacionais por categoria (Fixo/Variável)
+- Vacinações em lote com custo por dose
+- Simulador de custo de produção
+- Geração de **relatório PDF** server-side via Playwright
 
-Em vez de trazer registros para o Python calcular, o SGG usa **Views otimizadas** — o banco entrega o dado agregado pronto:
+### Pastos
+- CRUD de pastos e módulos
+- Controle de ocupação (entrada/saída de lotes por módulo)
+- Ranking de GMD por módulo
+- Cálculo de dias de descanso por módulo
 
-| View | Finalidade |
-|---|---|
-| `v_gmd_analitico` | GMD por animal (CTE + window functions) |
-| `v_fluxo_caixa` | Fluxo de caixa anual consolidado |
-| `vw_ocupacao_atual` | Módulos com ocupação ativa, UA vs capacidade |
-| `vw_dias_descanso` | Módulos livres e dias desde última saída |
-| `vw_gmd_por_modulo` | GMD médio dos animais por módulo |
-| `vw_gmd_por_touro` | Ranking de touros por GMD médio dos filhos |
-| `vw_historico_vaca` | Estatísticas reprodutivas por vaca |
-| `vw_saldo_estoque` | Saldo atual por produto com flag de estoque mínimo |
+### Hereditariedade
+- Registro de coberturas e partos
+- Progênie por animal (pai e mãe)
+- Ranking de touros por GMD médio dos filhos
 
-### Repository Pattern
+### Estoque
+- Produtos por categoria (medicamento, vacina, suplemento, mineral, outro)
+- Movimentações de entrada e saída com rastreio de lote e validade
+- Alertas automáticos de estoque mínimo via `vw_saldo_estoque`
 
-Queries centralizadas em `repositories/` — as rotas nunca escrevem SQL diretamente:
-
-```
-repositories/
-├── animal_repository.py      # rebanho, progenitores, progênie, reprodução
-├── financeiro_repository.py  # fluxo de caixa, agendamentos, custos
-├── pasto_repository.py       # pastos, módulos, ocupações, GMD por módulo
-├── reproducao_repository.py  # coberturas, partos, ranking de touros
-├── estoque_repository.py     # produtos, movimentações, saldo
-└── configuracao_repository.py
-```
-
-### Escalabilidade
-
-- **Server-Side Pagination:** `LIMIT/OFFSET` no banco — funciona mesmo com milhares de animais.
-- **Índices Compostos:** `idx_pesagens_otimizada` e `idx_custos_busca` para buscas e filtros instantâneos.
-- **Connection Pooling:** pool de conexões MySQL para evitar overhead de reconexão por request.
-
-### Segurança
-
-- Hash de senha com Werkzeug Security (`generate_password_hash` / `check_password_hash`)
-- Proteção de rotas via `@login_required` e validação de `user_id` em todas as queries (multi-tenant)
-- Proteção CSRF via Flask-WTF em formulários de mutação
-- Rate limiting via Flask-Limiter em rotas sensíveis
-- SQL parametrizado em 100% das queries — sem interpolação de strings
-- Variáveis sensíveis isoladas em `.env` (nunca commitadas)
+### Analytics
+- Gráficos de distribuição de peso, sexo e GMD do rebanho (ECharts + Chart.js)
 
 ---
 
-## Stack
-
-| Camada | Tecnologia |
-|---|---|
-| Linguagem | Python 3.10+ |
-| Framework Web | Flask 3.x |
-| Banco de Dados | MySQL 8.0 |
-| Queries | MySQL Connector/Python — SQL puro, sem ORM |
-| Frontend | HTML5, CSS3 responsivo, ECharts, Chart.js |
-| PDF | Playwright (geração server-side) |
-| Autenticação | Flask-Login |
-| Segurança | Flask-WTF (CSRF), Flask-Limiter, Werkzeug |
-| Testes | Pytest |
-| Deploy | Railway (Gunicorn) |
-
----
-
-## Módulos do Sistema
-
-| Módulo | Funcionalidades |
-|---|---|
-| **Rebanho** | Cadastro de animais, histórico de pesagens, GMD individual, soft delete, lixeira |
-| **Financeiro** | Fluxo de caixa, agendamentos, custos operacionais, vacinações em lote, simulador, relatório PDF |
-| **Pastos** | CRUD de pastos/módulos, controle de ocupação, ranking GMD por módulo, dias de descanso |
-| **Hereditariedade** | Registro de coberturas e partos, progênie por animal, ranking de touros |
-| **Estoque** | Produtos por categoria, movimentações de entrada/saída, alertas de estoque mínimo |
-| **Analytics** | Gráficos de distribuição de peso, sexo e GMD do rebanho |
-| **Configurações** | Perfil do usuário, centros de custo, metas zootécnicas |
-
----
-
-## Como Rodar Localmente
-
-### Pré-requisitos
+## Requisitos
 
 - Python 3.10+
-- MySQL Server 8.0 (local ou na nuvem — testado no Aiven)
+- MySQL Server 8.0 (local ou na nuvem — testado no Aiven e Railway)
+- Playwright (apenas para geração de PDF)
+
+**Dependências principais** (via `requirements.txt`):
+
+| Pacote | Versão |
+|---|---|
+| Flask | 3.1.2 |
+| Flask-Login | 0.6.3 |
+| Flask-WTF | 1.2.2 |
+| Flask-Limiter | 4.1.1 |
+| mysql-connector-python | 9.5.0 |
+| playwright | 1.60.0 |
+| gunicorn | 23.0.0 |
+| python-dotenv | 1.2.1 |
+
+---
+
+## Instalação e execução
 
 ### 1. Clone o repositório
 
@@ -137,12 +135,7 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 
 ```bash
 pip install -r requirements.txt
-```
-
-Para geração de PDF, instale o browser do Playwright:
-
-```bash
-playwright install chromium
+playwright install chromium   # necessário apenas para geração de PDF
 ```
 
 ### 4. Configure o ambiente
@@ -189,6 +182,35 @@ Acesse em: **http://localhost:5000**
 
 ---
 
+## Como usar
+
+### Login e primeiro acesso
+
+Acesse `/login` e entre com suas credenciais. Se usou `seed_db.py`, o usuário padrão é `admin` / `admin123`. Ao entrar pela primeira vez, configure o nome da fazenda em **Configurações**.
+
+### Cadastrando um animal
+
+1. Acesse **Rebanho → Novo Animal**
+2. Preencha brinco, sexo, raça e data de compra **ou** data de nascimento (para animais da própria fazenda)
+3. Informe o peso inicial e valor por arroba
+4. Salve — o animal aparece no painel com status **Ativo**
+
+### Registrando pesagens
+
+- **Individual:** clique no animal → **Pesar**
+- **Em lote:** menu **Pesagem em Lote** → selecione animais → informe o peso de cada um → salve em uma única transação
+
+### Fluxo financeiro
+
+Acesse **Financeiro** para ver o fluxo de caixa anual. Adicione custos operacionais em **Custos**, agende contas em **Agendamentos** e aplique vacinações em lote em **Vacinações**. Para gerar o relatório em PDF, clique em **Exportar PDF** no dashboard financeiro.
+
+### Exportação de dados
+
+- **CSV do rebanho:** `GET /api/v1/export/animais.csv`
+- **CSV financeiro:** `GET /api/v1/export/financeiro.csv`
+
+---
+
 ## Testes
 
 Os testes requerem um banco MySQL local com usuário dedicado:
@@ -206,68 +228,52 @@ pytest tests/test_auth.py                           # módulo específico
 pytest tests/test_auth.py::test_login_sucesso       # teste único
 ```
 
----
+### Cobertura dos testes
 
-## Deploy (Railway)
-
-O projeto está publicado em **[sistemadogado.up.railway.app](https://sistemadogado.up.railway.app/)** via [Railway](https://railway.app/).
-
-### Configuração do deploy
-
-O servidor de produção usa Gunicorn (definido em `Procfile` e `railway.toml`):
-
-```
-web: gunicorn app:app
-```
-
-### Variáveis de ambiente no Railway
-
-Configure as seguintes variáveis no painel do Railway (mesmas do `.env-example`):
-
-| Variável | Descrição |
+| Arquivo | O que cobre |
 |---|---|
-| `DB_HOST` | Host do MySQL (ex: instância Aiven ou Railway MySQL) |
-| `DB_PORT` | Porta (padrão: 3306) |
-| `DB_USER` | Usuário do banco |
-| `DB_PASSWORD` | Senha do banco |
-| `DB_NAME` | Nome do banco de dados |
-| `SECRET_KEY` | Chave secreta Flask — gere com `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `MAIL_SERVER` | Servidor SMTP (ex: `smtp.gmail.com`) |
-| `MAIL_PORT` | Porta SMTP (ex: `587`) |
-| `MAIL_USERNAME` | Email SMTP |
-| `MAIL_PASSWORD` | Senha de app Gmail (não a senha da conta) |
-| `MAIL_FROM` | Remetente exibido nos emails |
-
-### Banco de dados em produção
-
-Após o primeiro deploy, execute o script de inicialização do banco uma única vez via Railway CLI ou console:
-
-```bash
-python init_db.py
-```
+| `test_auth.py` | Carregamento da página de login, login com sucesso, login com senha errada, acesso a rota protegida sem sessão |
+| `test_operacional.py` | Cadastro de animal, brinco duplicado, venda, animal nascido na fazenda, validação sem data, pesagem em lote (GET/POST), exportação CSV com raça, filtro por raça no painel |
+| `test_financeiro.py` | Acesso ao dashboard financeiro, lançamento de custo operacional, simulador de custo |
+| `test_estoque.py` | CRUD de produtos e movimentações de estoque |
+| `test_pastos.py` | CRUD de pastos e módulos, controle de ocupação |
+| `test_reproducao.py` | Registro de coberturas e partos |
+| `test_repositories.py` | Funções de repositório isoladas do contexto HTTP |
+| `test_tenant_isolation.py` | Isolamento multi-tenant: painel não exibe animais de outro usuário, bloqueio de venda/pesagem/medicação/exclusão/restauração de animais alheios via HTTP |
 
 ---
 
-## Estrutura do Projeto
+## Arquitetura
+
+![Arquitetura SGG](photos/SGG-Arch.png)
+
+### Estrutura de pastas
 
 ```
 sistema_gado/
 ├── app.py                    # Factory e registro de blueprints
 ├── db_config.py              # Pool de conexões MySQL
-├── extensions.py             # Rate limiter
+├── extensions.py             # Rate limiter (Flask-Limiter)
 ├── init_db.py                # DDL: tabelas, views, índices
 ├── seed_db.py                # Dados de demonstração
 ├── models.py                 # User model (Flask-Login)
 ├── routes/                   # Blueprints por domínio
-│   ├── auth.py
+│   ├── auth.py               # Login, logout, recuperação de senha
 │   ├── operacional.py        # Rebanho, pesagens, hereditariedade
-│   ├── financeiro.py
-│   ├── pastos.py
-│   ├── estoque.py
-│   ├── configuracoes.py
-│   ├── api.py                # Endpoints JSON
-│   └── validators.py
+│   ├── financeiro.py         # Fluxo de caixa, custos, PDF
+│   ├── pastos.py             # Pastos, módulos, ocupações
+│   ├── estoque.py            # Produtos, movimentações
+│   ├── configuracoes.py      # Perfil e configurações da fazenda
+│   ├── api.py                # Endpoints JSON + exportação CSV
+│   └── validators.py         # Validação centralizada de formulários
 ├── repositories/             # Toda query SQL fica aqui
+│   ├── animal_repository.py
+│   ├── financeiro_repository.py
+│   ├── pasto_repository.py
+│   ├── reproducao_repository.py
+│   ├── estoque_repository.py
+│   ├── configuracao_repository.py
+│   └── auth_repository.py
 ├── utils/
 │   └── email_service.py      # Envio de código de recuperação de senha
 ├── templates/                # Jinja2
@@ -277,9 +283,103 @@ sistema_gado/
 └── tests/
 ```
 
+### Views SQL (inteligência no banco)
+
+Em vez de trazer registros brutos para o Python calcular, o SGG usa Views otimizadas — o banco entrega o dado agregado pronto:
+
+| View | Finalidade |
+|---|---|
+| `v_gmd_analitico` | GMD por animal (CTE + window functions) |
+| `v_fluxo_caixa` | Fluxo de caixa anual consolidado |
+| `vw_ocupacao_atual` | Módulos com ocupação ativa, UA vs capacidade |
+| `vw_dias_descanso` | Módulos livres e dias desde última saída |
+| `vw_gmd_por_modulo` | GMD médio dos animais por módulo |
+| `vw_gmd_por_touro` | Ranking de touros por GMD médio dos filhos |
+| `vw_historico_vaca` | Estatísticas reprodutivas por vaca |
+| `vw_saldo_estoque` | Saldo atual por produto com flag de estoque mínimo |
+
+### Repository Pattern
+
+Queries centralizadas em `repositories/` — as rotas nunca escrevem SQL diretamente:
+
+```
+repositories/
+├── animal_repository.py      # rebanho, progenitores, progênie, reprodução
+├── financeiro_repository.py  # fluxo de caixa, agendamentos, custos
+├── pasto_repository.py       # pastos, módulos, ocupações, GMD por módulo
+├── reproducao_repository.py  # coberturas, partos, ranking de touros
+├── estoque_repository.py     # produtos, movimentações, saldo
+└── configuracao_repository.py
+```
+
+### Escalabilidade
+
+- **Server-Side Pagination:** `LIMIT/OFFSET` no banco — funciona mesmo com milhares de animais
+- **Índices Compostos:** `idx_pesagens_otimizada` e `idx_custos_busca` para buscas e filtros instantâneos
+- **Connection Pooling:** pool de conexões MySQL para evitar overhead de reconexão por request
+
+### Segurança
+
+- Hash de senha com Werkzeug Security
+- Proteção de rotas via `@login_required` e validação de `user_id` em todas as queries (multi-tenant)
+- Proteção CSRF via Flask-WTF em formulários de mutação
+- Rate limiting via Flask-Limiter em rotas sensíveis
+- SQL parametrizado em 100% das queries — sem interpolação de strings
+- Variáveis sensíveis isoladas em `.env` (nunca commitadas)
+
+### Multi-tenant
+
+Todo SELECT filtra por `user_id` da sessão — um usuário nunca acessa dados de outro. Os testes de `test_tenant_isolation.py` verificam isso em nível HTTP para cada operação sensível (visualizar, vender, pesar, medicar, excluir, restaurar).
+
+---
+
+## Deploy (Railway)
+
+O projeto está publicado em **[sistemadogado.up.railway.app](https://sistemadogado.up.railway.app/)** via [Railway](https://railway.app/).
+
+O servidor de produção usa Gunicorn (definido em `Procfile` e `railway.toml`):
+
+```
+web: gunicorn app:app
+```
+
+### Variáveis de ambiente no Railway
+
+Configure as seguintes variáveis no painel do Railway:
+
+| Variável | Descrição |
+|---|---|
+| `DB_HOST` | Host do MySQL (ex: instância Aiven ou Railway MySQL) |
+| `DB_PORT` | Porta (padrão: `3306`) |
+| `DB_USER` | Usuário do banco |
+| `DB_PASSWORD` | Senha do banco |
+| `DB_NAME` | Nome do banco de dados |
+| `SECRET_KEY` | Chave secreta Flask — gere com `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `MAIL_SERVER` | Servidor SMTP (ex: `smtp.gmail.com`) |
+| `MAIL_PORT` | Porta SMTP (ex: `587`) |
+| `MAIL_USERNAME` | Email SMTP |
+| `MAIL_PASSWORD` | Senha de app Gmail |
+| `MAIL_FROM` | Remetente exibido nos emails |
+
+Após o primeiro deploy, inicialize o banco via Railway CLI:
+
+```bash
+python init_db.py
+```
+
+---
+
+## Licença
+
+Distribuído sob a licença MIT. Veja o arquivo `LICENSE` para detalhes.
+
 ---
 
 ## Autor
 
-**Davi Domingos de Oliveira**  
+**Davi Domingos de Oliveira**
 Estudante de Ciência da Computação — UFAL | Backend Developer
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/davidomingosdeoliveira/)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/Dom1ng0s)
+[![Email](https://img.shields.io/badge/Email-D14836?style=flat&logo=gmail&logoColor=white)](mailto:odomingosdavi@gmail.com)
