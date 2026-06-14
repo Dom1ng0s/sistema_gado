@@ -23,6 +23,7 @@
       <span style="font-size:var(--text-xs); cursor:pointer; color:var(--color-primary); font-weight:var(--weight-medium);" onclick="abrirModalBrasil()">🇧🇷 Ver Brasil</span>
     </div>
     <a href="{{ url_for('api.relatorio_pdf') }}" class="btn btn-secondary btn-sm">Relatório PDF</a>
+    <a href="{{ url_for('api.export_animais_csv') }}" class="btn btn-secondary btn-sm">Exportar CSV</a>
     <a href="{{ url_for('operacional.vacinacao_coletiva') }}" class="btn btn-accent btn-sm">💉 Vacina em Lote</a>
     <a href="{{ url_for('operacional.cadastro_lote') }}" class="btn btn-secondary">+ Lote</a>
     <a href="{{ url_for('operacional.cadastro') }}" class="btn btn-primary">+ Novo Animal</a>
@@ -61,6 +62,24 @@
 
 </div>
 
+<!-- ── Alertas sanitários ─────────────────────────────── -->
+{% if alertas_sanitarios %}
+<div style="display:flex; flex-direction:column; gap:var(--space-2); margin-bottom:var(--space-4);">
+  {% for p in alertas_sanitarios %}
+  <div style="display:flex; align-items:center; gap:var(--space-3); padding:var(--space-3) var(--space-4);
+              background:var(--color-warning-bg); border-left:3px solid var(--color-accent);
+              border-radius:var(--radius-sm);">
+    <span style="font-size:1.2rem;">💉</span>
+    <div style="flex:1;">
+      <span style="font-weight:var(--weight-semibold);">{{ p[1] }}</span>
+      <span style="color:var(--color-ink-secondary); margin-left:var(--space-2);">· vence em {{ p[2] }}</span>
+    </div>
+    <a href="{{ url_for('sanitario.lista_protocolos') }}" class="btn btn-accent btn-sm">Ver calendário</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <!-- ── Alertas de GMD ──────────────────────────────────── -->
 <div id="alertas-gmd" style="display:flex; flex-direction:column; gap:var(--space-2); margin-bottom:var(--space-6);"></div>
 
@@ -68,12 +87,13 @@
 <form action="{{ url_for('operacional.painel') }}" method="GET"
       style="display:flex; flex-wrap:wrap; gap:var(--space-2); margin-bottom:var(--space-4); align-items:center;">
   <input type="hidden" name="status" value="{{ status }}">
+  <input type="hidden" name="raca" value="{{ raca_filtro }}">
   <input type="text" name="busca" class="form-input"
          placeholder="Buscar pelo número do brinco..."
          value="{{ busca }}"
          style="flex:1; min-width:180px;">
   <button type="submit" class="btn btn-secondary btn-sm">🔍 Buscar</button>
-  {% if busca or status != 'todos' %}
+  {% if busca or status != 'todos' or raca_filtro %}
     <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">Limpar</a>
   {% endif %}
 </form>
@@ -81,12 +101,21 @@
 <!-- ── Filtros de status ───────────────────────────────── -->
 <div style="display:flex; flex-wrap:wrap; gap:var(--space-2); align-items:center; margin-bottom:var(--space-5);">
   <span class="label">Exibir:</span>
-  <a href="{{ url_for('operacional.painel', status='todos',    busca=busca) }}"
+  <a href="{{ url_for('operacional.painel', status='todos',    busca=busca, raca=raca_filtro) }}"
      class="btn btn-sm {% if status == 'todos'    %}btn-primary{% else %}btn-secondary{% endif %}">Todos</a>
-  <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca) }}"
+  <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca, raca=raca_filtro) }}"
      class="btn btn-sm {% if status == 'ativos'   %}btn-primary{% else %}btn-secondary{% endif %}">Ativos</a>
-  <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca) }}"
+  <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca, raca=raca_filtro) }}"
      class="btn btn-sm {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}">Vendidos</a>
+  {% if racas_disponiveis | length > 1 %}
+  <span class="label" style="margin-left:var(--space-4);">Raça:</span>
+  <a href="{{ url_for('operacional.painel', status=status, busca=busca) }}"
+     class="btn btn-sm {% if not raca_filtro %}btn-primary{% else %}btn-secondary{% endif %}">Todas</a>
+  {% for r in racas_disponiveis %}
+  <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=r) }}"
+     class="btn btn-sm {% if raca_filtro == r %}btn-primary{% else %}btn-secondary{% endif %}">{{ r }}</a>
+  {% endfor %}
+  {% endif %}
   <a href="{{ url_for('operacional.lixeira') }}"
      class="btn btn-sm btn-ghost" style="margin-left:auto;">🗑️ Lixeira</a>
 </div>
@@ -98,6 +127,7 @@
       <tr>
         <th>Brinco</th>
         <th>Sexo</th>
+        <th>Raça</th>
         <th>Data Compra</th>
         <th>Status</th>
         <th></th>
@@ -108,9 +138,10 @@
       <tr>
         <td class="td-primary">{{ animal[1] }}</td>
         <td>{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</td>
-        <td>{{ animal[3] }}</td>
+        <td>{{ animal[3] or '—' }}</td>
+        <td>{{ animal[4] or '—' }}</td>
         <td>
-          {% if animal[5] %}
+          {% if animal[6] %}
             <span class="badge badge-neutral">Vendido</span>
           {% else %}
             <span class="badge badge-success">Ativo</span>
@@ -123,7 +154,7 @@
       </tr>
       {% else %}
       <tr>
-        <td colspan="5" style="text-align:center; padding:var(--space-10); color:var(--color-ink-tertiary);">
+        <td colspan="6" style="text-align:center; padding:var(--space-10); color:var(--color-ink-tertiary);">
           Seu rebanho está vazio ou nenhum animal encontrado.
         </td>
       </tr>
@@ -135,7 +166,7 @@
 <!-- ── Paginação ──────────────────────────────────────── -->
 <div style="display:flex; justify-content:center; align-items:center; gap:var(--space-3); margin-top:var(--space-6);">
   {% if pagina_atual > 1 %}
-    <a href="{{ url_for('operacional.painel', page=pagina_atual-1, busca=busca, status=status) }}"
+    <a href="{{ url_for('operacional.painel', page=pagina_atual-1, busca=busca, status=status, raca=raca_filtro) }}"
        class="btn btn-secondary btn-sm">&laquo; Anterior</a>
   {% else %}
     <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">&laquo; Anterior</span>
@@ -146,7 +177,7 @@
   </span>
 
   {% if pagina_atual < total_paginas %}
-    <a href="{{ url_for('operacional.painel', page=pagina_atual+1, busca=busca, status=status) }}"
+    <a href="{{ url_for('operacional.painel', page=pagina_atual+1, busca=busca, status=status, raca=raca_filtro) }}"
        class="btn btn-secondary btn-sm">Próximo &raquo;</a>
   {% else %}
     <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">Próximo &raquo;</span>

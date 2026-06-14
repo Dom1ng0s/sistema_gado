@@ -2,7 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_required, current_user
 import math
 import logging
-from repositories import animal_repository, reproducao_repository
+from datetime import date as _date
+from repositories import animal_repository, reproducao_repository, sanitario_repository
 from routes.validators import validate
 
 operacional_bp = Blueprint('operacional', __name__)
@@ -12,19 +13,27 @@ logger = logging.getLogger(__name__)
 @login_required
 def painel():
     animais, termo, status = [], request.args.get('busca', ''), request.args.get('status', 'todos')
+    raca = request.args.get('raca', '') or None
     pg = request.args.get('page', 1, type=int)
     limit, offset = 20, (pg - 1) * 20
     total_pg = 1
+    racas_disponiveis = []
 
+    alertas_sanitarios = []
     try:
-        total = animal_repository.count_animais(current_user.id, termo, status)
-        animais = animal_repository.get_animais_paginados(current_user.id, limit, offset, termo, status)
+        racas_disponiveis = animal_repository.get_racas_distintas(current_user.id)
+        total = animal_repository.count_animais(current_user.id, termo, status, raca=raca)
+        animais = animal_repository.get_animais_paginados(current_user.id, limit, offset, termo, status, raca=raca)
         if total > 0:
             total_pg = math.ceil(total / limit)
+        alertas_sanitarios = sanitario_repository.get_vencendo_em_dias(current_user.id, dias=7)
     except Exception as e:
         logger.error(f"Erro painel: {e}", exc_info=True)
 
-    return render_template("index.html", lista_animais=animais, pagina_atual=pg, total_paginas=total_pg, busca=termo, status=status)
+    return render_template("index.html", lista_animais=animais, pagina_atual=pg,
+                           total_paginas=total_pg, busca=termo, status=status,
+                           raca_filtro=raca or '', racas_disponiveis=racas_disponiveis,
+                           alertas_sanitarios=alertas_sanitarios)
 
 @operacional_bp.route('/lixeira')
 @login_required
@@ -60,25 +69,45 @@ def cadastro():
     msg = None
     if request.method == "POST":
         errors = validate(request.form, [
-            ('brinco',       {'required': True, 'type': 'str',   'max_len': 50,   'label': 'Brinco'}),
-            ('sexo',         {'required': True, 'choices': ['M', 'F'],             'label': 'Sexo'}),
-            ('data_compra',  {'required': True, 'type': 'date',                   'label': 'Data de compra'}),
-            ('peso_compra',  {'required': True, 'type': 'float', 'min_val': 0.1,  'max_val': 2000, 'label': 'Peso de compra'}),
-            ('valor_arroba', {'required': True, 'type': 'float', 'min_val': 0.01,                  'label': 'Valor da arroba'}),
+            ('brinco',          {'required': True,  'type': 'str',   'max_len': 50,   'label': 'Brinco'}),
+            ('sexo',            {'required': True,  'choices': ['M', 'F'],             'label': 'Sexo'}),
+            ('raca',            {'required': False, 'type': 'str',   'max_len': 100,  'label': 'Raça'}),
+            ('data_nascimento', {'required': False, 'type': 'date',                   'label': 'Data de nascimento'}),
+            ('data_compra',     {'required': False, 'type': 'date',                   'label': 'Data de compra'}),
+            ('peso_compra',     {'required': False, 'type': 'float', 'min_val': 0.1,  'max_val': 2000, 'label': 'Peso de entrada'}),
+            ('valor_arroba',    {'required': False, 'type': 'float', 'min_val': 0.01,                  'label': 'Valor da arroba'}),
         ])
+
+        data_compra = request.form.get('data_compra', '').strip() or None
+        data_nascimento = request.form.get('data_nascimento', '').strip() or None
+
+        if not data_compra and not data_nascimento:
+            errors.append('Informe a data de compra (animal comprado) ou a data de nascimento (nascido na fazenda).')
+
         if errors:
             return render_template("cadastro.html", mensagem=errors[0]), 400
+
         try:
             brinco = request.form["brinco"].strip()
             sexo = request.form["sexo"]
-            data = request.form["data_compra"]
-            peso = float(request.form["peso_compra"])
-            val_arr = float(request.form["valor_arroba"])
+            raca_raw = request.form.get("raca", "").strip()
+            raca_outra = request.form.get("raca_outra", "").strip()
+            raca = raca_outra if raca_raw == '__outra__' else (raca_raw or None)
+
+            peso_str = request.form.get("peso_compra", "").strip()
+            val_arr_str = request.form.get("valor_arroba", "").strip()
+
+            peso = float(peso_str) if peso_str else None
+            val_arr = float(val_arr_str) if val_arr_str else None
+            preco_compra = (peso / 30) * val_arr if (peso and val_arr) else None
 
             if animal_repository.check_brinco_exists(brinco, current_user.id):
                 return render_template("cadastro.html", mensagem="Brinco já existe."), 400
 
-            animal_repository.cadastrar_animal(brinco, sexo, data, (peso / 30) * val_arr, peso, current_user.id)
+            animal_repository.cadastrar_animal(
+                brinco, sexo, data_compra, preco_compra, peso, current_user.id,
+                data_nascimento=data_nascimento, raca=raca,
+            )
             return render_template("cadastro.html", mensagem_ok=f"Animal {brinco} cadastrado com sucesso.")
         except Exception as e:
             logger.error(f"Erro cadastro: {e}", exc_info=True)
@@ -102,10 +131,20 @@ def detalhes(id_animal):
             'ganho_total': view[1] if view else 0,
             'dias': view[2] if view else 0,
             'gmd': "{:.3f}".format(view[3]) if view else "0.000",
-            'custo_total': f"{(float(animal[4] or 0) + sum(float(m[4] or 0) for m in meds)):.2f}",
+            'custo_total': f"{(float(animal[5] or 0) + sum(float(m[4] or 0) for m in meds)):.2f}",
         }
 
-        return render_template("detalhes.html", animal=animal, historico_peso=pesagens, historico_med=meds, indicadores=kpis)
+        # SELECT * column order after ADD COLUMN raca AFTER sexo:
+        # 0=id 1=brinco 2=sexo 3=raca 4=data_compra 5=preco_compra 6=data_venda
+        # 7=preco_venda 8=user_id 9=lote_id 10=deleted_at 11=pai_id 12=mae_id 13=data_nascimento
+        data_nasc = animal[13] if len(animal) > 13 else None
+        idade_meses = None
+        if data_nasc:
+            delta = (_date.today() - data_nasc).days
+            idade_meses = delta // 30
+
+        return render_template("detalhes.html", animal=animal, historico_peso=pesagens,
+                               historico_med=meds, indicadores=kpis, idade_meses=idade_meses)
     except Exception as e:
         logger.error(f"Erro detalhes: {e}", exc_info=True)
         return redirect(url_for('operacional.painel'))
@@ -229,7 +268,8 @@ def vacinacao_coletiva():
 
     try:
         lista_animais = animal_repository.get_animais_ativos(current_user.id)
-        return render_template('vacinacao_lote.html', animais=lista_animais)
+        nome_pre = request.args.get('protocolo', '')
+        return render_template('vacinacao_lote.html', animais=lista_animais, nome_pre=nome_pre)
     except Exception as e:
         logger.error(f"Erro carregar lote: {e}", exc_info=True)
         return redirect(url_for('operacional.painel'))
@@ -266,6 +306,9 @@ def cadastro_lote():
             data_compra = request.form["data_compra"]
             valor_arroba = float(request.form["valor_arroba"])
             sexos = request.form.getlist('sexos[]')
+            raca_raw = request.form.get("raca", "").strip()
+            raca_outra = request.form.get("raca_outra", "").strip()
+            raca = raca_outra if raca_raw == '__outra__' else (raca_raw or None)
 
             animais_data = [
                 (brinco, sexo, float(peso_txt), (float(peso_txt) / 30) * valor_arroba)
@@ -273,7 +316,7 @@ def cadastro_lote():
             ]
 
             animal_repository.cadastrar_lote(
-                current_user.id, codigo_lote, descricao, data_compra, animais_data
+                current_user.id, codigo_lote, descricao, data_compra, animais_data, raca=raca
             )
             msg = f"Lote '{codigo_lote}' salvo com {len(brincos)} animais e pesos individuais!"
         except Exception as e:
@@ -281,6 +324,67 @@ def cadastro_lote():
             msg = f"Erro ao processar lote: {e}"
 
     return render_template("cadastro_lote.html", mensagem=msg)
+
+
+@operacional_bp.route('/pesagem-lote', methods=['GET', 'POST'])
+@login_required
+def pesagem_lote():
+    lote_id = request.args.get('lote_id', type=int)
+    lotes = []
+    animais = []
+    msg = None
+
+    try:
+        lotes = animal_repository.get_lotes(current_user.id)
+
+        if request.method == 'POST':
+            animal_ids = request.form.getlist('animal_ids[]')
+            pesos = request.form.getlist('pesos[]')
+
+            if not animal_ids:
+                animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
+                return render_template('pesagem_lote.html', lotes=lotes, animais=animais,
+                                       lote_id_selecionado=lote_id,
+                                       erro="Selecione pelo menos um animal."), 400
+
+            errors = validate(request.form, [
+                ('data_pesagem', {'required': True, 'type': 'date', 'label': 'Data da pesagem'}),
+            ])
+            if errors:
+                animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
+                return render_template('pesagem_lote.html', lotes=lotes, animais=animais,
+                                       lote_id_selecionado=lote_id, erro=errors[0]), 400
+
+            pairs = []
+            for aid_str, peso_str in zip(animal_ids, pesos):
+                try:
+                    aid = int(aid_str)
+                    peso = float(peso_str)
+                    if peso <= 0:
+                        raise ValueError
+                    pairs.append((aid, peso))
+                except (ValueError, TypeError):
+                    animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
+                    return render_template('pesagem_lote.html', lotes=lotes, animais=animais,
+                                           lote_id_selecionado=lote_id,
+                                           erro="Peso inválido em um ou mais animais."), 400
+
+            inseridos, invalidos = animal_repository.registrar_pesagens_lote(
+                pairs, current_user.id, request.form['data_pesagem']
+            )
+            msg = f"{inseridos} pesagem(ns) registrada(s) com sucesso."
+            if invalidos:
+                msg += f" {len(invalidos)} animal(is) ignorado(s) (não pertence ao usuário)."
+            animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
+            return render_template('pesagem_lote.html', lotes=lotes, animais=animais,
+                                   lote_id_selecionado=lote_id, mensagem=msg)
+
+        animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
+    except Exception as e:
+        logger.error(f"Erro pesagem lote: {e}", exc_info=True)
+
+    return render_template('pesagem_lote.html', lotes=lotes, animais=animais,
+                           lote_id_selecionado=lote_id)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -317,6 +421,11 @@ def registrar_reproducao():
     from routes.validators import validate
     id_animal = request.form.get('vaca_id', type=int)
 
+    resultado      = request.form.get('resultado', '')
+    data_parto     = request.form.get('data_parto', '').strip() or None
+    brinco_bezerro = request.form.get('brinco_bezerro', '').strip() or None
+    sexo_bezerro   = request.form.get('sexo_bezerro', '').strip() or None
+
     erros = validate(request.form, [
         ('data_cobertura', {'label': 'Data de cobertura', 'required': True,  'type': 'date'}),
         ('data_parto',     {'label': 'Data de parto',     'required': False, 'type': 'date'}),
@@ -328,6 +437,12 @@ def registrar_reproducao():
 
     if not touro_id_raw and not touro_externo:
         erros.append("Informe o touro (interno ou nome externo).")
+
+    if resultado == 'vivo' and data_parto:
+        if not brinco_bezerro:
+            erros.append("Informe o brinco do bezerro nascido.")
+        if not sexo_bezerro or sexo_bezerro not in ('M', 'F'):
+            erros.append("Informe o sexo do bezerro nascido.")
 
     if not id_animal or not animal_repository.get_animal_by_id(id_animal, current_user.id):
         return redirect(url_for('operacional.painel'))
@@ -344,9 +459,20 @@ def registrar_reproducao():
         int(touro_id_raw) if touro_id_raw else None,
         touro_externo,
         request.form.get('data_cobertura'),
-        request.form.get('data_parto') or None,
-        request.form.get('resultado'),
+        data_parto,
+        resultado,
     )
+
+    if resultado == 'vivo' and data_parto and brinco_bezerro and sexo_bezerro:
+        if not animal_repository.check_brinco_exists(brinco_bezerro, current_user.id):
+            animal_repository.cadastrar_animal(
+                brinco_bezerro, sexo_bezerro,
+                data_compra=None, preco_compra=None, peso_entrada=None,
+                user_id=current_user.id,
+                data_nascimento=data_parto,
+                mae_id=id_animal,
+            )
+
     from flask import flash
     flash('Evento reprodutivo registrado com sucesso.', 'sucesso')
     return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))

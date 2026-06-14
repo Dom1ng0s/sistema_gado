@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block title %}Calendário Sanitário{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">{{ nome_fazenda_header }}</p>
+    <h1 class="page-title">Calendário Sanitário</h1>
+  </div>
+</div>
+
+{% if mensagem %}
+  {% set tipo, texto = mensagem %}
+  <div class="alert {% if tipo == 'erro' %}alert-danger{% else %}alert-success{% endif %}"
+       style="margin-bottom:var(--space-5);">
+    {{ texto }}
+  </div>
+{% endif %}
+
+<!-- ── Formulário de cadastro ─────────────────────────── -->
+<div class="card card-accent-green" style="margin-bottom:var(--space-6);">
+  <div class="card-header">
+    <h2 style="margin:0; font-size:var(--text-lg);">Novo protocolo</h2>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('sanitario.lista_protocolos') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:var(--space-4); align-items:end;">
+        <div>
+          <label class="label" for="nome">Nome do protocolo</label>
+          <input class="form-input" type="text" id="nome" name="nome"
+                 required placeholder="Ex: Vacinação Febre Aftosa">
+        </div>
+        <div>
+          <label class="label" for="intervalo_dias">Intervalo (dias)</label>
+          <input class="form-input" type="number" id="intervalo_dias" name="intervalo_dias"
+                 required min="1" placeholder="180">
+        </div>
+        <div>
+          <label class="label" for="proxima_aplicacao">Próxima aplicação</label>
+          <input class="form-input" type="date" id="proxima_aplicacao" name="proxima_aplicacao" required>
+        </div>
+      </div>
+      <div style="margin-top:var(--space-4);">
+        <label class="label" for="descricao">Descrição (opcional)</label>
+        <input class="form-input" type="text" id="descricao" name="descricao"
+               placeholder="Produtos utilizados, lote de animais, etc." maxlength="500">
+      </div>
+      <div style="margin-top:var(--space-5); text-align:right;">
+        <button type="submit" class="btn btn-primary">Salvar protocolo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Lista de protocolos ───────────────────────────── -->
+{% if protocolos %}
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4);">
+  <h2 style="margin:0;">Protocolos ativos</h2>
+  <span class="label">{{ protocolos | length }} protocolo(s)</span>
+</div>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Protocolo</th>
+        <th style="text-align:center;">Intervalo</th>
+        <th style="text-align:center;">Próxima aplicação</th>
+        <th style="text-align:center;">Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in protocolos %}
+      {% set hoje = now.date() if now is defined else none %}
+      {# dias_restantes calculado via data #}
+      <tr>
+        <td class="td-primary">
+          {{ p[1] }}
+          {% if p[2] %}<br><small style="color:var(--color-ink-secondary); font-weight:normal;">{{ p[2] }}</small>{% endif %}
+        </td>
+        <td style="text-align:center;">
+          <span class="badge badge-neutral">{{ p[3] }} dias</span>
+        </td>
+        <td style="text-align:center; font-weight:var(--weight-semibold);">
+          {{ p[4] }}
+        </td>
+        <td style="text-align:center;" data-vencimento="{{ p[4] }}">
+          <span class="badge badge-status" id="badge-{{ p[0] }}">—</span>
+        </td>
+        <td style="white-space:nowrap; display:flex; gap:var(--space-2); justify-content:flex-end;">
+          <form method="POST" action="{{ url_for('sanitario.aplicar_protocolo', protocolo_id=p[0]) }}"
+                style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary btn-sm">Aplicar agora</button>
+          </form>
+          <form method="POST" action="{{ url_for('sanitario.desativar_protocolo', protocolo_id=p[0]) }}"
+                style="display:inline;"
+                onsubmit="return confirm('Desativar protocolo {{ p[1] | e }}?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+
+<div style="text-align:center; padding:var(--space-12) var(--space-4); color:var(--color-ink-secondary);">
+  <div style="font-size:3rem; margin-bottom:var(--space-4);">💉</div>
+  <h2 style="color:var(--color-ink-secondary); margin-bottom:var(--space-2);">Nenhum protocolo cadastrado</h2>
+  <p style="color:var(--color-ink-tertiary);">
+    Cadastre protocolos para receber alertas de vencimento e registrar aplicações com um clique.
+  </p>
+</div>
+
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  document.querySelectorAll('[data-vencimento]').forEach(function (td) {
+    const partes = td.dataset.vencimento.split('-');
+    const dt = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+    const dias = Math.round((dt - hoje) / 86400000);
+    const badge = td.querySelector('.badge-status');
+    if (!badge) return;
+
+    if (dias < 0) {
+      badge.textContent = 'Vencido';
+      badge.className = 'badge badge-danger';
+    } else if (dias === 0) {
+      badge.textContent = 'Hoje';
+      badge.className = 'badge badge-danger';
+    } else if (dias <= 7) {
+      badge.textContent = dias + 'd';
+      badge.className = 'badge badge-warning';
+    } else {
+      badge.textContent = dias + 'd';
+      badge.className = 'badge badge-success';
+    }
+  });
+}());
+</script>
+{% endblock %}

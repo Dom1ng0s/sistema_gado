@@ -317,6 +317,19 @@ def db_setup():
         )""")
 
         cursor.execute("""
+        CREATE TABLE protocolos_sanitarios (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            nome VARCHAR(200) NOT NULL,
+            descricao TEXT,
+            intervalo_dias INT NOT NULL,
+            proxima_aplicacao DATE NOT NULL,
+            ativo TINYINT(1) DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        )""")
+
+        cursor.execute("""
         CREATE VIEW vw_resultado_lote AS
         SELECT
             l.id AS lote_id,
