@@ -102,6 +102,54 @@ def insert_agendamento(user_id, descricao, valor, vencimento):
         )
 
 
+# ---- RESULTADO POR LOTE (P&L) ----
+
+def get_resultado_lotes(user_id):
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT lote_id, codigo_lote, descricao, data_aquisicao, "
+            "total_animais, custo_aquisicao, receita_vendas, "
+            "custo_medicacoes, animais_vendidos, margem_bruta "
+            "FROM vw_resultado_lote "
+            "WHERE user_id = %s ORDER BY data_aquisicao DESC",
+            (user_id,)
+        )
+        return cursor.fetchall()
+
+
+def get_resultado_lote_by_id(lote_id, user_id):
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT lote_id, codigo_lote, descricao, data_aquisicao, "
+            "total_animais, custo_aquisicao, receita_vendas, "
+            "custo_medicacoes, animais_vendidos, margem_bruta "
+            "FROM vw_resultado_lote "
+            "WHERE lote_id = %s AND user_id = %s",
+            (lote_id, user_id)
+        )
+        return cursor.fetchone()
+
+
+def get_animais_por_lote(lote_id, user_id):
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT a.brinco, a.sexo, a.raca, a.data_compra, a.preco_compra, "
+            "a.data_venda, a.preco_venda, "
+            "COALESCE(m.custo_med, 0) AS custo_med, "
+            "COALESCE(g.gmd, 0) AS gmd, "
+            "COALESCE(g.peso_final, 0) AS peso_atual "
+            "FROM animais a "
+            "LEFT JOIN (SELECT animal_id, SUM(custo) AS custo_med "
+            "           FROM medicacoes WHERE deleted_at IS NULL GROUP BY animal_id) m "
+            "  ON m.animal_id = a.id "
+            "LEFT JOIN v_gmd_analitico g ON g.animal_id = a.id "
+            "WHERE a.lote_id = %s AND a.user_id = %s AND a.deleted_at IS NULL "
+            "ORDER BY a.brinco ASC",
+            (lote_id, user_id)
+        )
+        return cursor.fetchall()
+
+
 def baixar_agendamento(id_agendamento, user_id):
     """
     Operação atômica: verifica se o agendamento é pendente e pertence ao usuário,

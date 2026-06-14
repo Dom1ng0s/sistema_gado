@@ -281,6 +281,30 @@ try:
         else:
             print(f"   Alerta mae_id: {err}")
 
+    try:
+        cursor.execute("ALTER TABLE animais ADD COLUMN raca VARCHAR(100) NULL AFTER sexo")
+        print("   -> raca adicionada.")
+    except mysql.connector.Error as err:
+        if err.errno == 1060:
+            print("   -> raca já existe.")
+        else:
+            print(f"   Alerta raca: {err}")
+
+    try:
+        cursor.execute("ALTER TABLE animais ADD COLUMN data_nascimento DATE NULL AFTER mae_id")
+        print("   -> data_nascimento adicionada.")
+    except mysql.connector.Error as err:
+        if err.errno == 1060:
+            print("   -> data_nascimento já existe.")
+        else:
+            print(f"   Alerta data_nascimento: {err}")
+
+    try:
+        cursor.execute("ALTER TABLE animais MODIFY COLUMN data_compra DATE NULL")
+        print("   -> data_compra tornado nullable.")
+    except mysql.connector.Error as err:
+        print(f"   Alerta data_compra nullable: {err}")
+
     print(" Criando tabela 'reproducao'...")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS reproducao (
@@ -401,6 +425,7 @@ try:
     SELECT
         pai.id AS touro_id,
         pai.brinco AS touro_brinco,
+        pai.raca AS touro_raca,
         pai.user_id,
         COUNT(DISTINCT filho.id) AS qtd_filhos,
         ROUND(AVG(g.gmd), 3) AS gmd_medio_filhos
@@ -408,7 +433,7 @@ try:
     JOIN animais filho ON filho.pai_id = pai.id AND filho.deleted_at IS NULL
     LEFT JOIN v_gmd_analitico g ON g.animal_id = filho.id
     WHERE pai.deleted_at IS NULL
-    GROUP BY pai.id, pai.brinco, pai.user_id;
+    GROUP BY pai.id, pai.brinco, pai.raca, pai.user_id;
     """)
 
     cursor.execute("""
@@ -525,7 +550,7 @@ try:
         FROM animais WHERE data_venda IS NOT NULL AND deleted_at IS NULL
         UNION ALL
         SELECT user_id, YEAR(data_compra) as ano, 0, preco_compra, 0, 0
-        FROM animais WHERE deleted_at IS NULL
+        FROM animais WHERE deleted_at IS NULL AND data_compra IS NOT NULL
         UNION ALL
         SELECT a.user_id, YEAR(m.data_aplicacao) as ano, 0, 0, m.custo, 0
         FROM medicacoes m JOIN animais a ON m.animal_id = a.id WHERE m.deleted_at IS NULL AND a.deleted_at IS NULL
@@ -536,6 +561,40 @@ try:
     GROUP BY user_id, ano;
     """)
 
+
+    # ==============================================================================
+    # ETAPA 5.1: VIEW DE RESULTADO POR LOTE (P&L)
+    # ==============================================================================
+    print(" Criando View vw_resultado_lote...")
+    cursor.execute("""
+    CREATE OR REPLACE VIEW vw_resultado_lote AS
+    SELECT
+        l.id                                                          AS lote_id,
+        l.user_id,
+        l.codigo_lote,
+        l.descricao,
+        l.data_aquisicao,
+        COUNT(a.id)                                                   AS total_animais,
+        COALESCE(SUM(a.preco_compra), 0)                              AS custo_aquisicao,
+        COALESCE(SUM(CASE WHEN a.data_venda IS NOT NULL
+                          THEN a.preco_venda END), 0)                 AS receita_vendas,
+        COALESCE(SUM(med.custo_med), 0)                               AS custo_medicacoes,
+        COUNT(CASE WHEN a.data_venda IS NOT NULL THEN 1 END)          AS animais_vendidos,
+        COALESCE(SUM(CASE WHEN a.data_venda IS NOT NULL
+                          THEN a.preco_venda END), 0)
+          - COALESCE(SUM(a.preco_compra), 0)
+          - COALESCE(SUM(med.custo_med), 0)                           AS margem_bruta
+    FROM lotes l
+    JOIN animais a ON a.lote_id = l.id AND a.deleted_at IS NULL
+    LEFT JOIN (
+        SELECT animal_id, SUM(custo) AS custo_med
+        FROM medicacoes
+        WHERE deleted_at IS NULL
+        GROUP BY animal_id
+    ) med ON med.animal_id = a.id
+    WHERE l.deleted_at IS NULL
+    GROUP BY l.id, l.user_id, l.codigo_lote, l.descricao, l.data_aquisicao;
+    """)
 
     conn.commit()
     cursor.close()

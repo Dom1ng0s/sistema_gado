@@ -41,7 +41,9 @@ def db_setup():
             id INT AUTO_INCREMENT PRIMARY KEY,
             brinco VARCHAR(50) NOT NULL,
             sexo CHAR(1) NOT NULL,
+            raca VARCHAR(100) NULL,
             data_compra DATE NOT NULL,
+            data_nascimento DATE NULL,
             preco_compra DECIMAL(10, 2),
             data_venda DATE,
             preco_venda DECIMAL(10, 2),
@@ -97,6 +99,7 @@ def db_setup():
             codigo_lote VARCHAR(50) NOT NULL,
             descricao TEXT,
             data_aquisicao DATE,
+            deleted_at DATETIME NULL DEFAULT NULL,
             FOREIGN KEY (user_id) REFERENCES usuarios(id)
         )""")
 
@@ -312,6 +315,32 @@ def db_setup():
             FOREIGN KEY (user_id) REFERENCES usuarios(id),
             FOREIGN KEY (produto_id) REFERENCES estoque_produtos(id) ON DELETE CASCADE
         )""")
+
+        cursor.execute("""
+        CREATE VIEW vw_resultado_lote AS
+        SELECT
+            l.id AS lote_id,
+            l.user_id,
+            l.codigo_lote,
+            l.descricao,
+            l.data_aquisicao,
+            COUNT(a.id) AS total_animais,
+            COALESCE(SUM(a.preco_compra), 0) AS custo_aquisicao,
+            COALESCE(SUM(CASE WHEN a.data_venda IS NOT NULL THEN a.preco_venda END), 0) AS receita_vendas,
+            COALESCE(SUM(med.custo_med), 0) AS custo_medicacoes,
+            COUNT(CASE WHEN a.data_venda IS NOT NULL THEN 1 END) AS animais_vendidos,
+            COALESCE(SUM(CASE WHEN a.data_venda IS NOT NULL THEN a.preco_venda END), 0)
+              - COALESCE(SUM(a.preco_compra), 0)
+              - COALESCE(SUM(med.custo_med), 0) AS margem_bruta
+        FROM lotes l
+        JOIN animais a ON a.lote_id = l.id AND a.deleted_at IS NULL
+        LEFT JOIN (
+            SELECT animal_id, SUM(custo) AS custo_med
+            FROM medicacoes WHERE deleted_at IS NULL GROUP BY animal_id
+        ) med ON med.animal_id = a.id
+        WHERE l.deleted_at IS NULL
+        GROUP BY l.id, l.user_id, l.codigo_lote, l.descricao, l.data_aquisicao
+        """)
 
         cursor.execute("""
         CREATE VIEW vw_saldo_estoque AS

@@ -15,7 +15,9 @@
   </div>
   <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
     <a href="{{ url_for('financeiro.custos_operacionais') }}" class="btn btn-secondary btn-sm">+ Custo</a>
+    <a href="{{ url_for('api.export_financeiro_csv') }}?ano={{ ano_selecionado }}" class="btn btn-secondary btn-sm">Exportar CSV</a>
     <a href="{{ url_for('financeiro.agendamentos') }}" class="btn btn-accent btn-sm">📅 Contas a Pagar</a>
+    <a href="{{ url_for('financeiro.resultado_lotes') }}" class="btn btn-secondary btn-sm">P&L por Lote</a>
     <a href="{{ url_for('financeiro.simulador_custo') }}" class="btn btn-primary btn-sm">🧮 Simulador</a>
   </div>
 </div>

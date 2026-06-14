@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}P&L por Lote{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">{{ nome_fazenda_header }}</p>
+    <h1 class="page-title">Resultado por Lote</h1>
+  </div>
+  <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
+    <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-secondary btn-sm">← Financeiro</a>
+    <a href="{{ url_for('operacional.cadastro_lote') }}" class="btn btn-primary btn-sm">+ Novo Lote</a>
+  </div>
+</div>
+
+{% if lotes %}
+
+<!-- ── KPIs consolidados ────────────────────────────────── -->
+{% set total_custo    = lotes | sum(attribute=5) %}
+{% set total_receita  = lotes | sum(attribute=6) %}
+{% set total_med      = lotes | sum(attribute=7) %}
+{% set total_margem   = lotes | sum(attribute=9) %}
+
+<div class="grid-metrics" style="grid-template-columns: repeat(4, 1fr); margin-bottom:var(--space-6);">
+
+  <div class="metric-card">
+    <span class="label">Custo total de aquisição</span>
+    <div>
+      <span class="metric-value" style="font-size:var(--text-xl);">{{ total_custo | brl }}</span>
+      <span class="metric-unit">R$</span>
+    </div>
+    <div class="metric-delta flat">{{ lotes | length }} lote(s)</div>
+  </div>
+
+  <div class="metric-card">
+    <span class="label">Receita de vendas</span>
+    <div>
+      <span class="metric-value" style="font-size:var(--text-xl);">{{ total_receita | brl }}</span>
+      <span class="metric-unit">R$</span>
+    </div>
+    <div class="metric-delta flat">Animais já vendidos</div>
+  </div>
+
+  <div class="metric-card">
+    <span class="label">Custo sanitário total</span>
+    <div>
+      <span class="metric-value" style="font-size:var(--text-xl);">{{ total_med | brl }}</span>
+      <span class="metric-unit">R$</span>
+    </div>
+    <div class="metric-delta flat">Medicações acumuladas</div>
+  </div>
+
+  <div class="metric-card"
+       style="border-left: 3px solid {% if total_margem >= 0 %}var(--color-primary){% else %}var(--color-danger){% endif %};">
+    <span class="label">Margem bruta consolidada</span>
+    <div>
+      <span class="metric-value" style="font-size:var(--text-xl); color:{% if total_margem >= 0 %}var(--color-primary){% else %}var(--color-danger){% endif %};">
+        {{ total_margem | brl }}
+      </span>
+      <span class="metric-unit">R$</span>
+    </div>
+    <div class="metric-delta {% if total_margem >= 0 %}up{% else %}down{% endif %}">
+      {% if total_margem >= 0 %}Operação superavitária{% else %}Operação deficitária{% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Tabela de lotes ──────────────────────────────────── -->
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4);">
+  <h2 style="margin:0;">Lotes cadastrados</h2>
+</div>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Lote</th>
+        <th>Data aquisição</th>
+        <th style="text-align:right;">Animais</th>
+        <th style="text-align:right;">Vendidos</th>
+        <th style="text-align:right;">Custo aquisição (R$)</th>
+        <th style="text-align:right;">Receita (R$)</th>
+        <th style="text-align:right;">Custo sanitário (R$)</th>
+        <th style="text-align:right;">Margem bruta (R$)</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in lotes %}
+      {% set pct_vendidos = ((l[8] / l[4]) * 100) | round(0) | int if l[4] > 0 else 0 %}
+      <tr style="cursor:pointer;" onclick="window.location='{{ url_for('financeiro.detalhe_lote', lote_id=l[0]) }}'">
+        <td class="td-primary">
+          {{ l[1] }}
+          {% if l[2] %}<br><small style="color:var(--color-ink-secondary); font-weight:normal;">{{ l[2] }}</small>{% endif %}
+        </td>
+        <td>{{ l[3] }}</td>
+        <td style="text-align:right;">{{ l[4] }}</td>
+        <td style="text-align:right;">
+          {{ l[8] }}
+          <small style="color:var(--color-ink-tertiary);">({{ pct_vendidos }}%)</small>
+        </td>
+        <td style="text-align:right;">{{ l[5] | brl }}</td>
+        <td style="text-align:right; color:var(--color-primary); font-weight:var(--weight-semibold);">
+          {{ l[6] | brl }}
+        </td>
+        <td style="text-align:right; color:var(--color-danger);">{{ l[7] | brl }}</td>
+        <td style="text-align:right; font-weight:var(--weight-bold);
+                   color:{% if l[9] >= 0 %}var(--color-primary){% else %}var(--color-danger){% endif %};">
+          {% if l[9] >= 0 %}+{% endif %}{{ l[9] | brl }}
+        </td>
+        <td style="white-space:nowrap;">
+          <a href="{{ url_for('financeiro.detalhe_lote', lote_id=l[0]) }}"
+             class="btn btn-ghost btn-sm"
+             onclick="event.stopPropagation()">Detalhes →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+
+<div style="text-align:center; padding:var(--space-16) var(--space-4); color:var(--color-ink-secondary);">
+  <div style="font-size:3rem; margin-bottom:var(--space-4);">📦</div>
+  <h2 style="color:var(--color-ink-secondary); margin-bottom:var(--space-2);">Nenhum lote cadastrado</h2>
+  <p style="color:var(--color-ink-tertiary); margin-bottom:var(--space-6);">
+    Cadastre animais em lote para visualizar o P&L por grupo de compra.
+  </p>
+  <a href="{{ url_for('operacional.cadastro_lote') }}" class="btn btn-primary">+ Cadastrar lote</a>
+</div>
+
+{% endif %}
+
+{% endblock %}

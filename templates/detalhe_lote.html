@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block title %}Lote {{ lote[1] }}{% endblock %}
+
+{% block content %}
+
+<!-- ── Cabeçalho ─────────────────────────────────────────── -->
+<div class="page-header">
+  <div>
+    <p class="label">{{ nome_fazenda_header }}</p>
+    <h1 class="page-title">Lote {{ lote[1] }}</h1>
+    {% if lote[2] %}<p style="color:var(--color-ink-secondary); margin:0;">{{ lote[2] }}</p>{% endif %}
+  </div>
+  <div style="display:flex; gap:var(--space-2); align-items:center; flex-wrap:wrap;">
+    <a href="{{ url_for('financeiro.resultado_lotes') }}" class="btn btn-secondary btn-sm">← Todos os lotes</a>
+  </div>
+</div>
+
+<!-- ── KPIs do lote ───────────────────────────────────────── -->
+{% set pct_vendidos = ((lote[8] / lote[4]) * 100) | round(1) if lote[4] > 0 else 0 %}
+{% set custo_total  = lote[5] + lote[7] %}
+
+<div class="grid-metrics" style="grid-template-columns: repeat(4, 1fr); margin-bottom:var(--space-6);">
+
+  <div class="metric-card">
+    <span class="label">Custo de aquisição</span>
+    <div>
+      <span class="metric-value" style="font-size:var(--text-xl);">{{ lote[5] | brl }}</span>
+      <span class="metric-unit">R$</span>
+    </div>
+    <div class="metric-delta flat">{{ lote[4] }} animais · adquirido em {{ lote[3] }}</div>
+  </div>
+
+  <div class="metric-card">
+    <span class="label">Receita realizada</span>
+    <div>
+      <span class="metric-value" style="font-size:var(--text-xl); color:var(--color-primary);">{{ lote[6] | brl }}</span>
+      <span class="metric-unit">R$</span>
+    </div>
+    <div class="metric-delta flat">{{ lote[8] }} vendidos ({{ pct_vendidos }}%)</div>
+  </div>
+
+  <div class="metric-card">
+    <span class="label">Custo sanitário</span>
+    <div>
+      <span class="metric-value" style="font-size:var(--text-xl); color:var(--color-danger);">{{ lote[7] | brl }}</span>
+      <span class="metric-unit">R$</span>
+    </div>
+    <div class="metric-delta flat">Medicações acumuladas</div>
+  </div>
+
+  <div class="metric-card"
+       style="border-left: 3px solid {% if lote[9] >= 0 %}var(--color-primary){% else %}var(--color-danger){% endif %};">
+    <span class="label">Margem bruta</span>
+    <div>
+      <span class="metric-value" style="font-size:var(--text-xl); color:{% if lote[9] >= 0 %}var(--color-primary){% else %}var(--color-danger){% endif %};">
+        {% if lote[9] >= 0 %}+{% endif %}{{ lote[9] | brl }}
+      </span>
+      <span class="metric-unit">R$</span>
+    </div>
+    <div class="metric-delta {% if lote[9] >= 0 %}up{% else %}down{% endif %}">
+      Receita − Compra − Sanidade
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Barra de progresso de liquidação ──────────────────── -->
+<div style="margin-bottom:var(--space-6);">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-2);">
+    <span class="label">Liquidação do lote</span>
+    <span style="font-size:var(--text-sm); color:var(--color-ink-secondary);">
+      {{ lote[8] }} de {{ lote[4] }} animais vendidos
+    </span>
+  </div>
+  <div style="height:8px; background:var(--color-surface-raised); border-radius:4px; overflow:hidden;">
+    <div style="height:100%; width:{{ pct_vendidos }}%; background:var(--color-primary);
+                border-radius:4px; transition:width 600ms ease;"></div>
+  </div>
+</div>
+
+<!-- ── Tabela de animais ──────────────────────────────────── -->
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4);">
+  <h2 style="margin:0;">Animais do lote</h2>
+  {% if animais %}
+  <span class="label">{{ animais | length }} registro(s)</span>
+  {% endif %}
+</div>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Brinco</th>
+        <th>Sexo</th>
+        <th>Raça</th>
+        <th>Data compra</th>
+        <th style="text-align:right;">Preço compra (R$)</th>
+        <th style="text-align:right;">GMD (kg/dia)</th>
+        <th style="text-align:right;">Peso atual (kg)</th>
+        <th style="text-align:right;">Custo sanit. (R$)</th>
+        <th>Status</th>
+        <th style="text-align:right;">P&L (R$)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in animais %}
+      {% set vendido = a[5] is not none %}
+      {% set pl = (a[6] - a[4] - a[7]) if vendido else none %}
+      <tr>
+        <td class="td-primary">{{ a[0] }}</td>
+        <td>
+          {% if a[1] == 'M' %}<span class="badge badge-neutral">Macho</span>
+          {% else %}<span class="badge badge-neutral">Fêmea</span>{% endif %}
+        </td>
+        <td>{{ a[2] or '—' }}</td>
+        <td>{{ a[3] }}</td>
+        <td style="text-align:right;">{{ a[4] | brl }}</td>
+        <td style="text-align:right;">
+          {% if a[8] > 0 %}
+            <span style="font-weight:var(--weight-semibold);
+              color:{% if a[8] >= 0.6 %}var(--color-primary){% elif a[8] >= 0.4 %}var(--color-accent){% else %}var(--color-danger){% endif %};">
+              {{ '%.3f'|format(a[8]) }}
+            </span>
+          {% else %}—{% endif %}
+        </td>
+        <td style="text-align:right;">{{ a[9] | brl if a[9] > 0 else '—' }}</td>
+        <td style="text-align:right; color:var(--color-danger);">
+          {{ a[7] | brl if a[7] > 0 else '—' }}
+        </td>
+        <td>
+          {% if vendido %}
+            <span class="badge badge-success">Vendido</span>
+            <br><small style="color:var(--color-ink-tertiary);">{{ a[5] }}</small>
+          {% else %}
+            <span class="badge badge-neutral">Ativo</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right; font-weight:var(--weight-bold);">
+          {% if vendido %}
+            <span style="color:{% if pl >= 0 %}var(--color-primary){% else %}var(--color-danger){% endif %};">
+              {% if pl >= 0 %}+{% endif %}{{ pl | brl }}
+            </span>
+          {% else %}
+            <span style="color:var(--color-ink-tertiary);">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="10" style="text-align:center; padding:var(--space-8); color:var(--color-ink-tertiary);">
+          Nenhum animal encontrado neste lote.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

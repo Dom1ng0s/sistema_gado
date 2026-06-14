@@ -224,6 +224,32 @@ def agendamentos():
     return render_template('agendamentos.html', agendamentos=contas, mensagem=msg, hoje=hoje)
 
 
+@financeiro_bp.route('/financeiro/lotes')
+@login_required
+def resultado_lotes():
+    lotes = []
+    try:
+        lotes = financeiro_repository.get_resultado_lotes(current_user.id)
+    except Exception as e:
+        logger.error(f"Erro resultado lotes: {e}", exc_info=True)
+    return render_template('resultado_lotes.html', lotes=lotes)
+
+
+@financeiro_bp.route('/financeiro/lotes/<int:lote_id>')
+@login_required
+def detalhe_lote(lote_id):
+    lote = None
+    animais = []
+    try:
+        lote = financeiro_repository.get_resultado_lote_by_id(lote_id, current_user.id)
+        if lote is None:
+            return redirect(url_for('financeiro.resultado_lotes'))
+        animais = financeiro_repository.get_animais_por_lote(lote_id, current_user.id)
+    except Exception as e:
+        logger.error(f"Erro detalhe lote: {e}", exc_info=True)
+    return render_template('detalhe_lote.html', lote=lote, animais=animais)
+
+
 @financeiro_bp.route('/financeiro/baixar/<int:id_agendamento>')
 @login_required
 def baixar_agendamento(id_agendamento):
