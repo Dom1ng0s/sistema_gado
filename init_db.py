@@ -6,15 +6,29 @@ load_dotenv()
 
 print("\n---  INICIANDO SETUP COMPLETO DO BANCO DE DADOS ---")
 
-try:
-    # 1. Conexão
-    conn = mysql.connector.connect(
+import time
+
+def _connect(retries=5, delay=3):
+    cfg = dict(
         host=os.getenv('DB_HOST'),
         user=os.getenv('DB_USER'),
         password=os.getenv('DB_PASSWORD'),
         database=os.getenv('DB_NAME'),
-        port=int(os.getenv('DB_PORT', 3306))
+        port=int(os.getenv('DB_PORT', 3306)),
+        connection_timeout=10,
     )
+    for attempt in range(1, retries + 1):
+        try:
+            return mysql.connector.connect(**cfg)
+        except mysql.connector.Error as e:
+            print(f" Tentativa {attempt}/{retries} falhou: {e}")
+            if attempt < retries:
+                time.sleep(delay)
+    raise RuntimeError("Não foi possível conectar ao banco após várias tentativas.")
+
+try:
+    # 1. Conexão
+    conn = _connect()
     cursor = conn.cursor()
     print(" Conexão estabelecida.")
 
