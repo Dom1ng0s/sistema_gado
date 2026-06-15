@@ -181,12 +181,17 @@ def send_alert_protocolo(to_email: str, protocolos: list) -> None:
     _send(to_email, 'SGG — Protocolos sanitários vencendo em breve', html)
 
 
+def _validade_html(p) -> str:
+    if p[4]:
+        return "<strong style='color:#C0392B'>Vencido</strong>"
+    return str(p[3]) if p[3] else '—'
+
+
 def send_alert_estoque(to_email: str, produtos: list) -> None:
     rows = ''.join(
         f"<tr><td style='padding:8px;border-bottom:1px solid #F0EDE6;'>{p[0]}</td>"
         f"<td style='padding:8px;border-bottom:1px solid #F0EDE6;text-align:right;'>{float(p[1]):.3f} {p[2]}</td>"
-        f"<td style='padding:8px;border-bottom:1px solid #F0EDE6;text-align:center;'>"
-        f"{'<strong style=\"color:#C0392B\">Vencido</strong>' if p[4] else (str(p[3]) if p[3] else '—')}</td></tr>"
+        f"<td style='padding:8px;border-bottom:1px solid #F0EDE6;text-align:center;'>{_validade_html(p)}</td></tr>"
         for p in produtos
     )
     html = f"""
