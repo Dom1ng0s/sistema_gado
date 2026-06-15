@@ -1,5 +1,7 @@
-from flask import Blueprint, jsonify, render_template, Response
+from flask import Blueprint, jsonify, render_template, Response, request
 from flask_login import login_required, current_user
+import csv
+import io
 import logging
 import requests
 from datetime import date
@@ -94,6 +96,66 @@ def relatorio_pdf():
         )
     except Exception as e:
         logger.error(f"Erro relatório PDF: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/api/v1/export/animais.csv')
+@login_required
+@limiter.limit("10 per minute")
+def export_animais_csv():
+    try:
+        rows = animal_repository.get_animais_com_gmd(current_user.id)
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        # get_animais_com_gmd: id(0) brinco(1) sexo(2) raca(3) data_compra(4) gmd(5) dias(6) peso_final(7)
+        writer.writerow(['ID', 'Brinco', 'Sexo', 'Raça', 'Data Compra', 'GMD (kg/dia)', 'Dias em Fazenda', 'Peso Atual (kg)'])
+        for r in rows:
+            writer.writerow([
+                r[0],
+                r[1],
+                'Macho' if r[2] == 'M' else 'Fêmea',
+                r[3] or '',
+                r[4].strftime('%d/%m/%Y') if r[4] else '',
+                f"{float(r[5]):.3f}" if r[5] is not None else '',
+                r[6] if r[6] is not None else '',
+                f"{float(r[7]):.1f}" if r[7] is not None else '',
+            ])
+        return Response(
+            buf.getvalue().encode('utf-8-sig'),
+            mimetype='text/csv; charset=utf-8',
+            headers={'Content-Disposition': 'attachment; filename="animais.csv"'},
+        )
+    except Exception as e:
+        logger.error(f"Erro export animais CSV: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/api/v1/export/financeiro.csv')
+@login_required
+@limiter.limit("10 per minute")
+def export_financeiro_csv():
+    try:
+        ano = request.args.get('ano', date.today().year, type=int)
+        rows = financeiro_repository.get_custos_por_ano(current_user.id, ano)
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(['Data', 'Categoria', 'Tipo de Custo', 'Valor (R$)', 'Descrição'])
+        for r in rows:
+            writer.writerow([
+                r[0].strftime('%d/%m/%Y') if r[0] else '',
+                r[1] or '',
+                r[2] or '',
+                f"{float(r[3]):.2f}" if r[3] is not None else '',
+                r[4] or '',
+            ])
+        nome_arquivo = f"financeiro_{ano}.csv"
+        return Response(
+            buf.getvalue().encode('utf-8-sig'),
+            mimetype='text/csv; charset=utf-8',
+            headers={'Content-Disposition': f'attachment; filename="{nome_arquivo}"'},
+        )
+    except Exception as e:
+        logger.error(f"Erro export financeiro CSV: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 

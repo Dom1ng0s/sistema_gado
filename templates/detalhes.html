@@ -18,17 +18,18 @@
     <p class="label">Rebanho</p>
     <h1 class="page-title" style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap;">
       Brinco {{ animal[1] }}
-      {% if animal[5] %}
+      {% if animal[6] %}
         <span class="badge badge-neutral">Vendido</span>
       {% else %}
         <span class="badge badge-success">Ativo</span>
       {% endif %}
       <span class="badge badge-neutral">{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</span>
+      {% if animal[3] %}<span class="badge badge-neutral">{{ animal[3] }}</span>{% endif %}
     </h1>
   </div>
   <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
     <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">← Rebanho</a>
-    {% if not animal[5] %}
+    {% if not animal[6] %}
       <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}" class="btn btn-secondary btn-sm">+ Medicação</a>
       <a href="{{ url_for('operacional.nova_pesagem', id_animal=animal[0]) }}" class="btn btn-primary btn-sm">+ Pesagem</a>
     {% endif %}
@@ -95,6 +96,25 @@
     <div class="metric-delta flat">Compra + medicações</div>
   </div>
 
+  {% if idade_meses is not none %}
+  <div class="metric-card">
+    <span class="label">Idade</span>
+    <div>
+      {% if idade_meses >= 12 %}
+        <span class="metric-value">{{ (idade_meses // 12) }}</span>
+        <span class="metric-unit">ano{{ 's' if idade_meses // 12 != 1 }}</span>
+        {% if idade_meses % 12 > 0 %}
+          <span class="metric-unit" style="font-size:var(--text-sm);">e {{ idade_meses % 12 }} mês(es)</span>
+        {% endif %}
+      {% else %}
+        <span class="metric-value">{{ idade_meses }}</span>
+        <span class="metric-unit">mês(es)</span>
+      {% endif %}
+    </div>
+    <div class="metric-delta flat">a partir do nascimento</div>
+  </div>
+  {% endif %}
+
 </div>
 
 <!-- ── Layout assimétrico ─────────────────────────────── -->
@@ -160,16 +180,28 @@
             {{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}
           </span>
         </dd>
-        <dt style="color:var(--color-ink-secondary);">Entrada</dt>
+        {% if animal[3] %}
+        <dt style="color:var(--color-ink-secondary);">Raça</dt>
         <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[3] }}</dd>
-        <dt style="color:var(--color-ink-secondary);">Preço compra</dt>
-        <dd style="margin:0; font-weight:var(--weight-medium);">R$ {{ animal[4] }}</dd>
+        {% endif %}
+        {% if animal[4] %}
+        <dt style="color:var(--color-ink-secondary);">Data de compra</dt>
+        <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[4] }}</dd>
+        {% endif %}
+        {% if idade_meses is not none and animal|length > 13 and animal[13] %}
+        <dt style="color:var(--color-ink-secondary);">Nascimento</dt>
+        <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[13] }}</dd>
+        {% endif %}
         {% if animal[5] %}
+        <dt style="color:var(--color-ink-secondary);">Preço compra</dt>
+        <dd style="margin:0; font-weight:var(--weight-medium);">R$ {{ animal[5] }}</dd>
+        {% endif %}
+        {% if animal[6] %}
           <dt style="color:var(--color-ink-secondary);">Data venda</dt>
-          <dd style="margin:0;">{{ animal[5] }}</dd>
+          <dd style="margin:0;">{{ animal[6] }}</dd>
           <dt style="color:var(--color-ink-secondary);">Preço venda</dt>
           <dd style="margin:0; font-weight:var(--weight-medium); color:var(--color-primary);">
-            R$ {{ animal[6] }}
+            R$ {{ animal[7] }}
           </dd>
         {% endif %}
       </dl>
@@ -187,12 +219,12 @@
     </div>
 
     <!-- Status de venda -->
-    {% if animal[5] %}
+    {% if animal[6] %}
       <div class="alert alert-warning">
         <span class="alert-icon">💲</span>
         <div>
           <strong>Animal vendido</strong><br>
-          <span style="font-size:var(--text-xs);">{{ animal[5] }} — R$ {{ animal[6] }}</span>
+          <span style="font-size:var(--text-xs);">{{ animal[6] }} — R$ {{ animal[7] }}</span>
         </div>
       </div>
     {% else %}
@@ -225,7 +257,7 @@
 <div style="margin-bottom:var(--space-8);">
   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4);">
     <h2 style="margin:0;">Histórico Sanitário</h2>
-    {% if not animal[5] %}
+    {% if not animal[6] %}
       <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}"
          class="btn btn-primary btn-sm">+ Medicação</a>
     {% endif %}

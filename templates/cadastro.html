@@ -34,6 +34,47 @@
              required autocomplete="off" placeholder="Ex: A-001">
     </div>
 
+    <!-- Raça -->
+    <div class="form-group">
+      <label for="raca">Raça <span style="color:var(--color-ink-tertiary); font-weight:normal;">(opcional)</span></label>
+      <select id="raca" name="raca" class="form-input" onchange="toggleRacaOutra(this)">
+        <option value="">— selecione ou deixe em branco —</option>
+        <option value="Nelore">Nelore</option>
+        <option value="Angus">Angus</option>
+        <option value="Brahman">Brahman</option>
+        <option value="Girolando">Girolando</option>
+        <option value="Senepol">Senepol</option>
+        <option value="Brangus">Brangus</option>
+        <option value="Simmental">Simmental</option>
+        <option value="Charolês">Charolês</option>
+        <option value="Hereford">Hereford</option>
+        <option value="Tabapuã">Tabapuã</option>
+        <option value="__outra__">Outra…</option>
+      </select>
+    </div>
+    <div class="form-group" id="bloco-raca-outra" style="display:none;">
+      <label for="raca_outra">Especifique a raça</label>
+      <input id="raca_outra" type="text" name="raca_outra" class="form-input"
+             maxlength="100" placeholder="Ex: Canchim, F1, Cruzado...">
+    </div>
+
+    <!-- Origem do animal -->
+    <div style="margin-bottom:var(--space-3);">
+      <p class="label" style="margin-bottom:var(--space-2);">Origem do animal</p>
+      <div style="display:flex; gap:var(--space-4);">
+        <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer; font-size:var(--text-sm);">
+          <input type="radio" name="origem" value="comprado" id="origem-comprado" checked
+                 style="accent-color:var(--color-primary);">
+          Comprado
+        </label>
+        <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer; font-size:var(--text-sm);">
+          <input type="radio" name="origem" value="nascido" id="origem-nascido"
+                 style="accent-color:var(--color-primary);">
+          Nascido na fazenda
+        </label>
+      </div>
+    </div>
+
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--space-4);">
       <div class="form-group">
         <label for="sexo">Sexo</label>
@@ -43,23 +84,37 @@
         </select>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" id="bloco-data-compra">
         <label for="data_compra">Data da Compra</label>
-        <input id="data_compra" type="date" name="data_compra" class="form-input" required>
+        <input id="data_compra" type="date" name="data_compra" class="form-input">
+      </div>
+
+      <div class="form-group" id="bloco-data-nascimento" style="display:none;">
+        <label for="data_nascimento">Data de Nascimento</label>
+        <input id="data_nascimento" type="date" name="data_nascimento" class="form-input">
       </div>
     </div>
 
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--space-4);">
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--space-4);" id="bloco-compra-valores">
       <div class="form-group">
         <label for="peso_compra">Peso de Entrada (kg)</label>
         <input id="peso_compra" type="number" step="0.01" name="peso_compra"
-               class="form-input" required placeholder="Ex: 300.0">
+               class="form-input" placeholder="Ex: 300.0">
       </div>
 
       <div class="form-group">
         <label for="valor_arroba">Valor da Arroba na Compra (R$)</label>
         <input id="valor_arroba" type="number" step="0.01" name="valor_arroba"
-               class="form-input" required placeholder="Ex: 250.00">
+               class="form-input" placeholder="Ex: 250.00">
+      </div>
+    </div>
+
+    <!-- Campos extras para nascido na fazenda -->
+    <div id="bloco-nascimento-valores" style="display:none; grid-template-columns: 1fr 1fr; gap:var(--space-4);">
+      <div class="form-group">
+        <label for="peso_nascimento">Peso ao Nascer (kg) <span style="color:var(--color-ink-tertiary); font-weight:normal;">(opcional)</span></label>
+        <input id="peso_nascimento" type="number" step="0.01" name="peso_compra"
+               class="form-input" placeholder="Ex: 35.0">
       </div>
     </div>
 
@@ -75,6 +130,32 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  const radios = document.querySelectorAll('input[name="origem"]');
+  const blocoDataCompra   = document.getElementById('bloco-data-compra');
+  const blocoDataNasc     = document.getElementById('bloco-data-nascimento');
+  const blocoCompraVal    = document.getElementById('bloco-compra-valores');
+  const blocoNascVal      = document.getElementById('bloco-nascimento-valores');
+  const inpDataCompra     = document.getElementById('data_compra');
+  const inpDataNasc       = document.getElementById('data_nascimento');
+
+  function toggleRacaOutra(sel) {
+    document.getElementById('bloco-raca-outra').style.display =
+      sel.value === '__outra__' ? '' : 'none';
+  }
+
+  function aplicarOrigem(val) {
+    const isNascido = val === 'nascido';
+    blocoDataCompra.style.display  = isNascido ? 'none' : '';
+    blocoDataNasc.style.display    = isNascido ? '' : 'none';
+    blocoCompraVal.style.display   = isNascido ? 'none' : '';
+    blocoNascVal.style.display     = isNascido ? 'grid' : 'none';
+    inpDataCompra.required = !isNascido;
+    inpDataNasc.required   = isNascido;
+  }
+
+  radios.forEach(r => r.addEventListener('change', () => aplicarOrigem(r.value)));
+  aplicarOrigem('comprado');
+
   document.querySelectorAll('form').forEach(form => {
     form.addEventListener('submit', function () {
       const btn = form.querySelector('button[type="submit"]');

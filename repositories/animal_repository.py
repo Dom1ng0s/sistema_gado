@@ -6,7 +6,7 @@ from datetime import datetime
 # Dados externos (usuário, banco, request) nunca devem ser interpolados em `conds` —
 # sempre vão para `params` e chegam ao banco via placeholder %s.
 # Adicionar um valor externo diretamente em `conds` introduz risco de SQL injection.
-def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False):
+def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, raca=None):
     conds = ["user_id = %s"]
     params = [user_id]
     if na_lixeira:
@@ -20,28 +20,43 @@ def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False):
         conds.append("data_venda IS NULL")
     elif status == 'vendidos':
         conds.append("data_venda IS NOT NULL")
+    if raca:
+        conds.append("raca = %s")
+        params.append(raca)
     return "WHERE " + " AND ".join(conds), params
 
 
 # ---- LISTAGENS E CONTAGENS ----
 
-def count_animais(user_id, termo=None, status='todos'):
-    where, params = _build_animais_where(user_id, termo, status)
+def count_animais(user_id, termo=None, status='todos', raca=None):
+    where, params = _build_animais_where(user_id, termo, status, raca=raca)
     with get_db_cursor() as cursor:
         cursor.execute("SELECT COUNT(*) FROM animais " + where, tuple(params))
         return cursor.fetchone()[0]
 
 
-def get_animais_paginados(user_id, limit, offset, termo=None, status='todos'):
-    where, params = _build_animais_where(user_id, termo, status)
+def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', raca=None):
+    where, params = _build_animais_where(user_id, termo, status, raca=raca)
     sql = (
-        "SELECT id, brinco, sexo, data_compra, preco_compra, data_venda, preco_venda "
+        "SELECT id, brinco, sexo, raca, data_compra, preco_compra, data_venda, preco_venda "
         "FROM animais " + where +
         " ORDER BY LENGTH(brinco) ASC, brinco ASC LIMIT %s OFFSET %s"
     )
     with get_db_cursor() as cursor:
         cursor.execute(sql, tuple(params + [limit, offset]))
         return cursor.fetchall()
+
+
+def get_racas_distintas(user_id):
+    """Raças únicas cadastradas pelo usuário (para filtro no painel)."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT DISTINCT raca FROM animais "
+            "WHERE user_id = %s AND raca IS NOT NULL AND raca != '' "
+            "AND deleted_at IS NULL ORDER BY raca",
+            (user_id,)
+        )
+        return [row[0] for row in cursor.fetchall()]
 
 
 def count_animais_lixeira(user_id, termo=None):
@@ -71,6 +86,69 @@ def get_animais_ativos(user_id):
             (user_id,)
         )
         return cursor.fetchall()
+
+
+def get_lotes(user_id):
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT id, codigo_lote FROM lotes "
+            "WHERE user_id = %s AND deleted_at IS NULL "
+            "ORDER BY data_aquisicao DESC",
+            (user_id,)
+        )
+        return cursor.fetchall()
+
+
+def get_animais_ativos_por_lote(user_id, lote_id=None):
+    with get_db_cursor() as cursor:
+        if lote_id:
+            cursor.execute(
+                "SELECT id, brinco FROM animais "
+                "WHERE user_id = %s AND data_venda IS NULL AND deleted_at IS NULL "
+                "AND lote_id = %s ORDER BY brinco ASC",
+                (user_id, lote_id)
+            )
+        else:
+            cursor.execute(
+                "SELECT id, brinco FROM animais "
+                "WHERE user_id = %s AND data_venda IS NULL AND deleted_at IS NULL "
+                "ORDER BY brinco ASC",
+                (user_id,)
+            )
+        return cursor.fetchall()
+
+
+def registrar_pesagens_lote(pairs, user_id, data_pesagem):
+    """Insere múltiplas pesagens em uma única transação.
+
+    pairs: lista de (animal_id, peso).
+    Valida que todos os animal_ids pertencem ao user_id antes de inserir.
+    Retorna (inseridos, ids_invalidos).
+    """
+    if not pairs:
+        return 0, []
+
+    animal_ids = [p[0] for p in pairs]
+    placeholders = ','.join(['%s'] * len(animal_ids))
+
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            f"SELECT id FROM animais WHERE id IN ({placeholders}) AND user_id = %s",
+            animal_ids + [user_id]
+        )
+        validos = {row[0] for row in cursor.fetchall()}
+        invalidos = [aid for aid in animal_ids if aid not in validos]
+
+        inseridos = 0
+        for animal_id, peso in pairs:
+            if animal_id in validos:
+                cursor.execute(
+                    "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
+                    (animal_id, data_pesagem, peso)
+                )
+                inseridos += 1
+
+    return inseridos, invalidos
 
 
 # ---- LEITURA DE ANIMAL ----
@@ -143,7 +221,7 @@ def get_animais_com_gmd(user_id):
     """Animais ativos com GMD (LEFT JOIN — inclui animais sem pesagem)."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT a.id, a.brinco, a.sexo, a.data_compra, "
+            "SELECT a.id, a.brinco, a.sexo, a.raca, a.data_compra, "
             "       v.gmd, v.dias, v.peso_final "
             "FROM animais a "
             "LEFT JOIN v_gmd_analitico v ON a.id = v.animal_id "
@@ -223,7 +301,7 @@ def get_ranking_touros(user_id):
     """Ranking de touros por GMD médio dos filhos (vw_gmd_por_touro)."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT touro_id, touro_brinco, qtd_filhos, gmd_medio_filhos "
+            "SELECT touro_id, touro_brinco, touro_raca, qtd_filhos, gmd_medio_filhos "
             "FROM vw_gmd_por_touro WHERE user_id = %s "
             "ORDER BY gmd_medio_filhos DESC",
             (user_id,)
@@ -269,18 +347,28 @@ def get_pesos_atuais_rebanho(user_id):
 
 # ---- ESCRITAS ATÔMICAS ----
 
-def cadastrar_animal(brinco, sexo, data_compra, preco_compra, peso_entrada, user_id):
-    """Insere animal e pesagem inicial na mesma transação. Retorna animal_id."""
+def cadastrar_animal(brinco, sexo, data_compra, preco_compra, peso_entrada, user_id,
+                     data_nascimento=None, mae_id=None, pai_id=None, raca=None):
+    """Insere animal e pesagem inicial (quando disponível) na mesma transação. Retorna animal_id.
+
+    Animais nascidos na fazenda passam data_compra=None e data_nascimento preenchida.
+    Pesagem inicial só é inserida se peso_entrada for fornecido (> 0).
+    """
     with get_db_cursor() as cursor:
         cursor.execute(
-            "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) VALUES (%s, %s, %s, %s, %s)",
-            (brinco, sexo, data_compra, preco_compra, user_id)
+            "INSERT INTO animais "
+            "(brinco, sexo, raca, data_compra, data_nascimento, preco_compra, user_id, mae_id, pai_id) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (brinco, sexo, raca or None, data_compra or None, data_nascimento or None,
+             preco_compra or None, user_id, mae_id or None, pai_id or None)
         )
         animal_id = cursor.lastrowid
-        cursor.execute(
-            "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
-            (animal_id, data_compra, peso_entrada)
-        )
+        data_ref = data_compra or data_nascimento
+        if peso_entrada and data_ref:
+            cursor.execute(
+                "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
+                (animal_id, data_ref, peso_entrada)
+            )
         return animal_id
 
 
@@ -392,7 +480,7 @@ def restore_animal(animal_id, user_id):
         )
 
 
-def cadastrar_lote(user_id, codigo_lote, descricao, data_compra, animais_data):
+def cadastrar_lote(user_id, codigo_lote, descricao, data_compra, animais_data, raca=None):
     """
     Insere lote e todos os seus animais/pesagens em uma única transação.
     animais_data: lista de (brinco, sexo, peso_kg, custo_animal)
@@ -406,9 +494,9 @@ def cadastrar_lote(user_id, codigo_lote, descricao, data_compra, animais_data):
         lote_id = cursor.lastrowid
         for brinco, sexo, peso, custo_animal in animais_data:
             cursor.execute(
-                "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id, lote_id) "
-                "VALUES (%s, %s, %s, %s, %s, %s)",
-                (brinco, sexo, data_compra, custo_animal, user_id, lote_id)
+                "INSERT INTO animais (brinco, sexo, raca, data_compra, preco_compra, user_id, lote_id) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (brinco, sexo, raca or None, data_compra, custo_animal, user_id, lote_id)
             )
             animal_id = cursor.lastrowid
             cursor.execute(

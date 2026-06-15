@@ -42,6 +42,27 @@
                 <label>Fornecedor / Descrição:</label>
                 <input type="text" name="descricao" placeholder="Opcional">
             </div>
+            <div class="form-group">
+                <label>Raça predominante: <small style="color:var(--color-musgo); font-weight:normal;">(opcional)</small></label>
+                <select name="raca" class="form-input" onchange="toggleRacaOutra(this)">
+                    <option value="">— selecione ou deixe em branco —</option>
+                    <option value="Nelore">Nelore</option>
+                    <option value="Angus">Angus</option>
+                    <option value="Brahman">Brahman</option>
+                    <option value="Girolando">Girolando</option>
+                    <option value="Senepol">Senepol</option>
+                    <option value="Brangus">Brangus</option>
+                    <option value="Simmental">Simmental</option>
+                    <option value="Charolês">Charolês</option>
+                    <option value="Hereford">Hereford</option>
+                    <option value="Tabapuã">Tabapuã</option>
+                    <option value="__outra__">Outra…</option>
+                </select>
+            </div>
+            <div class="form-group" id="bloco-raca-outra" style="display:none;">
+                <label>Especifique a raça:</label>
+                <input type="text" name="raca_outra" class="form-input" maxlength="100" placeholder="Ex: Canchim, F1, Cruzado...">
+            </div>
         </div>
 
         <h3 style="color: var(--primary-color); border-bottom: 2px solid var(--color-palha); margin-top: 30px;">2. Animais Individuais</h3>
@@ -85,6 +106,11 @@
 
 {% block scripts %}
 <script>
+    function toggleRacaOutra(sel) {
+        document.getElementById('bloco-raca-outra').style.display =
+            sel.value === '__outra__' ? '' : 'none';
+    }
+
     function gerarGrade() {
         const qtd = parseInt(document.getElementById('qtdInput').value);
         const prefixo = document.getElementById('prefixoInput').value.trim();

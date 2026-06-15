@@ -37,48 +37,66 @@
   <div id="chartTouros" style="width:100%; height:{{ [ranking|length * 48 + 60, 200]|max }}px;"></div>
 </div>
 
-<!-- ── Tabela ──────────────────────────────────────────── -->
-<div class="table-wrapper">
-  <table>
-    <thead>
-      <tr>
-        <th style="text-align:center; width:48px;">#</th>
-        <th>Brinco</th>
-        <th style="text-align:center;">Filhos</th>
-        <th style="text-align:right;">GMD médio filhos</th>
-        <th style="text-align:center;">vs Rebanho</th>
-        <th style="text-align:center;"></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in ranking %}
-      {% set diff = r[3] - gmd_medio %}
-      <tr>
-        <td style="text-align:center; font-weight:var(--weight-bold); color:var(--color-ink-secondary);">
-          {{ loop.index }}
-        </td>
-        <td class="td-primary">{{ r[1] }}</td>
-        <td style="text-align:center;">{{ r[2] }}</td>
-        <td style="text-align:right; font-weight:var(--weight-semibold);
-                   color:{% if r[3] >= 0.8 %}var(--color-primary){% elif r[3] >= 0.6 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
-          {{ "%.3f"|format(r[3]) }} kg/dia
-        </td>
-        <td style="text-align:center;">
-          {% if diff >= 0 %}
-            <span class="badge badge-success">+{{ "%.3f"|format(diff) }}</span>
-          {% else %}
-            <span class="badge badge-danger">{{ "%.3f"|format(diff) }}</span>
-          {% endif %}
-        </td>
-        <td style="text-align:center;">
-          <a href="{{ url_for('operacional.detalhes', id_animal=r[0]) }}"
-             class="btn btn-ghost btn-sm">Ver ficha</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<!-- ── Tabela agrupada por raça ─────────────────────────── -->
+{% set racas_vistas = namespace(lista=[]) %}
+{% for r in ranking %}
+  {% if r[2] not in racas_vistas.lista %}
+    {% set racas_vistas.lista = racas_vistas.lista + [r[2]] %}
+  {% endif %}
+{% endfor %}
+
+{% for raca_grupo in racas_vistas.lista %}
+  {% set touros_grupo = ranking | selectattr(2, 'equalto', raca_grupo) | list %}
+  {% if racas_vistas.lista | length > 1 %}
+  <h3 style="margin: var(--space-6) 0 var(--space-3); font-size:var(--text-md);
+             color:var(--color-ink-secondary); border-bottom: 1px solid var(--color-border);
+             padding-bottom: var(--space-2);">
+    {{ raca_grupo or 'Sem raça definida' }}
+    <span class="badge badge-neutral" style="margin-left:var(--space-2);">{{ touros_grupo | length }}</span>
+  </h3>
+  {% endif %}
+  <div class="table-wrapper" style="margin-bottom:var(--space-4);">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:center; width:48px;">#</th>
+          <th>Brinco</th>
+          <th style="text-align:center;">Filhos</th>
+          <th style="text-align:right;">GMD médio filhos</th>
+          <th style="text-align:center;">vs Rebanho</th>
+          <th style="text-align:center;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in touros_grupo %}
+        {% set diff = r[4] - gmd_medio %}
+        <tr>
+          <td style="text-align:center; font-weight:var(--weight-bold); color:var(--color-ink-secondary);">
+            {{ loop.index }}
+          </td>
+          <td class="td-primary">{{ r[1] }}</td>
+          <td style="text-align:center;">{{ r[3] }}</td>
+          <td style="text-align:right; font-weight:var(--weight-semibold);
+                     color:{% if r[4] >= 0.8 %}var(--color-primary){% elif r[4] >= 0.6 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
+            {{ "%.3f"|format(r[4]) }} kg/dia
+          </td>
+          <td style="text-align:center;">
+            {% if diff >= 0 %}
+              <span class="badge badge-success">+{{ "%.3f"|format(diff) }}</span>
+            {% else %}
+              <span class="badge badge-danger">{{ "%.3f"|format(diff) }}</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center;">
+            <a href="{{ url_for('operacional.detalhes', id_animal=r[0]) }}"
+               class="btn btn-ghost btn-sm">Ver ficha</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endfor %}
 
 {% else %}
 <div style="text-align:center; padding:var(--space-16); color:var(--color-ink-tertiary);">
@@ -95,7 +113,7 @@
 const gmdRebanho = {{ gmd_medio }};
 const touros = [
   {% for r in ranking %}
-  { brinco: "{{ r[1] | replace('"', '\\"') }}", gmd: {{ r[3] }}, filhos: {{ r[2] }} }{% if not loop.last %},{% endif %}
+  { brinco: "{{ r[1] | replace('"', '\\"') }}", gmd: {{ r[4] }}, filhos: {{ r[3] }} }{% if not loop.last %},{% endif %}
   {% endfor %}
 ];
 
