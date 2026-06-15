@@ -1,5 +1,6 @@
 import mysql.connector
 import os
+import sys
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -692,3 +693,6 @@ try:
 
 except Exception as e:
     print(f"\n ERRO FATAL: {e}")
+    sys.exit(1)
+
+sys.exit(0)

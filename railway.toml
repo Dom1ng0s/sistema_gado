@@ -2,8 +2,9 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python init_db.py && gunicorn app:app"
+preDeployCommand = "python -u init_db.py"
+startCommand = "gunicorn app:app"
 healthcheckPath = "/"
-healthcheckTimeout = 120
+healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
