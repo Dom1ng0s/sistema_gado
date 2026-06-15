@@ -70,6 +70,8 @@ def registrar_entrada(produto_id):
     custo_raw = request.form.get('custo_unitario', '').strip()
     motivo = request.form.get('motivo', '').strip() or None
     data_mov = request.form.get('data_mov', '').strip()
+    lote_fabricante = request.form.get('lote_fabricante', '').strip() or None
+    data_validade = request.form.get('data_validade', '').strip() or None
 
     erros = []
     try:
@@ -94,7 +96,8 @@ def registrar_entrada(produto_id):
             flash(e, 'erro')
     else:
         estoque_repository.insert_movimentacao(
-            current_user.id, produto_id, 'entrada', quantidade, custo_unitario, motivo, data_mov
+            current_user.id, produto_id, 'entrada', quantidade, custo_unitario, motivo, data_mov,
+            lote_fabricante=lote_fabricante, data_validade=data_validade,
         )
         flash("Entrada registrada com sucesso.", 'sucesso')
 

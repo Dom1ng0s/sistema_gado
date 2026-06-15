@@ -520,6 +520,23 @@ try:
     );
     """)
 
+    # ==============================================================================
+    # ETAPA 6.1: VALIDADE DE MEDICAMENTOS
+    # ==============================================================================
+    print(" Adicionando colunas de validade em 'estoque_movimentacoes'...")
+    for col, ddl in [
+        ('lote_fabricante', "ALTER TABLE estoque_movimentacoes ADD COLUMN lote_fabricante VARCHAR(100) NULL AFTER motivo"),
+        ('data_validade',   "ALTER TABLE estoque_movimentacoes ADD COLUMN data_validade DATE NULL AFTER lote_fabricante"),
+    ]:
+        try:
+            cursor.execute(ddl)
+            print(f"   -> Coluna '{col}' adicionada.")
+        except mysql.connector.Error as err:
+            if err.errno == 1060:
+                print(f"   -> Coluna '{col}' já existe.")
+            else:
+                print(f"   Alerta '{col}': {err}")
+
     # 2.1d View de Saldo de Estoque
     print(" Criando View vw_saldo_estoque...")
     cursor.execute("""
@@ -537,7 +554,12 @@ try:
         CASE
             WHEN COALESCE(SUM(CASE WHEN m.tipo = 'entrada' THEN m.quantidade ELSE -m.quantidade END), 0) < p.estoque_minimo
             THEN 1 ELSE 0
-        END AS abaixo_minimo
+        END AS abaixo_minimo,
+        MIN(CASE WHEN m.tipo = 'entrada' AND m.data_validade IS NOT NULL
+                 THEN m.data_validade END)                              AS proxima_validade,
+        CASE WHEN MIN(CASE WHEN m.tipo = 'entrada' AND m.data_validade IS NOT NULL
+                           THEN m.data_validade END) < CURDATE()
+             THEN 1 ELSE 0 END                                          AS tem_vencido
     FROM estoque_produtos p
     LEFT JOIN estoque_movimentacoes m ON m.produto_id = p.id
     GROUP BY p.id, p.user_id, p.nome, p.unidade, p.categoria, p.estoque_minimo;

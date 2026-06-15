@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_required, current_user
 import math
 import logging
+import csv
+import io
 from datetime import date as _date
 from repositories import animal_repository, reproducao_repository, sanitario_repository
 from routes.validators import validate
@@ -521,3 +523,98 @@ def ranking_touros():
     ranking   = animal_repository.get_ranking_touros(current_user.id)
     gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
     return render_template('ranking_touros.html', ranking=ranking, gmd_medio=gmd_medio)
+
+
+_CSV_COLUNAS_OBRIGATORIAS = {'brinco', 'sexo', 'data_compra', 'peso_kg', 'valor_arroba'}
+_CSV_MAX_BYTES = 1 * 1024 * 1024  # 1 MB
+_CSV_MAX_LINHAS = 5000
+
+
+@operacional_bp.route('/importar-csv', methods=['GET', 'POST'])
+@login_required
+def importar_csv():
+    if request.method == 'GET':
+        return render_template('importar_csv.html')
+
+    arquivo = request.files.get('arquivo')
+    if not arquivo or not arquivo.filename:
+        return render_template('importar_csv.html', erro="Selecione um arquivo CSV.")
+
+    conteudo = arquivo.read()
+    if len(conteudo) > _CSV_MAX_BYTES:
+        return render_template('importar_csv.html', erro="Arquivo excede 1 MB.")
+
+    try:
+        texto = conteudo.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        return render_template('importar_csv.html', erro="Arquivo deve estar em UTF-8.")
+
+    reader = csv.DictReader(io.StringIO(texto))
+    faltando = _CSV_COLUNAS_OBRIGATORIAS - set(reader.fieldnames or [])
+    if faltando:
+        return render_template('importar_csv.html',
+                               erro=f"Colunas obrigatórias ausentes: {', '.join(sorted(faltando))}")
+
+    inseridos, erros = 0, []
+
+    try:
+        from db_config import get_db_cursor
+        with get_db_cursor() as cursor:
+            for i, row in enumerate(reader, start=2):
+                if i - 1 > _CSV_MAX_LINHAS:
+                    erros.append({'linha': i, 'msg': 'Limite de 5000 linhas atingido — importação interrompida.'})
+                    break
+
+                brinco      = (row.get('brinco') or '').strip()
+                sexo        = (row.get('sexo') or '').strip().upper()
+                data_compra = (row.get('data_compra') or '').strip()
+                raca        = (row.get('raca') or '').strip() or None
+                data_nasc   = (row.get('data_nascimento') or '').strip() or None
+
+                linha_erros = []
+                if not brinco:
+                    linha_erros.append("brinco vazio")
+                if sexo not in ('M', 'F'):
+                    linha_erros.append("sexo inválido (use M ou F)")
+
+                preco_compra = None
+                try:
+                    peso = float((row.get('peso_kg') or '').replace(',', '.'))
+                    arr  = float((row.get('valor_arroba') or '').replace(',', '.'))
+                    if peso <= 0 or arr <= 0:
+                        raise ValueError
+                    preco_compra = round((peso / 15) * arr, 2)
+                except (ValueError, TypeError):
+                    linha_erros.append("peso_kg ou valor_arroba inválido")
+
+                import re
+                if data_compra and not re.match(r'^\d{4}-\d{2}-\d{2}$', data_compra):
+                    linha_erros.append("data_compra deve ser AAAA-MM-DD")
+                if data_nasc and not re.match(r'^\d{4}-\d{2}-\d{2}$', data_nasc):
+                    linha_erros.append("data_nascimento deve ser AAAA-MM-DD")
+
+                if not data_compra and not data_nasc:
+                    linha_erros.append("informe data_compra ou data_nascimento")
+
+                if linha_erros:
+                    erros.append({'linha': i, 'msg': '; '.join(linha_erros)})
+                    continue
+
+                if animal_repository.check_brinco_exists(brinco, current_user.id):
+                    erros.append({'linha': i, 'msg': f"brinco '{brinco}' já existe"})
+                    continue
+
+                cursor.execute(
+                    "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
+                    "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                    (brinco, sexo, raca, data_compra or None,
+                     data_nasc or None, preco_compra, current_user.id)
+                )
+                inseridos += 1
+
+    except Exception as e:
+        logger.error(f"Erro importação CSV: {e}", exc_info=True)
+        return render_template('importar_csv.html', erro=f"Erro interno: {e}")
+
+    return render_template('importar_csv.html',
+                           resultado={'inseridos': inseridos, 'erros': erros})

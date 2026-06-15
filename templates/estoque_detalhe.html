@@ -142,6 +142,15 @@
           <input id="entrada_motivo" type="text" name="motivo"
                  class="form-input" maxlength="300" placeholder="Opcional">
         </div>
+        <div class="form-group">
+          <label for="entrada_lote">Lote do fabricante</label>
+          <input id="entrada_lote" type="text" name="lote_fabricante"
+                 class="form-input" maxlength="100" placeholder="Opcional">
+        </div>
+        <div class="form-group">
+          <label for="entrada_validade">Data de validade</label>
+          <input id="entrada_validade" type="date" name="data_validade" class="form-input">
+        </div>
         <button type="submit" class="btn btn-primary">Confirmar Entrada</button>
       </form>
     </div>
@@ -189,7 +198,8 @@
         <th style="text-align:center;">Tipo</th>
         <th style="text-align:right;">Quantidade</th>
         <th style="text-align:right;">Custo Unit.</th>
-        <th>Motivo</th>
+        <th>Motivo / Lote</th>
+        <th style="text-align:center;">Validade</th>
       </tr>
     </thead>
     <tbody>
@@ -207,7 +217,15 @@
         <td style="text-align:right; color:var(--color-ink-secondary);">
           {% if m[3] %}R$ {{ m[3]|brl }}{% else %}—{% endif %}
         </td>
-        <td style="color:var(--color-ink-secondary);">{{ m[4] or '—' }}</td>
+        <td style="color:var(--color-ink-secondary);">
+          {{ m[4] or '—' }}
+          {% if m[6] %}<br><small style="color:var(--color-ink-tertiary);">Lote: {{ m[6] }}</small>{% endif %}
+        </td>
+        <td style="text-align:center;" data-validade="{{ m[7] or '' }}">
+          {% if m[7] %}
+            <span class="badge validade-badge">{{ m[7] }}</span>
+          {% else %}—{% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -220,4 +238,31 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  document.querySelectorAll('[data-validade]').forEach(function (td) {
+    const v = td.dataset.validade;
+    if (!v) return;
+    const p = v.split('-');
+    const dt = new Date(+p[0], +p[1]-1, +p[2]);
+    const dias = Math.round((dt - hoje) / 86400000);
+    const badge = td.querySelector('.validade-badge');
+    if (!badge) return;
+    if (dias < 0) {
+      badge.className = 'badge badge-danger';
+      badge.textContent = 'Vencido';
+    } else if (dias <= 30) {
+      badge.className = 'badge badge-warning';
+      badge.textContent = 'Vence em ' + dias + 'd';
+    } else {
+      badge.className = 'badge badge-success';
+      badge.textContent = v;
+    }
+  });
+}());
+</script>
 {% endblock %}

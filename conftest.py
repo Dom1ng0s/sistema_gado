@@ -33,7 +33,8 @@ def db_setup():
         CREATE TABLE usuarios (
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(50) NOT NULL UNIQUE,
-            password_hash VARCHAR(255) NOT NULL
+            password_hash VARCHAR(255) NOT NULL,
+            email VARCHAR(255) NULL
         )""")
 
         cursor.execute("""
@@ -313,6 +314,8 @@ def db_setup():
             quantidade DECIMAL(10,3) NOT NULL,
             custo_unitario DECIMAL(10,2) NULL,
             motivo VARCHAR(300) NULL,
+            lote_fabricante VARCHAR(100) NULL,
+            data_validade DATE NULL,
             data_mov DATE NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES usuarios(id),
@@ -384,7 +387,12 @@ def db_setup():
             CASE
                 WHEN COALESCE(SUM(CASE WHEN m.tipo = 'entrada' THEN m.quantidade ELSE -m.quantidade END), 0) < p.estoque_minimo
                 THEN 1 ELSE 0
-            END AS abaixo_minimo
+            END AS abaixo_minimo,
+            MIN(CASE WHEN m.tipo = 'entrada' AND m.data_validade IS NOT NULL
+                     THEN m.data_validade END) AS proxima_validade,
+            CASE WHEN MIN(CASE WHEN m.tipo = 'entrada' AND m.data_validade IS NOT NULL
+                               THEN m.data_validade END) < CURDATE()
+                 THEN 1 ELSE 0 END AS tem_vencido
         FROM estoque_produtos p
         LEFT JOIN estoque_movimentacoes m ON m.produto_id = p.id
         GROUP BY p.id, p.user_id, p.nome, p.unidade, p.categoria, p.estoque_minimo

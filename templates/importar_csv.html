@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block title %}Importar CSV{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">{{ nome_fazenda_header }}</p>
+    <h1 class="page-title">Importar Animais via CSV</h1>
+  </div>
+  <div style="display:flex; gap:var(--space-2); align-items:center;">
+    <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">← Rebanho</a>
+    <a href="data:text/csv;charset=utf-8,brinco%2Csexo%2Cdata_compra%2Cpeso_kg%2Cvalor_arroba%2Craca%2Cdata_nascimento%0AB-001%2CM%2C2024-01-15%2C320%2C185.00%2CNelore%2C%0AB-002%2CF%2C2024-01-15%2C280%2C175.00%2CAngus%2C2022-06-10"
+       download="template_animais.csv" class="btn btn-secondary btn-sm">
+      Baixar template CSV
+    </a>
+  </div>
+</div>
+
+{% if erro %}
+<div class="alert alert-danger" style="margin-bottom:var(--space-5);">
+  <span class="alert-icon">⚠</span>
+  <div>{{ erro }}</div>
+</div>
+{% endif %}
+
+{% if resultado %}
+
+<!-- ── Resultado da importação ──────────────────────────── -->
+<div class="grid-metrics" style="grid-template-columns:1fr 1fr; margin-bottom:var(--space-6);">
+  <div class="metric-card card-accent-green">
+    <span class="label">Animais importados</span>
+    <div class="metric-value" style="color:var(--color-primary);">{{ resultado.inseridos }}</div>
+    <div class="metric-delta up">↑ Cadastrados com sucesso</div>
+  </div>
+  <div class="metric-card {% if resultado.erros %}card-accent-red{% endif %}">
+    <span class="label">Linhas com erro</span>
+    <div class="metric-value"
+         style="color:{% if resultado.erros %}var(--color-danger){% else %}var(--color-primary){% endif %};">
+      {{ resultado.erros | length }}
+    </div>
+    {% if resultado.erros %}
+      <div class="metric-delta down">↓ Não importadas</div>
+    {% else %}
+      <div class="metric-delta flat">Nenhum erro</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if resultado.erros %}
+<h2 style="margin-bottom:var(--space-4);">Linhas com erro</h2>
+<div class="table-wrapper" style="margin-bottom:var(--space-6);">
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:center; width:80px;">Linha</th>
+        <th>Motivo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in resultado.erros %}
+      <tr>
+        <td style="text-align:center; font-weight:var(--weight-semibold);">{{ e.linha }}</td>
+        <td style="color:var(--color-danger);">{{ e.msg }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<a href="{{ url_for('operacional.painel') }}" class="btn btn-primary">Ver rebanho atualizado</a>
+
+{% else %}
+
+<!-- ── Formulário de upload ─────────────────────────────── -->
+<div class="card card-accent-green" style="max-width:580px; margin-bottom:var(--space-6);">
+  <div class="card-header">
+    <h2 style="margin:0; font-size:var(--text-lg);">Selecionar arquivo</h2>
+  </div>
+  <div class="card-body">
+    <form method="POST" enctype="multipart/form-data"
+          action="{{ url_for('operacional.importar_csv') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label class="label" for="arquivo">Arquivo CSV (máx. 1 MB, 5000 linhas)</label>
+        <input id="arquivo" type="file" name="arquivo" accept=".csv,text/csv"
+               class="form-input" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Importar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ── Instruções ──────────────────────────────────────── -->
+<div class="card" style="max-width:580px;">
+  <div class="card-header">
+    <h3 style="margin:0; font-size:var(--text-base);">Formato esperado</h3>
+  </div>
+  <div class="card-body">
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Coluna</th>
+            <th>Obrigatória</th>
+            <th>Exemplo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="td-primary">brinco</td>        <td><span class="badge badge-danger">Sim</span></td>  <td>B-001</td></tr>
+          <tr><td class="td-primary">sexo</td>           <td><span class="badge badge-danger">Sim</span></td>  <td>M ou F</td></tr>
+          <tr><td class="td-primary">data_compra</td>    <td><span class="badge badge-danger">Sim*</span></td> <td>2024-01-15</td></tr>
+          <tr><td class="td-primary">peso_kg</td>        <td><span class="badge badge-danger">Sim</span></td>  <td>320</td></tr>
+          <tr><td class="td-primary">valor_arroba</td>   <td><span class="badge badge-danger">Sim</span></td>  <td>185.00</td></tr>
+          <tr><td class="td-primary">raca</td>           <td><span class="badge badge-neutral">Não</span></td> <td>Nelore</td></tr>
+          <tr><td class="td-primary">data_nascimento</td><td><span class="badge badge-neutral">Não</span></td> <td>2022-06-10</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:var(--text-xs); color:var(--color-ink-tertiary); margin-top:var(--space-3);">
+      * <code>data_compra</code> é obrigatória a menos que <code>data_nascimento</code> seja informada.<br>
+      O preço de compra é calculado automaticamente: <strong>(peso_kg ÷ 15) × valor_arroba</strong>.<br>
+      Encoding: UTF-8. Separador: vírgula.
+    </p>
+  </div>
+</div>
+
+{% endif %}
+
+{% endblock %}

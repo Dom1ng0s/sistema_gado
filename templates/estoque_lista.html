@@ -141,6 +141,8 @@
   {% set minimo = p[5] | float %}
   {% set pct = ((saldo / minimo * 100) | round(0) | int) if minimo > 0 else none %}
   {% set abaixo = p[9] %}
+  {% set validade = p[10] %}
+  {% set vencido = p[11] %}
 
   <div class="card {% if abaixo %}card-accent-red{% elif saldo > 0 %}card-accent-green{% endif %}">
     <div class="card-header">
@@ -149,12 +151,17 @@
                      color:var(--color-ink);">{{ p[2] }}</span>
       </div>
       <div style="display:flex; align-items:center; gap:var(--space-2);">
-        {% if abaixo %}
+        {% if vencido %}
+          <span class="badge badge-danger">Vencido</span>
+        {% elif abaixo %}
           <span class="badge badge-danger">Baixo</span>
         {% elif saldo == 0 %}
           <span class="badge badge-neutral">Zerado</span>
         {% else %}
           <span class="badge badge-success">OK</span>
+        {% endif %}
+        {% if validade and not vencido %}
+          <span class="badge badge-warning validade-card" data-validade="{{ validade }}">{{ validade }}</span>
         {% endif %}
       </div>
     </div>
@@ -271,4 +278,20 @@ chart.setOption({
 window.addEventListener('resize', () => chart.resize());
 </script>
 {% endif %}
+<script>
+(function () {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  document.querySelectorAll('.validade-card[data-validade]').forEach(function (badge) {
+    const p = badge.dataset.validade.split('-');
+    const dt = new Date(+p[0], +p[1]-1, +p[2]);
+    const dias = Math.round((dt - hoje) / 86400000);
+    if (dias < 0) {
+      badge.className = 'badge badge-danger';
+      badge.textContent = 'Vencido';
+    } else if (dias <= 30) {
+      badge.textContent = 'Vence em ' + dias + 'd';
+    }
+  });
+}());
+</script>
 {% endblock %}

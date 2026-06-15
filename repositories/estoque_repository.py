@@ -6,7 +6,8 @@ def get_produtos(user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
             "SELECT produto_id, user_id, nome, unidade, categoria, estoque_minimo, "
-            "    total_entradas, total_saidas, saldo_atual, abaixo_minimo "
+            "    total_entradas, total_saidas, saldo_atual, abaixo_minimo, "
+            "    proxima_validade, tem_vencido "
             "FROM vw_saldo_estoque WHERE user_id = %s ORDER BY nome ASC",
             (user_id,)
         )
@@ -28,7 +29,8 @@ def get_produto_by_id(produto_id, user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
             "SELECT produto_id, user_id, nome, unidade, categoria, estoque_minimo, "
-            "    total_entradas, total_saidas, saldo_atual, abaixo_minimo "
+            "    total_entradas, total_saidas, saldo_atual, abaixo_minimo, "
+            "    proxima_validade, tem_vencido "
             "FROM vw_saldo_estoque WHERE produto_id = %s AND user_id = %s",
             (produto_id, user_id)
         )
@@ -39,7 +41,8 @@ def get_movimentacoes_by_produto(produto_id, user_id):
     """Histórico de movimentações do produto, validando propriedade via JOIN."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT m.id, m.tipo, m.quantidade, m.custo_unitario, m.motivo, m.data_mov "
+            "SELECT m.id, m.tipo, m.quantidade, m.custo_unitario, m.motivo, m.data_mov, "
+            "    m.lote_fabricante, m.data_validade "
             "FROM estoque_movimentacoes m "
             "JOIN estoque_produtos p ON m.produto_id = p.id "
             "WHERE m.produto_id = %s AND p.user_id = %s "
@@ -61,13 +64,30 @@ def get_saldo_atual(produto_id, user_id):
         return float(row[0]) if row else 0.0
 
 
-def insert_movimentacao(user_id, produto_id, tipo, quantidade, custo_unitario, motivo, data_mov):
+def insert_movimentacao(user_id, produto_id, tipo, quantidade, custo_unitario, motivo, data_mov,
+                        lote_fabricante=None, data_validade=None):
     with get_db_cursor() as cursor:
         cursor.execute(
             "INSERT INTO estoque_movimentacoes "
-            "(user_id, produto_id, tipo, quantidade, custo_unitario, motivo, data_mov) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            "(user_id, produto_id, tipo, quantidade, custo_unitario, motivo, data_mov, "
+            " lote_fabricante, data_validade) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (user_id, produto_id, tipo,
-             quantidade, custo_unitario or None, motivo or None, data_mov)
+             quantidade, custo_unitario or None, motivo or None, data_mov,
+             lote_fabricante or None, data_validade or None)
         )
         return cursor.lastrowid
+
+
+def get_vencendo_em_dias(user_id, dias=30):
+    """Produtos com data_validade nas próximas `dias` dias ou já vencidos."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT produto_id, nome, proxima_validade, tem_vencido "
+            "FROM vw_saldo_estoque "
+            "WHERE user_id = %s AND proxima_validade IS NOT NULL "
+            "AND proxima_validade <= DATE_ADD(CURDATE(), INTERVAL %s DAY) "
+            "ORDER BY proxima_validade ASC",
+            (user_id, dias)
+        )
+        return cursor.fetchall()

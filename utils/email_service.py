@@ -1,8 +1,11 @@
 import smtplib
 import ssl
 import os
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
+logger = logging.getLogger(__name__)
 
 
 def send_welcome_email(to_email: str, username: str) -> None:
@@ -89,6 +92,122 @@ def send_welcome_email(to_email: str, username: str) -> None:
         server.starttls(context=context)
         server.login(mail_user, mail_pass)
         server.sendmail(mail_from, to_email, msg.as_string())
+
+
+# ── Helpers internos ───────────────────────────────────────────────────────
+
+def _get_smtp_config():
+    user = os.getenv('MAIL_USERNAME')
+    pwd  = os.getenv('MAIL_PASSWORD')
+    return {
+        'server': os.getenv('MAIL_SERVER', 'smtp.gmail.com'),
+        'port':   int(os.getenv('MAIL_PORT', 587)),
+        'user':   user,
+        'pwd':    pwd,
+        'from':   os.getenv('MAIL_FROM', user),
+    }
+
+
+def _send(to_email: str, subject: str, html: str) -> None:
+    cfg = _get_smtp_config()
+    if not cfg['user'] or not cfg['pwd']:
+        logger.debug("MAIL não configurado — alerta ignorado.")
+        return
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = cfg['from']
+    msg['To'] = to_email
+    msg.attach(MIMEText(html, 'html'))
+    ctx = ssl.create_default_context()
+    with smtplib.SMTP(cfg['server'], cfg['port'], timeout=10) as s:
+        s.ehlo(); s.starttls(context=ctx)
+        s.login(cfg['user'], cfg['pwd'])
+        s.sendmail(cfg['from'], to_email, msg.as_string())
+
+
+# ── Alertas proativos ──────────────────────────────────────────────────────
+
+def send_alert_contas(to_email: str, contas: list) -> None:
+    rows = ''.join(
+        f"<tr><td style='padding:8px;border-bottom:1px solid #F0EDE6;'>{c[0]}</td>"
+        f"<td style='padding:8px;border-bottom:1px solid #F0EDE6;text-align:right;'>R$ {float(c[1]):,.2f}</td>"
+        f"<td style='padding:8px;border-bottom:1px solid #F0EDE6;text-align:center;'>{c[2]}</td></tr>"
+        for c in contas
+    )
+    html = f"""
+    <html><body style="font-family:'DM Sans',sans-serif;background:#EAF3DE;padding:32px;">
+      <table width="520" style="background:#fff;border-radius:10px;overflow:hidden;margin:0 auto;">
+        <tr><td style="background:#3B6D11;padding:20px 28px;">
+          <p style="margin:0;color:#fff;font-size:18px;font-weight:600;">SGG — Contas a Vencer</p>
+        </td></tr>
+        <tr><td style="padding:28px;">
+          <p style="margin:0 0 16px;color:#1C1C1A;">As seguintes contas vencem nos próximos <strong>3 dias</strong>:</p>
+          <table width="100%" style="border-collapse:collapse;">
+            <tr style="background:#F7F6F2;">
+              <th style="padding:8px;text-align:left;">Descrição</th>
+              <th style="padding:8px;text-align:right;">Valor</th>
+              <th style="padding:8px;text-align:center;">Vencimento</th>
+            </tr>{rows}
+          </table>
+        </td></tr>
+      </table>
+    </body></html>"""
+    _send(to_email, 'SGG — Contas a vencer nos próximos 3 dias', html)
+
+
+def send_alert_protocolo(to_email: str, protocolos: list) -> None:
+    rows = ''.join(
+        f"<tr><td style='padding:8px;border-bottom:1px solid #F0EDE6;'>{p[0]}</td>"
+        f"<td style='padding:8px;border-bottom:1px solid #F0EDE6;text-align:center;'>{p[1]}</td></tr>"
+        for p in protocolos
+    )
+    html = f"""
+    <html><body style="font-family:'DM Sans',sans-serif;background:#EAF3DE;padding:32px;">
+      <table width="520" style="background:#fff;border-radius:10px;overflow:hidden;margin:0 auto;">
+        <tr><td style="background:#3B6D11;padding:20px 28px;">
+          <p style="margin:0;color:#fff;font-size:18px;font-weight:600;">SGG — Protocolos Sanitários</p>
+        </td></tr>
+        <tr><td style="padding:28px;">
+          <p style="margin:0 0 16px;color:#1C1C1A;">Os seguintes protocolos vencem em até <strong>7 dias</strong>:</p>
+          <table width="100%" style="border-collapse:collapse;">
+            <tr style="background:#F7F6F2;">
+              <th style="padding:8px;text-align:left;">Protocolo</th>
+              <th style="padding:8px;text-align:center;">Data</th>
+            </tr>{rows}
+          </table>
+        </td></tr>
+      </table>
+    </body></html>"""
+    _send(to_email, 'SGG — Protocolos sanitários vencendo em breve', html)
+
+
+def send_alert_estoque(to_email: str, produtos: list) -> None:
+    rows = ''.join(
+        f"<tr><td style='padding:8px;border-bottom:1px solid #F0EDE6;'>{p[0]}</td>"
+        f"<td style='padding:8px;border-bottom:1px solid #F0EDE6;text-align:right;'>{float(p[1]):.3f} {p[2]}</td>"
+        f"<td style='padding:8px;border-bottom:1px solid #F0EDE6;text-align:center;'>"
+        f"{'<strong style=\"color:#C0392B\">Vencido</strong>' if p[4] else (str(p[3]) if p[3] else '—')}</td></tr>"
+        for p in produtos
+    )
+    html = f"""
+    <html><body style="font-family:'DM Sans',sans-serif;background:#EAF3DE;padding:32px;">
+      <table width="520" style="background:#fff;border-radius:10px;overflow:hidden;margin:0 auto;">
+        <tr><td style="background:#3B6D11;padding:20px 28px;">
+          <p style="margin:0;color:#fff;font-size:18px;font-weight:600;">SGG — Estoque Crítico</p>
+        </td></tr>
+        <tr><td style="padding:28px;">
+          <p style="margin:0 0 16px;color:#1C1C1A;">Produtos abaixo do mínimo ou com validade vencida:</p>
+          <table width="100%" style="border-collapse:collapse;">
+            <tr style="background:#F7F6F2;">
+              <th style="padding:8px;text-align:left;">Produto</th>
+              <th style="padding:8px;text-align:right;">Saldo</th>
+              <th style="padding:8px;text-align:center;">Validade</th>
+            </tr>{rows}
+          </table>
+        </td></tr>
+      </table>
+    </body></html>"""
+    _send(to_email, 'SGG — Estoque crítico detectado', html)
 
 
 def send_reset_code(to_email: str, code: str) -> None:

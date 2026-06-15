@@ -239,3 +239,140 @@ def test_registrar_saida_saldo_insuficiente(app):
         # Saldo não deve ter mudado
         assert estoque_repository.get_saldo_atual(pid, uid) == pytest.approx(100.0)
         _purge(uid)
+
+
+# ── 6.1 — Validade de medicamentos ────────────────────────────────────────────
+
+def test_entrada_com_validade(um):
+    """Entrada com data_validade é persistida e retorna na listagem."""
+    pid = estoque_repository.insert_produto(um, "Vacina Aftosa", "doses", "vacina", 0)
+    estoque_repository.insert_movimentacao(
+        um, pid, 'entrada', 50.0, 5.0, "Compra jan", "2026-01-10",
+        lote_fabricante="L001", data_validade="2026-12-31"
+    )
+    movs = estoque_repository.get_movimentacoes_by_produto(pid, um)
+    assert movs[0][6] == "L001"          # lote_fabricante
+    assert str(movs[0][7]) == "2026-12-31"  # data_validade
+
+
+def test_vw_saldo_estoque_proxima_validade(um):
+    """proxima_validade aparece na view vw_saldo_estoque."""
+    pid = estoque_repository.insert_produto(um, "Vermífugo", "ml", "medicamento", 0)
+    estoque_repository.insert_movimentacao(
+        um, pid, 'entrada', 100.0, None, None, "2026-01-01",
+        data_validade="2026-06-30"
+    )
+    produto = estoque_repository.get_produto_by_id(pid, um)
+    assert produto[10] is not None     # proxima_validade
+    assert str(produto[10]) == "2026-06-30"
+
+
+def test_get_vencendo_em_dias(um):
+    """get_vencendo_em_dias retorna produto com validade próxima."""
+    from datetime import date, timedelta
+    pid = estoque_repository.insert_produto(um, "Vitamina Venc", "ml", "suplemento", 0)
+    proxima = (date.today() + timedelta(days=10)).isoformat()
+    estoque_repository.insert_movimentacao(
+        um, pid, 'entrada', 20.0, None, None, "2026-01-01",
+        data_validade=proxima
+    )
+    vencendo = estoque_repository.get_vencendo_em_dias(um, dias=30)
+    ids = [v[0] for v in vencendo]
+    assert pid in ids
+
+
+def test_entrada_com_validade_via_http(app):
+    """POST /estoque/<id>/entrada aceita lote_fabricante e data_validade."""
+    with app.test_client() as client:
+        uid = _make_user()
+        _login(client, uid)
+        pid = estoque_repository.insert_produto(uid, "Ivomec Validade", "ml", "medicamento", 0)
+        r = client.post(f"/estoque/{pid}/entrada", data={
+            "quantidade": "100",
+            "data_mov": "2026-01-15",
+            "custo_unitario": "3.50",
+            "motivo": "Compra com validade",
+            "lote_fabricante": "LT-2026",
+            "data_validade": "2027-01-15",
+        }, follow_redirects=True)
+        assert r.status_code == 200
+        movs = estoque_repository.get_movimentacoes_by_produto(pid, uid)
+        assert movs[0][6] == "LT-2026"
+        assert str(movs[0][7]) == "2027-01-15"
+        _purge(uid)
+
+
+# ── 6.3 — Importação via CSV ──────────────────────────────────────────────────
+
+def test_importar_csv_get(app):
+    """Página GET de importação carrega corretamente."""
+    with app.test_client() as client:
+        uid = _make_user()
+        _login(client, uid)
+        r = client.get("/importar-csv")
+        assert r.status_code == 200
+        assert b'Importar' in r.data
+        _purge(uid)
+
+
+def test_importar_csv_sucesso(app):
+    """CSV válido insere animais e retorna contagem."""
+    with app.test_client() as client:
+        import io as _io
+        uid = _make_user()
+        _login(client, uid)
+        csv_content = (
+            "brinco,sexo,data_compra,peso_kg,valor_arroba,raca\n"
+            "IMP-001,M,2026-01-10,300,185.00,Nelore\n"
+            "IMP-002,F,2026-01-10,250,175.00,Angus\n"
+        ).encode('utf-8')
+        r = client.post("/importar-csv", data={
+            "arquivo": (_io.BytesIO(csv_content), "animais.csv"),
+        }, content_type='multipart/form-data', follow_redirects=True)
+        assert r.status_code == 200
+        assert b'2' in r.data   # 2 inseridos
+        _purge(uid)
+
+
+def test_importar_csv_coluna_faltando(app):
+    """CSV sem coluna obrigatória retorna erro descritivo."""
+    with app.test_client() as client:
+        import io as _io
+        uid = _make_user()
+        _login(client, uid)
+        csv_content = b"brinco,sexo\nX-001,M\n"
+        r = client.post("/importar-csv", data={
+            "arquivo": (_io.BytesIO(csv_content), "animais.csv"),
+        }, content_type='multipart/form-data', follow_redirects=True)
+        assert r.status_code == 200
+        assert b'ausentes' in r.data or 'obrigatórias'.encode('utf-8') in r.data
+        _purge(uid)
+
+
+def test_importar_csv_brinco_duplicado(app):
+    """Brinco já existente vai para coluna de erros sem travar a importação."""
+    with app.test_client() as client:
+        import io as _io
+        uid = _make_user()
+        _login(client, uid)
+
+        # Cria o animal antecipadamente
+        conn = dbc.get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO animais (brinco,sexo,data_compra,preco_compra,user_id) "
+            "VALUES ('DUP-001','M','2025-01-01',1000,%s)", (uid,)
+        )
+        conn.commit(); cur.close(); conn.close()
+
+        csv_content = (
+            "brinco,sexo,data_compra,peso_kg,valor_arroba\n"
+            "DUP-001,M,2026-01-10,300,185.00\n"   # duplicado
+            "DUP-002,F,2026-01-10,250,175.00\n"   # novo
+        ).encode('utf-8')
+        r = client.post("/importar-csv", data={
+            "arquivo": (_io.BytesIO(csv_content), "animais.csv"),
+        }, content_type='multipart/form-data', follow_redirects=True)
+        assert r.status_code == 200
+        assert b'1' in r.data   # 1 inserido (DUP-002)
+        _purge(uid)
