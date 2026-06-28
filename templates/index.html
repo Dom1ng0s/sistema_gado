@@ -155,8 +155,8 @@
         <th>Brinco</th>
         <th>Sexo</th>
         <th>Raça</th>
-        <th>Último Peso</th>
-        <th>GMD</th>
+        <th class="col-peso">Último Peso</th>
+        <th class="col-gmd">GMD</th>
         <th>Status</th>
         <th></th>
       </tr>
@@ -167,14 +167,14 @@
         <td class="td-primary">{{ animal[1] }}</td>
         <td>{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</td>
         <td>{{ animal[3] or '—' }}</td>
-        <td>
+        <td class="col-peso">
           {% if animal[8] %}
             {{ "%.1f"|format(animal[8]) }} kg
           {% else %}
             <span style="color:var(--color-ink-disabled);">—</span>
           {% endif %}
         </td>
-        <td>
+        <td class="col-gmd">
           {% if animal[9] %}
             {% set gmd = animal[9]|float %}
             <span style="color:{% if gmd >= 0.8 %}var(--color-success){% elif gmd >= 0.4 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %}; font-weight:var(--weight-semibold);">

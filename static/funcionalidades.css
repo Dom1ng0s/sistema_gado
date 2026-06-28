@@ -1,23 +1,25 @@
-.status-badge { padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold; }
-.status-badge.pendente { background-color: #FEF3E2; color: var(--accent-color); }
-.status-badge.pago     { background-color: #D6E8D0; color: var(--primary-color); }
-.status-badge.vencido  { color: var(--danger-color); font-weight: bold; }
-.texto-vencido         { color: var(--danger-color); font-weight: bold; }
+/* ── funcionalidades.css — tokens migrados para design_system.css ── */
+
+.status-badge { padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: var(--weight-bold); }
+.status-badge.pendente { background-color: var(--color-accent-bg); color: var(--color-accent-dark); }
+.status-badge.pago     { background-color: var(--color-primary-bg); color: var(--color-primary); }
+.status-badge.vencido  { color: var(--color-danger); font-weight: var(--weight-bold); }
+.texto-vencido         { color: var(--color-danger); font-weight: var(--weight-bold); }
 
 .grafico-container {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 40px;
-    margin-top: 30px;
-    margin-bottom: 50px;
+    gap: var(--space-10);
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-12);
 }
 
 .grafico-box {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    background: var(--color-surface);
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
     width: 400px;
     text-align: center;
     display: flex;
@@ -25,91 +27,91 @@
     justify-content: center;
 }
 
-.grafico-box h2 { border: none; font-size: 1.2rem; margin-bottom: 15px; color: var(--text-dark); }
+.grafico-box h2 { border: none; font-size: 1.2rem; margin-bottom: var(--space-4); color: var(--color-ink); }
 
-.kpi-valor { font-size: 4.5rem; font-weight: 800; color: var(--primary-color); margin: 10px 0; }
-.kpi-sub   { font-size: 1rem; color: var(--color-musgo); font-weight: normal; }
+.kpi-valor { font-size: 4.5rem; font-weight: 800; color: var(--color-primary); margin: 10px 0; }
+.kpi-sub   { font-size: 1rem; color: var(--color-ink-tertiary); font-weight: normal; }
 
 .switch-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background-color: var(--color-palha);
-    padding: 5px 10px;
-    border-radius: 20px;
-    border: 1px solid var(--color-terra);
+    gap: var(--space-2);
+    background-color: var(--color-accent-bg);
+    padding: 5px var(--space-3);
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--color-accent-light);
 }
 
 .switch                      { position: relative; display: inline-block; width: 40px; height: 20px; margin: 0; }
 .switch input                { opacity: 0; width: 0; height: 0; }
 .slider                      { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
 .slider:before               { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-input:checked + .slider      { background-color: var(--primary-color); }
+input:checked + .slider      { background-color: var(--color-primary); }
 input:checked + .slider:before { transform: translateX(20px); }
-.label-switch                { font-size: 12px; font-weight: bold; color: var(--color-musgo); }
+.label-switch                { font-size: var(--text-xs); font-weight: var(--weight-bold); color: var(--color-ink-tertiary); }
 
 .grid-animais {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 10px;
-    margin-top: 15px;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
     max-height: 400px;
     overflow-y: auto;
-    border: 1px solid var(--color-terra);
-    padding: 15px;
-    background: #fff;
-    border-radius: 8px;
+    border: 1px solid var(--color-accent-light);
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
 }
 
 .item-animal {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background: var(--bg-light);
-    padding: 8px;
-    border: 1px solid var(--color-palha);
-    border-radius: 4px;
+    gap: var(--space-2);
+    background: var(--color-surface-raised);
+    padding: var(--space-2);
+    border: 1px solid var(--color-accent-bg);
+    border-radius: var(--radius-sm);
 }
 
-.item-animal:hover { background-color: #EEF4EB; border-color: var(--primary-color); }
+.item-animal:hover { background-color: var(--color-primary-bg); border-color: var(--color-primary); }
 
 .barra-fixa {
-    background: #EEF4EB;
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid #B8D4B2;
-    margin-bottom: 20px;
+    background: var(--color-primary-bg);
+    padding: var(--space-5);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-primary-light);
+    margin-bottom: var(--space-5);
 }
 
-.res-box      { background: #E3F0FF; padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid #90caf9; }
-.res-destaque { font-size: 1.5em; font-weight: bold; color: #1565c0; }
+.res-box      { background: var(--color-primary-bg); padding: var(--space-4); border-radius: var(--radius-md); margin-top: var(--space-5); border: 1px solid var(--color-primary-light); }
+.res-destaque { font-size: 1.5em; font-weight: var(--weight-bold); color: var(--color-primary-dark); }
 
-.grid-sim { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-sim { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
 @media (max-width: 600px) { .grid-sim { grid-template-columns: 1fr; } }
 
-.config-card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: 40px auto; }
-.info-ibge   { font-size: 0.8em; color: var(--color-musgo); margin-top: 5px; }
+.config-card { background: var(--color-surface); padding: var(--space-10); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); max-width: 600px; margin: var(--space-10) auto; }
+.info-ibge   { font-size: var(--text-xs); color: var(--color-ink-tertiary); margin-top: var(--space-1); }
 
-.grade-container { margin-top: 20px; overflow-x: auto; border: 1px solid var(--color-palha); border-radius: 4px; }
+.grade-container { margin-top: var(--space-5); overflow-x: auto; border: 1px solid var(--color-accent-bg); border-radius: var(--radius-sm); }
 
 .tabela-input    { width: 100%; border-collapse: collapse; font-size: 0.9em; }
 
 .tabela-input th {
-    background-color: var(--color-palha);
-    color: var(--text-dark);
-    border: 1px solid var(--color-terra);
-    padding: 10px;
+    background-color: var(--color-accent-bg);
+    color: var(--color-ink);
+    border: 1px solid var(--color-accent-light);
+    padding: var(--space-3);
     text-align: center;
-    font-weight: 600;
+    font-weight: var(--weight-semibold);
 }
 
-.tabela-input td { border: 1px solid var(--color-palha); padding: 0; }
+.tabela-input td { border: 1px solid var(--color-accent-bg); padding: 0; }
 
 .tabela-input input,
 .tabela-input select {
     width: 100%;
     border: none;
-    padding: 10px;
+    padding: var(--space-3);
     box-sizing: border-box;
     background: transparent;
     font-family: inherit;
@@ -118,10 +120,10 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 .tabela-input input:focus,
 .tabela-input select:focus {
-    background-color: #EEF4EB;
-    font-weight: bold;
-    box-shadow: inset 0 0 0 2px var(--primary-color);
+    background-color: var(--color-primary-bg);
+    font-weight: var(--weight-bold);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
 }
 
-.btn-remove-linha { background: none; border: none; color: var(--danger-color); cursor: pointer; font-weight: bold; padding: 5px 10px; transition: color 0.2s; }
-.btn-remove-linha:hover { color: #A93226; background-color: #FDDCDA; border-radius: 4px; }
+.btn-remove-linha { background: none; border: none; color: var(--color-danger); cursor: pointer; font-weight: var(--weight-bold); padding: 5px 10px; transition: color var(--transition-fast); }
+.btn-remove-linha:hover { color: var(--color-danger-dark); background-color: var(--color-danger-bg); border-radius: var(--radius-sm); }

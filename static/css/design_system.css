@@ -63,6 +63,7 @@
   --weight-medium:   500;
   --weight-semi:     600;
   --weight-semibold: 600;
+  --weight-bold:     700;
 
   --leading-tight:  1.3;
   --leading-normal: 1.6;
@@ -768,6 +769,16 @@ tbody td {
 
 @media (max-width: 768px) { .fin-ano-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 480px) { .fin-ano-grid { grid-template-columns: 1fr; } }
+
+/* ── Tabela de animais — oculta colunas secundárias em mobile ── */
+@media (max-width: 520px) {
+  .col-peso,
+  .col-gmd { display: none; }
+}
+
+/* ── Layout de detalhe de animal ────────────────────────────── */
+.detalhe-layout { display: grid; grid-template-columns: 1fr 300px; gap: var(--space-6); margin-bottom: var(--space-8); }
+@media (max-width: 760px) { .detalhe-layout { grid-template-columns: 1fr; } }
 
 /* ══════════════════════════════════════════════════════════
    COMPONENTES DE COMPATIBILIDADE

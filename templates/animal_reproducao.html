@@ -83,7 +83,7 @@
                 background:{% if dias <= 14 %}var(--color-warning-bg){% else %}var(--color-surface-raised){% endif %};
                 border-left:3px solid {% if dias <= 7 %}var(--color-danger){% elif dias <= 14 %}var(--color-accent){% else %}var(--color-primary){% endif %};
                 border-radius:var(--radius-sm);">
-      <span style="font-size:1.2rem;">🐄</span>
+      <svg aria-hidden="true" class="icon icon-md" viewBox="0 0 24 24" style="color:var(--color-primary-mid); flex-shrink:0;"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="20" cy="8" r="2"/><path d="M20 14c1.7.7 3 2.3 3 4"/></svg>
       <div style="flex:1;">
         <span style="font-weight:var(--weight-semibold);">{{ p[1] }}</span>
         <span style="color:var(--color-ink-secondary); margin-left:var(--space-2);">
@@ -264,10 +264,10 @@
       <div style="display:flex; flex-wrap:wrap; gap:var(--space-4); margin-top:var(--space-3);
                   font-size:var(--text-sm); color:var(--color-ink-secondary);">
         {% if e[2] %}
-          <span>🐄 Parto: <strong style="color:var(--color-ink);">{{ e[2] }}</strong></span>
+          <span>Parto: <strong style="color:var(--color-ink);">{{ e[2] }}</strong></span>
         {% elif e[8] and dg == 'positivo' %}
           <span data-parto-previsto="{{ e[8] }}">
-            🐣 Previsto: <strong style="color:var(--color-ink);" class="parto-previsto-label">{{ e[8] }}</strong>
+            Previsto: <strong style="color:var(--color-ink);" class="parto-previsto-label">{{ e[8] }}</strong>
             <span class="parto-countdown badge" style="margin-left:var(--space-2);"></span>
           </span>
         {% endif %}
@@ -280,7 +280,7 @@
           <span style="color:var(--color-ink-tertiary);">Touro não informado</span>
         {% endif %}
         {% if e[7] %}
-          <span>🔬 DG em: <strong style="color:var(--color-ink);">{{ e[7] }}</strong></span>
+          <span>DG em: <strong style="color:var(--color-ink);">{{ e[7] }}</strong></span>
         {% endif %}
       </div>
 
