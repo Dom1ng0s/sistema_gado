@@ -55,7 +55,7 @@ def financeiro():
         'entradas_ano': 0, 'saidas_ano': 0, 'reposicao_ano': 0,
         'custos_op_ano': 0, 'med_ano': 0, 'balanco_ano': 0,
     }
-    anos, lista_custos = [date.today().year], []
+    anos = [date.today().year]
 
     try:
         uid = current_user.id
@@ -83,11 +83,10 @@ def financeiro():
             view_data['custo_diaria'] = f"{kpis['custo_diaria']:.2f}"
             view_data['custo_arroba'] = f"{kpis['custo_arroba']:.2f}"
 
-        lista_custos = financeiro_repository.get_custos_por_ano(uid, ano_sel)
     except Exception as e:
         logger.error(f"Erro financeiro: {e}", exc_info=True)
 
-    return render_template('financeiro.html', financeiro=view_data, ano_selecionado=ano_sel, anos=anos, detalhes_custos=lista_custos)
+    return render_template('financeiro.html', financeiro=view_data, ano_selecionado=ano_sel, anos=anos)
 
 
 @financeiro_bp.route('/simulador-custo', methods=['GET', 'POST'])

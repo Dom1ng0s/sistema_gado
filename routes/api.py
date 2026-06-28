@@ -278,6 +278,26 @@ def export_animais_csv():
         return jsonify({'error': str(e)}), 500
 
 
+@api_bp.route('/api/financeiro/custos')
+@login_required
+@limiter.limit("60 per minute")
+def custos_por_ano():
+    """Retorna detalhamento de custos do ano em JSON — usado pelo lazy-load do financeiro."""
+    try:
+        ano = request.args.get('ano', date.today().year, type=int)
+        rows = financeiro_repository.get_custos_por_ano(current_user.id, ano)
+        return jsonify([{
+            'data':      r[0].strftime('%d/%m/%Y') if r[0] else '',
+            'categoria': r[1] or '',
+            'descricao': r[2] or '',
+            'valor':     float(r[3]) if r[3] is not None else 0.0,
+            'obs':       r[4] or '',
+        } for r in rows])
+    except Exception as e:
+        logger.error(f"Erro custos_por_ano: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
 @api_bp.route('/api/v1/export/financeiro.csv')
 @login_required
 @limiter.limit("10 per minute")
