@@ -129,6 +129,28 @@ def graficos_gmd():
         return jsonify({'error': str(e)}), 500
 
 
+@api_bp.route('/api/animais/gmd-lote')
+@login_required
+@limiter.limit("120 per minute")
+def gmd_lote():
+    """Retorna peso_final e gmd para até 50 IDs — bypassa a view CTE."""
+    try:
+        ids_raw = request.args.get('ids', '').strip()
+        if not ids_raw:
+            return jsonify({})
+        try:
+            animal_ids = [int(i) for i in ids_raw.split(',') if i.strip()]
+        except ValueError:
+            return jsonify({'error': 'IDs inválidos'}), 400
+        if len(animal_ids) > 50:
+            return jsonify({'error': 'Máximo 50 IDs por requisição'}), 400
+        resultado = animal_repository.get_gmd_lote(animal_ids, current_user.id)
+        return jsonify(resultado)
+    except Exception as e:
+        logger.error(f"Erro gmd-lote: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
 @api_bp.route('/api/dashboard-summary')
 @login_required
 @limiter.limit("60 per minute")

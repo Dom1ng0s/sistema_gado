@@ -51,15 +51,52 @@ def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', ra
     where = "WHERE " + " AND ".join(conds)
     sql = (
         "SELECT a.id, a.brinco, a.sexo, a.raca, a.data_compra, a.preco_compra, "
-        "       a.data_venda, a.preco_venda, g.peso_final, g.gmd "
+        "       a.data_venda, a.preco_venda "
         "FROM animais a "
-        "LEFT JOIN v_gmd_analitico g ON g.animal_id = a.id "
         + where +
         " ORDER BY LENGTH(a.brinco) ASC, a.brinco ASC LIMIT %s OFFSET %s"
     )
     with get_db_cursor() as cursor:
         cursor.execute(sql, tuple(params + [limit, offset]))
         return cursor.fetchall()
+
+
+def get_gmd_lote(animal_ids: list, user_id: int) -> dict:
+    """Retorna {str(animal_id): [peso_final, gmd]} para os IDs informados.
+
+    Consulta pesagens diretamente (não a view CTE) para que o índice
+    em pesagens(animal_id) seja aproveitado. user_id validado via JOIN.
+    """
+    if not animal_ids:
+        return {}
+    placeholders = '(' + ','.join(['%s'] * len(animal_ids)) + ')'
+    sql = (
+        "WITH po AS ("
+        "  SELECT p.animal_id, p.data_pesagem, p.peso,"
+        "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
+        "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
+        "  FROM pesagens p"
+        "  JOIN animais a ON a.id = p.animal_id AND a.user_id = %s AND a.deleted_at IS NULL"
+        "  WHERE p.animal_id IN " + placeholders +
+        "),"
+        " pu AS ("
+        "  SELECT animal_id,"
+        "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
+        "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
+        "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
+        "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
+        "  FROM po GROUP BY animal_id"
+        " )"
+        " SELECT animal_id, peso_fim,"
+        "  CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
+        "    THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+        "    ELSE NULL END AS gmd"
+        " FROM pu"
+    )
+    params = [user_id] + list(animal_ids)
+    with get_db_cursor() as cursor:
+        cursor.execute(sql, tuple(params))
+        return {str(row[0]): [row[1], row[2]] for row in cursor.fetchall()}
 
 
 def get_racas_distintas(user_id):

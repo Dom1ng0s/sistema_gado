@@ -163,27 +163,12 @@
     </thead>
     <tbody>
       {% for animal in lista_animais %}
-      <tr>
+      <tr data-aid="{{ animal[0] }}">
         <td class="td-primary">{{ animal[1] }}</td>
         <td>{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</td>
         <td>{{ animal[3] or '—' }}</td>
-        <td class="col-peso">
-          {% if animal[8] %}
-            {{ "%.1f"|format(animal[8]) }} kg
-          {% else %}
-            <span style="color:var(--color-ink-disabled);">—</span>
-          {% endif %}
-        </td>
-        <td class="col-gmd">
-          {% if animal[9] %}
-            {% set gmd = animal[9]|float %}
-            <span style="color:{% if gmd >= 0.8 %}var(--color-success){% elif gmd >= 0.4 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %}; font-weight:var(--weight-semibold);">
-              {{ "%.3f"|format(gmd) }}
-            </span>
-          {% else %}
-            <span style="color:var(--color-ink-disabled);">—</span>
-          {% endif %}
-        </td>
+        <td class="col-peso"><span class="skeleton" style="display:inline-block;width:58px;height:13px;border-radius:3px;"></span></td>
+        <td class="col-gmd"><span class="skeleton" style="display:inline-block;width:46px;height:13px;border-radius:3px;"></span></td>
         <td>
           {% if animal[6] %}
             <span class="badge badge-neutral">Vendido</span>
@@ -420,6 +405,41 @@ async function carregarMetricas() {
   }
 }
 
+async function carregarGMDTabela() {
+  const rows = document.querySelectorAll('tr[data-aid]');
+  if (!rows.length) return;
+  const ids = Array.from(rows).map(r => r.dataset.aid).join(',');
+  try {
+    const data = await fetch('/api/animais/gmd-lote?ids=' + ids).then(r => r.json());
+    const dash = '<span style="color:var(--color-ink-disabled);">—</span>';
+    rows.forEach(row => {
+      const entry  = data[row.dataset.aid];
+      const pesoTd = row.querySelector('.col-peso');
+      const gmdTd  = row.querySelector('.col-gmd');
+      if (!pesoTd || !gmdTd) return;
+      if (entry) {
+        const [peso, gmd] = entry;
+        pesoTd.innerHTML = peso ? parseFloat(peso).toFixed(1) + ' kg' : dash;
+        if (gmd !== null && gmd !== undefined) {
+          const g   = parseFloat(gmd);
+          const cor = g >= 0.8 ? 'var(--color-success)' : g >= 0.4 ? 'var(--color-accent-dark)' : 'var(--color-danger)';
+          gmdTd.innerHTML = '<span style="color:' + cor + ';font-weight:var(--weight-semibold);">' + g.toFixed(3) + '</span>';
+        } else {
+          gmdTd.innerHTML = dash;
+        }
+      } else {
+        pesoTd.innerHTML = dash;
+        gmdTd.innerHTML  = dash;
+      }
+    });
+  } catch (e) {
+    console.error('Erro ao carregar GMD:', e);
+    document.querySelectorAll('tr[data-aid] .col-peso, tr[data-aid] .col-gmd').forEach(td => {
+      td.innerHTML = '<span style="color:var(--color-ink-disabled);">—</span>';
+    });
+  }
+}
+
 async function carregarCotacao() {
   try {
     const data = await fetch(API.cotacao).then(r => r.json());
@@ -505,6 +525,7 @@ document.addEventListener('keydown', function (e) {
 document.addEventListener('DOMContentLoaded', () => {
   carregarMetricas();
   carregarCotacao();
+  carregarGMDTabela();
   document.getElementById('btn-fechar-modal').addEventListener('click', fecharModalBrasil);
 });
 </script>
