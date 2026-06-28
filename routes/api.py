@@ -3,6 +3,11 @@ from flask_login import login_required, current_user
 import csv
 import io
 import logging
+import os as _os
+import re as _re
+import threading
+import time
+import uuid
 import requests
 from datetime import date
 from playwright.sync_api import sync_playwright
@@ -11,6 +16,67 @@ from extensions import limiter
 
 api_bp = Blueprint('api', __name__)
 logger = logging.getLogger(__name__)
+
+# ── Cache de cotações (TTL 30 min) ──────────────────────────────────────────
+_COTACOES_TTL = 30 * 60
+_cotacoes_lock = threading.Lock()
+_cotacoes_cache: dict = {'ts': 0.0, 'boi': [], 'novilha': []}
+
+_PDF_DIR = '/tmp'
+_UUID_RE = _re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
+
+
+def _fetch_cotacoes_github() -> tuple[list, list]:
+    """Retorna (boi, novilha) com cache em memória de 30 minutos."""
+    now = time.time()
+    with _cotacoes_lock:
+        if now - _cotacoes_cache['ts'] < _COTACOES_TTL:
+            return _cotacoes_cache['boi'], _cotacoes_cache['novilha']
+
+    base = "https://raw.githubusercontent.com/dom1ng0s/gado-scraper/main"
+
+    def _get(endpoint: str) -> list:
+        try:
+            r = requests.get(f"{base}/{endpoint}", timeout=5)
+            return r.json() if r.status_code == 200 else []
+        except Exception:
+            return []
+
+    boi = _get("cotacoes_boi_hoje.json")
+    novilha = _get("cotacoes_novilha_hoje.json")
+
+    if boi or novilha:
+        with _cotacoes_lock:
+            _cotacoes_cache.update({'ts': now, 'boi': boi, 'novilha': novilha})
+
+    return boi, novilha
+
+
+def _gerar_pdf_bg(job_id: str, html: str) -> None:
+    pdf_path  = f"{_PDF_DIR}/sgg_pdf_{job_id}.pdf"
+    pend_path = f"{_PDF_DIR}/sgg_pdf_{job_id}.pending"
+    err_path  = f"{_PDF_DIR}/sgg_pdf_{job_id}.error"
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page()
+            page.set_content(html, wait_until='load')
+            pdf_bytes = page.pdf(format='A4', margin={
+                'top': '20mm', 'bottom': '20mm',
+                'left': '15mm', 'right': '15mm',
+            })
+            browser.close()
+        with open(pdf_path, 'wb') as f:
+            f.write(pdf_bytes)
+    except Exception as e:
+        logger.error(f"Erro PDF bg job {job_id}: {e}", exc_info=True)
+        with open(err_path, 'w') as f:
+            f.write(str(e))
+    finally:
+        try:
+            _os.unlink(pend_path)
+        except FileNotFoundError:
+            pass
 
 @api_bp.route('/graficos')
 @login_required
@@ -62,10 +128,47 @@ def graficos_gmd():
         logger.error(f"Erro Gráfico GMD: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api_bp.route('/api/v1/relatorio/pdf')
+
+@api_bp.route('/api/dashboard-summary')
+@login_required
+@limiter.limit("60 per minute")
+def dashboard_summary():
+    """Retorna sexo + GMD + alertas em uma única request — 2 queries vs 3 antes."""
+    try:
+        uid = current_user.id
+        rows_sexo = animal_repository.get_contagem_por_sexo(uid)
+        sexo = {s: q for s, q in rows_sexo}
+
+        rows_alertas = animal_repository.get_animais_abaixo_gmd_medio(uid)
+
+        if rows_alertas:
+            gmd_medio  = round(float(rows_alertas[0][3]), 3)
+            limite     = round(float(rows_alertas[0][5]), 3)
+            alertas    = [{'id': r[0], 'brinco': r[1], 'gmd_atual': round(float(r[2]), 3)} for r in rows_alertas]
+        else:
+            gmd_medio = round(animal_repository.get_gmd_medio_rebanho(uid), 3)
+            limite    = None
+            alertas   = []
+
+        return jsonify({
+            'sexo': sexo,
+            'gmd': {'gmd_medio': gmd_medio},
+            'alertas': {
+                'gmd_media_rebanho': gmd_medio,
+                'gmd_limite_inferior': limite,
+                'total': len(alertas),
+                'animais': alertas,
+            },
+        })
+    except Exception as e:
+        logger.error(f"Erro dashboard-summary: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+@api_bp.route('/api/v1/relatorio/pdf', methods=['POST'])
 @login_required
 @limiter.limit("6 per minute")
 def relatorio_pdf():
+    """Inicia geração de PDF em background. Retorna job_id para polling."""
     try:
         config    = configuracao_repository.get_configuracao(current_user.id)
         fluxo     = financeiro_repository.get_fluxo_caixa(current_user.id)
@@ -73,30 +176,53 @@ def relatorio_pdf():
         gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
 
         html = render_template('relatorio_pdf.html',
-                               config=config,
-                               fluxo=fluxo,
-                               animais=animais,
+                               config=config, fluxo=fluxo, animais=animais,
                                gmd_medio=gmd_medio,
                                data_geracao=date.today().strftime('%d/%m/%Y'))
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            page = browser.new_page()
-            page.set_content(html, wait_until='load')
-            pdf_bytes = page.pdf(format='A4', margin={
-                'top': '20mm', 'bottom': '20mm',
-                'left': '15mm', 'right': '15mm',
-            })
-            browser.close()
+        job_id = str(uuid.uuid4())
+        open(f"{_PDF_DIR}/sgg_pdf_{job_id}.pending", 'w').close()
+        threading.Thread(target=_gerar_pdf_bg, args=(job_id, html), daemon=True).start()
 
-        return Response(
-            pdf_bytes,
-            mimetype='application/pdf',
-            headers={'Content-Disposition': 'attachment; filename="relatorio_rebanho.pdf"'},
-        )
+        return jsonify({'job_id': job_id})
     except Exception as e:
-        logger.error(f"Erro relatório PDF: {e}", exc_info=True)
+        logger.error(f"Erro iniciar PDF: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/api/v1/relatorio/pdf/<job_id>/status')
+@login_required
+def pdf_status(job_id: str):
+    if not _UUID_RE.match(job_id):
+        return jsonify({'status': 'not_found'}), 404
+    if _os.path.exists(f"{_PDF_DIR}/sgg_pdf_{job_id}.pdf"):
+        return jsonify({'status': 'done'})
+    if _os.path.exists(f"{_PDF_DIR}/sgg_pdf_{job_id}.error"):
+        return jsonify({'status': 'error'})
+    if _os.path.exists(f"{_PDF_DIR}/sgg_pdf_{job_id}.pending"):
+        return jsonify({'status': 'pending'})
+    return jsonify({'status': 'not_found'}), 404
+
+
+@api_bp.route('/api/v1/relatorio/pdf/<job_id>/download')
+@login_required
+def pdf_download(job_id: str):
+    if not _UUID_RE.match(job_id):
+        return jsonify({'error': 'Invalid job ID'}), 400
+    pdf_path = f"{_PDF_DIR}/sgg_pdf_{job_id}.pdf"
+    if not _os.path.exists(pdf_path):
+        return jsonify({'error': 'PDF não encontrado ou expirado'}), 404
+    with open(pdf_path, 'rb') as f:
+        pdf_bytes = f.read()
+    try:
+        _os.unlink(pdf_path)
+    except Exception:
+        pass
+    return Response(
+        pdf_bytes,
+        mimetype='application/pdf',
+        headers={'Content-Disposition': 'attachment; filename="relatorio_rebanho.pdf"'},
+    )
 
 
 @api_bp.route('/api/v1/export/animais.csv')
@@ -224,11 +350,6 @@ def proxy_cidades():
 @login_required
 @limiter.limit("30 per minute")
 def cotacoes_regionais():
-    """
-    1. Pega o estado (UF) do usuário.
-    2. Baixa o JSON do Gado-Scraper (GitHub).
-    3. Filtra as cotações do estado correspondente.
-    """
     try:
         uf_usuario = None
         res = configuracao_repository.get_configuracao(current_user.id)
@@ -240,57 +361,38 @@ def cotacoes_regionais():
         if not uf_usuario:
             return jsonify({'erro': 'Localização não configurada'}), 404
 
-        base_url = "https://raw.githubusercontent.com/dom1ng0s/gado-scraper/main"
-        url_boi = f"{base_url}/cotacoes_boi_hoje.json"
-        url_novilha = f"{base_url}/cotacoes_novilha_hoje.json"
+        boi_todos, novilha_todos = _fetch_cotacoes_github()
 
-        def buscar_e_filtrar(url, uf):
-            try:
-                resp = requests.get(url, timeout=5)
-                if resp.status_code != 200:
-                    return []
-                dados = resp.json()
-                resultados = []
-                mapa_estados = {'AC': 'Acre', 'AL': 'Alagoas', 'RR': 'Roraima'}
-                nome_completo = mapa_estados.get(uf, '')
-                for item in dados:
-                    praca = item.get('praca', '').upper()
-                    if praca.startswith(uf) or praca == uf or (nome_completo and praca == nome_completo.upper()):
-                        resultados.append(item)
-                return resultados
-            except Exception as e:
-                logger.error(f"Erro ao ler JSON {url}: {e}")
-                return []
+        mapa_estados = {'AC': 'Acre', 'AL': 'Alagoas', 'RR': 'Roraima'}
+        nome_completo = mapa_estados.get(uf_usuario, '')
 
-        cotacoes_boi = buscar_e_filtrar(url_boi, uf_usuario)
-        cotacoes_novilha = buscar_e_filtrar(url_novilha, uf_usuario)
+        def filtrar(dados):
+            out = []
+            for item in dados:
+                praca = item.get('praca', '').upper()
+                if praca.startswith(uf_usuario) or praca == uf_usuario or \
+                        (nome_completo and praca == nome_completo.upper()):
+                    out.append(item)
+            return out
 
-        return jsonify({'uf': uf_usuario, 'boi': cotacoes_boi, 'novilha': cotacoes_novilha})
-
+        return jsonify({
+            'uf': uf_usuario,
+            'boi': filtrar(boi_todos),
+            'novilha': filtrar(novilha_todos),
+        })
     except Exception as e:
         logger.error(f"Erro cotacoes: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
 
 @api_bp.route('/cotacoes-brasil')
 @login_required
 @limiter.limit("30 per minute")
 def cotacoes_brasil():
-    """Retorna a lista completa de cotações (Boi e Novilha) de todas as praças."""
+    """Retorna cotações de todas as praças — servido do cache compartilhado."""
     try:
-        base_url = "https://raw.githubusercontent.com/dom1ng0s/gado-scraper/main"
-
-        def buscar_dados(endpoint):
-            try:
-                resp = requests.get(f"{base_url}/{endpoint}", timeout=5)
-                return resp.json() if resp.status_code == 200 else []
-            except:
-                return []
-
-        boi = buscar_dados("cotacoes_boi_hoje.json")
-        novilha = buscar_dados("cotacoes_novilha_hoje.json")
-
+        boi, novilha = _fetch_cotacoes_github()
         return jsonify({'boi': boi, 'novilha': novilha})
-
     except Exception as e:
         logger.error(f"Erro cotacoes brasil: {e}")
         return jsonify({'error': str(e)}), 500

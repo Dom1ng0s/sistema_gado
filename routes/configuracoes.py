@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, session
 from flask_login import login_required, current_user
 import logging
 from repositories import configuracao_repository
@@ -27,6 +27,7 @@ def settings():
             area = request.form.get('area_total') or 0
 
             configuracao_repository.upsert_configuracao(current_user.id, nome, cidade, area)
+            session.pop('nome_fazenda', None)
             msg = "Configurações salvas com sucesso!"
         except Exception as e:
             logger.error(f"Erro ao salvar configurações: {e}", exc_info=True)

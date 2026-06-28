@@ -24,7 +24,7 @@
         Ver Brasil
       </button>
     </div>
-    <a href="{{ url_for('api.relatorio_pdf') }}" class="btn btn-secondary btn-sm">Relatório PDF</a>
+    <button id="btn-pdf" class="btn btn-secondary btn-sm" onclick="gerarPDF()">Relatório PDF</button>
     <a href="{{ url_for('api.export_animais_csv') }}" class="btn btn-secondary btn-sm">Exportar CSV</a>
     <a href="{{ url_for('operacional.importar_csv') }}" class="btn btn-secondary btn-sm">Importar CSV</a>
     <a href="{{ url_for('operacional.vacinacao_coletiva') }}" class="btn btn-accent btn-sm">
@@ -264,23 +264,71 @@
 {% block scripts %}
 <script>
 const API = {
-  sexo:    "{{ url_for('api.graficos_sexo') }}",
-  gmd:     "{{ url_for('api.graficos_gmd') }}",
-  alertas: "{{ url_for('api.alerta_gmd') }}",
+  summary: "{{ url_for('api.dashboard_summary') }}",
   cotacao: "{{ url_for('api.cotacoes_regionais') }}",
   brasil:  "{{ url_for('api.cotacoes_brasil') }}",
+  pdf:     "{{ url_for('api.relatorio_pdf') }}",
+  csrf:    "{{ csrf_token() }}",
 };
+
+async function gerarPDF() {
+  const btn = document.getElementById('btn-pdf');
+  btn.disabled = true;
+  btn.textContent = 'Gerando...';
+  try {
+    const res = await fetch(API.pdf, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': API.csrf },
+    });
+    if (!res.ok) throw new Error('Falha ao iniciar geração');
+    const { job_id } = await res.json();
+    await _aguardarPDF(job_id);
+  } catch (e) {
+    console.error(e);
+    btn.textContent = 'Relatório PDF';
+    btn.disabled = false;
+    alert('Erro ao gerar PDF. Tente novamente.');
+  }
+}
+
+async function _aguardarPDF(job_id) {
+  const btn = document.getElementById('btn-pdf');
+  const statusUrl = `/api/v1/relatorio/pdf/${job_id}/status`;
+  const downloadUrl = `/api/v1/relatorio/pdf/${job_id}/download`;
+  let tentativas = 0;
+  while (tentativas < 60) {
+    await new Promise(r => setTimeout(r, 2000));
+    tentativas++;
+    try {
+      const s = await fetch(statusUrl).then(r => r.json());
+      if (s.status === 'done') {
+        window.location.href = downloadUrl;
+        btn.textContent = 'Relatório PDF';
+        btn.disabled = false;
+        return;
+      }
+      if (s.status === 'error') throw new Error('Erro na geração do PDF');
+    } catch (e) {
+      btn.textContent = 'Relatório PDF';
+      btn.disabled = false;
+      alert('Erro ao gerar PDF. Tente novamente.');
+      return;
+    }
+  }
+  btn.textContent = 'Relatório PDF';
+  btn.disabled = false;
+  alert('Tempo esgotado. Tente novamente.');
+}
 
 async function carregarMetricas() {
   try {
-    const [sexoData, gmdData, alertasData] = await Promise.all([
-      fetch(API.sexo).then(r => r.json()),
-      fetch(API.gmd).then(r => r.json()),
-      fetch(API.alertas).then(r => r.json()),
-    ]);
+    const data = await fetch(API.summary).then(r => r.json());
+    const sexoData    = data.sexo    || {};
+    const gmdData     = data.gmd     || {};
+    const alertasData = data.alertas || {};
 
-    const M = sexoData.M || 0;
-    const F = sexoData.F || 0;
+    const M = sexoData['M'] || 0;
+    const F = sexoData['F'] || 0;
     const total = M + F;
 
     function revealMetric(skId, lblId, valEl, valText, deltaEl, deltaText, deltaClass) {

@@ -1,9 +1,9 @@
 import os
 import logging
-from flask import Flask, redirect, url_for, render_template
+from flask import Flask, redirect, url_for, render_template, session, request
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
-from extensions import limiter, scheduler
+from extensions import limiter, scheduler, compress
 from models import User
 from routes.auth import auth_bp
 from routes.financeiro import financeiro_bp
@@ -21,6 +21,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 csrf = CSRFProtect(app)
 limiter.init_app(app)
+compress.init_app(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -49,17 +50,27 @@ def format_brl(value):
 
 @app.context_processor
 def inject_user_info():
-    site_name = "Meu Rebanho"
+    if not current_user.is_authenticated:
+        return {'nome_fazenda_header': "Meu Rebanho"}
 
-    if current_user.is_authenticated:
+    cached = session.get('nome_fazenda')
+    if cached is None:
         try:
             res = configuracao_repository.get_configuracao(current_user.id)
-            if res and res[0]:
-                site_name = res[0]
+            cached = res[0] if (res and res[0]) else "Meu Rebanho"
         except Exception:
-            pass
+            cached = "Meu Rebanho"
+        session['nome_fazenda'] = cached
 
-    return {'nome_fazenda_header': site_name}
+    return {'nome_fazenda_header': cached}
+
+
+@app.after_request
+def set_static_cache(response):
+    if request.path.startswith('/static/'):
+        response.cache_control.max_age = 31536000
+        response.cache_control.public = True
+    return response
 
 @app.route('/')
 def index():

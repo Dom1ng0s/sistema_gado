@@ -195,12 +195,16 @@ try:
     print(" Aplicando índices de performance...")
     
     indices_sql = [
-        ("idx_pesagens_otimizada", "CREATE INDEX idx_pesagens_otimizada ON pesagens (animal_id, data_pesagem)"),
-        ("idx_pesagens_max", "CREATE INDEX idx_pesagens_max ON pesagens (animal_id, id DESC)"),
-        ("idx_custos_busca", "CREATE INDEX idx_custos_busca ON custos_operacionais (user_id, data_custo)"),
-        ("idx_med_busca", "CREATE INDEX idx_med_busca ON medicacoes (animal_id, data_aplicacao)"),
-        ("idx_animais_venda", "CREATE INDEX idx_animais_venda ON animais (user_id, data_venda)"),
-        ("idx_animais_ativo", "CREATE INDEX idx_animais_ativo ON animais (user_id, deleted_at)")
+        ("idx_pesagens_otimizada",  "CREATE INDEX idx_pesagens_otimizada ON pesagens (animal_id, data_pesagem)"),
+        ("idx_pesagens_max",        "CREATE INDEX idx_pesagens_max ON pesagens (animal_id, id DESC)"),
+        ("idx_custos_busca",        "CREATE INDEX idx_custos_busca ON custos_operacionais (user_id, data_custo)"),
+        ("idx_med_busca",           "CREATE INDEX idx_med_busca ON medicacoes (animal_id, data_aplicacao)"),
+        ("idx_animais_venda",       "CREATE INDEX idx_animais_venda ON animais (user_id, data_venda)"),
+        ("idx_animais_ativo",       "CREATE INDEX idx_animais_ativo ON animais (user_id, deleted_at)"),
+        # Índices compostos para os padrões de query mais frequentes
+        ("idx_animais_ativo_venda", "CREATE INDEX idx_animais_ativo_venda ON animais (user_id, deleted_at, data_venda)"),
+        ("idx_animais_brinco",      "CREATE INDEX idx_animais_brinco ON animais (user_id, deleted_at, brinco)"),
+        ("idx_sanitario_agenda",    "CREATE INDEX idx_sanitario_agenda ON protocolos_sanitarios (user_id, proxima_aplicacao, ativo)"),
     ]
 
     for nome_idx, sql in indices_sql:

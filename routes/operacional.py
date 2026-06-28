@@ -4,6 +4,7 @@ import math
 import logging
 import csv
 import io
+import re as _re
 from datetime import date as _date
 from repositories import animal_repository, reproducao_repository, sanitario_repository
 from routes.validators import validate
@@ -560,6 +561,12 @@ def importar_csv():
     try:
         from db_config import get_db_cursor
         with get_db_cursor() as cursor:
+            cursor.execute(
+                "SELECT brinco FROM animais WHERE user_id = %s AND deleted_at IS NULL",
+                (current_user.id,)
+            )
+            brincos_existentes = {row[0] for row in cursor.fetchall()}
+
             for i, row in enumerate(reader, start=2):
                 if i - 1 > _CSV_MAX_LINHAS:
                     erros.append({'linha': i, 'msg': 'Limite de 5000 linhas atingido — importação interrompida.'})
@@ -587,10 +594,9 @@ def importar_csv():
                 except (ValueError, TypeError):
                     linha_erros.append("peso_kg ou valor_arroba inválido")
 
-                import re
-                if data_compra and not re.match(r'^\d{4}-\d{2}-\d{2}$', data_compra):
+                if data_compra and not _re.match(r'^\d{4}-\d{2}-\d{2}$', data_compra):
                     linha_erros.append("data_compra deve ser AAAA-MM-DD")
-                if data_nasc and not re.match(r'^\d{4}-\d{2}-\d{2}$', data_nasc):
+                if data_nasc and not _re.match(r'^\d{4}-\d{2}-\d{2}$', data_nasc):
                     linha_erros.append("data_nascimento deve ser AAAA-MM-DD")
 
                 if not data_compra and not data_nasc:
@@ -600,7 +606,7 @@ def importar_csv():
                     erros.append({'linha': i, 'msg': '; '.join(linha_erros)})
                     continue
 
-                if animal_repository.check_brinco_exists(brinco, current_user.id):
+                if brinco in brincos_existentes:
                     erros.append({'linha': i, 'msg': f"brinco '{brinco}' já existe"})
                     continue
 
@@ -610,6 +616,7 @@ def importar_csv():
                     (brinco, sexo, raca, data_compra or None,
                      data_nasc or None, preco_compra, current_user.id)
                 )
+                brincos_existentes.add(brinco)
                 inseridos += 1
 
     except Exception as e:
