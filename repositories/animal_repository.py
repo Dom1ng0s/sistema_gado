@@ -258,11 +258,32 @@ def get_gmd_by_animal(animal_id):
 
 
 def get_gmd_medio_rebanho(user_id):
+    """AVG do GMD calculado diretamente sobre pesagens — sem materializar v_gmd_analitico.
+
+    Filtra user_id no JOIN com animais antes das window functions, evitando
+    que o MySQL varra pesagens de todos os usuários antes de restringir ao tenant.
+    """
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT AVG(v.gmd) FROM v_gmd_analitico v "
-            "JOIN animais a ON v.animal_id = a.id "
-            "WHERE v.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL",
+            "WITH po AS ("
+            "  SELECT p.animal_id, p.data_pesagem, p.peso,"
+            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
+            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
+            "  FROM pesagens p"
+            "  JOIN animais a ON a.id = p.animal_id"
+            "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
+            "),"
+            " pu AS ("
+            "  SELECT animal_id,"
+            "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
+            "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
+            "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
+            "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
+            "  FROM po GROUP BY animal_id"
+            " )"
+            " SELECT AVG(CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
+            "   THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini) END)"
+            " FROM pu WHERE data_ini <> data_fim",
             (user_id,)
         )
         res = cursor.fetchone()
