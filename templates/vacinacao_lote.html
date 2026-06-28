@@ -7,7 +7,10 @@
 
 {% block content %}
     <div style="max-width: 900px; margin: 0 auto;">
-        <h1 style="border-bottom: 2px solid var(--primary-color); padding-bottom: 10px;">💉 Manejo Sanitário em Lote</h1>
+        <h1 style="border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; display:flex; align-items:center; gap:var(--space-2);">
+          <svg aria-hidden="true" class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m18 2 4 4-1.5 1.5-4-4L18 2ZM10.5 9.5l4 4M7 8l4 4m-7 7 4-4m1-8 8 8"/><path d="m2 22 4-4"/></svg>
+          Manejo Sanitário em Lote
+        </h1>
 
         <form action="{{ url_for('operacional.vacinacao_coletiva') }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

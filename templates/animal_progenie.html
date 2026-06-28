@@ -97,6 +97,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 {% if filhos %}
 {% set filhos_com_gmd = filhos | selectattr(4, 'ne', none) | list %}
 {% if filhos_com_gmd | length >= 2 %}

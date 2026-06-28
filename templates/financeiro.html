@@ -1,9 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Financeiro{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='financeiro.css') }}">
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block content %}
 
@@ -13,12 +11,18 @@
     <p class="label">{{ nome_fazenda_header }}</p>
     <h1 class="page-title">Dashboard Financeiro</h1>
   </div>
-  <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
+  <div class="flex flex-wrap items-center gap-2">
     <a href="{{ url_for('financeiro.custos_operacionais') }}" class="btn btn-secondary btn-sm">+ Custo</a>
     <a href="{{ url_for('api.export_financeiro_csv') }}?ano={{ ano_selecionado }}" class="btn btn-secondary btn-sm">Exportar CSV</a>
-    <a href="{{ url_for('financeiro.agendamentos') }}" class="btn btn-accent btn-sm">📅 Contas a Pagar</a>
+    <a href="{{ url_for('financeiro.agendamentos') }}" class="btn btn-accent btn-sm">
+      <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Contas a Pagar
+    </a>
     <a href="{{ url_for('financeiro.resultado_lotes') }}" class="btn btn-secondary btn-sm">P&L por Lote</a>
-    <a href="{{ url_for('financeiro.simulador_custo') }}" class="btn btn-primary btn-sm">🧮 Simulador</a>
+    <a href="{{ url_for('financeiro.simulador_custo') }}" class="btn btn-primary btn-sm">
+      <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="11" y2="14"/><path d="m15 14 1.5 1.5L19 13M15 19l1.5 1.5L19 17"/></svg>
+      Simulador
+    </a>
   </div>
 </div>
 
@@ -66,7 +70,7 @@
 </div>
 
 <!-- ── Seção anual ────────────────────────────────────── -->
-<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4);">
+<div class="flex justify-between items-center flex-wrap gap-3" style="margin-bottom:var(--space-4);">
   <h2 style="margin:0;">Análise do Exercício</h2>
   <form action="{{ url_for('financeiro.financeiro') }}" method="GET"
         style="display:flex; align-items:center; gap:var(--space-2);">
@@ -122,7 +126,7 @@
 {% endif %}
 
 <!-- ── Tabela de custos ───────────────────────────────── -->
-<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4);">
+<div class="flex justify-between items-center flex-wrap gap-3" style="margin-bottom:var(--space-4);">
   <h2 style="margin:0;">Detalhamento de Custos ({{ ano_selecionado }})</h2>
   <a href="{{ url_for('financeiro.custos_operacionais') }}" class="btn btn-primary btn-sm">+ Novo Lançamento</a>
 </div>
@@ -173,6 +177,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 {% if financeiro.entradas_ano != 0 or financeiro.saidas_ano != 0 %}
 <script>
 function parseVal(str) {

@@ -6,19 +6,27 @@
   <title>{% block title %}SGG{% endblock %} — Sistema de Gestão de Gado</title>
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
+  <!-- Google Fonts — preconnect first, then stylesheet with font-display=swap -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Rubik:wght@400;500;600&display=swap">
+
   <!-- Design System único -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}">
 
   {% block extra_css %}{% endblock %}
-
-  <!-- ECharts -->
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
 
+<a class="skip-link" href="#main-content">Ir ao conteúdo principal</a>
+
 <nav class="nav">
   <a class="nav-logo" href="{{ url_for('operacional.painel') }}">
-    🐂 SGG
+    <svg aria-hidden="true" class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+      <path d="M4 8c0-2 1-3 2-3s2 .5 3 1.5C10 7.5 11 8 12 8s2-.5 3-1.5C16 5.5 17 5 18 5s2 1 2 3v1c0 3-1.5 5-4 6l-1 4H9l-1-4C5.5 14 4 12 4 9V8Z"/>
+      <path d="M2 6c.5-1 1.5-1.5 2-1M22 6c-.5-1-1.5-1.5-2-1"/>
+    </svg>
+    SGG
   </a>
   <div class="nav-links" id="nav-links">
     <a href="{{ url_for('operacional.painel') }}"
@@ -56,7 +64,7 @@
   </div>
 </nav>
 
-<main class="page-container">
+<main class="page-container" id="main-content">
   {% block content %}{% endblock %}
 </main>
 

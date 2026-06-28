@@ -33,7 +33,7 @@ def painel():
         logger.error(f"Erro painel: {e}", exc_info=True)
 
     return render_template("index.html", lista_animais=animais, pagina_atual=pg,
-                           total_paginas=total_pg, busca=termo, status=status,
+                           total_paginas=total_pg, total_animais=total, busca=termo, status=status,
                            raca_filtro=raca or '', racas_disponiveis=racas_disponiveis,
                            alertas_sanitarios=alertas_sanitarios)
 

@@ -6,6 +6,9 @@
   <title>SGG — Sistema de Gestão de Gado</title>
   <meta name="description" content="ERP zootécnico para pecuária de corte. Calcule o GMD de cada brinco, descubra o custo real da sua arroba e nunca perca prazo de vacinação.">
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Rubik:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}">
   <style>
     /* ── Reset de página ────────────────────────────── */
@@ -481,7 +484,7 @@
       <a href="{{ url_for('auth.novo_usuario') }}" class="btn-hero-primary">
         Criar conta grátis
       </a>
-      <a href="https://sistemadogado.up.railway.app" target="_blank" rel="noopener" class="btn-hero-secondary">
+      <a href="https://sistemadogado.up.railway.app/login" target="_blank" rel="noopener" class="btn-hero-secondary">
         Ver demo ao vivo →
       </a>
     </div>

@@ -36,11 +36,26 @@ def count_animais(user_id, termo=None, status='todos', raca=None):
 
 
 def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', raca=None):
-    where, params = _build_animais_where(user_id, termo, status, raca=raca)
+    conds = ["a.user_id = %s", "a.deleted_at IS NULL"]
+    params = [user_id]
+    if termo:
+        conds.append("a.brinco LIKE %s")
+        params.append(termo + "%")
+    if status == 'ativos':
+        conds.append("a.data_venda IS NULL")
+    elif status == 'vendidos':
+        conds.append("a.data_venda IS NOT NULL")
+    if raca:
+        conds.append("a.raca = %s")
+        params.append(raca)
+    where = "WHERE " + " AND ".join(conds)
     sql = (
-        "SELECT id, brinco, sexo, raca, data_compra, preco_compra, data_venda, preco_venda "
-        "FROM animais " + where +
-        " ORDER BY LENGTH(brinco) ASC, brinco ASC LIMIT %s OFFSET %s"
+        "SELECT a.id, a.brinco, a.sexo, a.raca, a.data_compra, a.preco_compra, "
+        "       a.data_venda, a.preco_venda, g.peso_final, g.gmd "
+        "FROM animais a "
+        "LEFT JOIN v_gmd_analitico g ON g.animal_id = a.id "
+        + where +
+        " ORDER BY LENGTH(a.brinco) ASC, a.brinco ASC LIMIT %s OFFSET %s"
     )
     with get_db_cursor() as cursor:
         cursor.execute(sql, tuple(params + [limit, offset]))

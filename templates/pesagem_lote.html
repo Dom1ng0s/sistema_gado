@@ -189,7 +189,7 @@
   <!-- Alertas -->
   {% if mensagem %}
   <div class="alert alert-success" style="margin-bottom: var(--space-5);">
-    <span class="alert-icon">✓</span>
+    <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
     <span>{{ mensagem }}</span>
   </div>
   {% endif %}

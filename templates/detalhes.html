@@ -246,7 +246,8 @@
       <a href="{{ url_for('operacional.excluir_animal', id_animal=animal[0]) }}"
          class="btn btn-danger btn-sm"
          onclick="return confirm('Mover o animal para a lixeira?');">
-         🗑️ Excluir animal
+         <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+         Excluir animal
       </a>
     </div>
 
@@ -299,6 +300,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 {% if animal and historico_peso | length >= 2 %}
 <script>
 const pesagensRaw = [
