@@ -52,6 +52,24 @@ def verificar_protocolos_vencendo(app):
             logger.error(f"Alerta protocolos: {e}", exc_info=True)
 
 
+def verificar_feedback_7dias(app):
+    with app.app_context():
+        try:
+            from utils.email_service import send_feedback_request
+            with get_db_cursor() as cursor:
+                cursor.execute(
+                    "SELECT username, email FROM usuarios "
+                    "WHERE email IS NOT NULL AND email != '' "
+                    "AND DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 7 DAY)"
+                )
+                usuarios = cursor.fetchall()
+            for username, email in usuarios:
+                send_feedback_request(email, username)
+                logger.info(f"Feedback solicitado: {username}")
+        except Exception as e:
+            logger.error(f"Alerta feedback: {e}", exc_info=True)
+
+
 def verificar_estoque_critico(app):
     with app.app_context():
         try:

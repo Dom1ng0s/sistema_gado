@@ -7,3 +7,4 @@ CLAUDE.md
 seed_domingos.py
 capture_demo.py
 photos/demo_*.png
+/.agents

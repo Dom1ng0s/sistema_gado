@@ -593,6 +593,16 @@ try:
         else:
             print(f"   Alerta email: {err}")
 
+    print(" Adicionando coluna created_at em 'usuarios'...")
+    try:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+        print("   -> Coluna 'created_at' adicionada.")
+    except mysql.connector.Error as err:
+        if err.errno == 1060:
+            print("   -> Coluna 'created_at' já existe.")
+        else:
+            print(f"   Alerta created_at: {err}")
+
     print(" Criando tabela 'password_reset_tokens'...")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS password_reset_tokens (

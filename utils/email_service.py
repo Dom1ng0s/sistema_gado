@@ -215,6 +215,99 @@ def send_alert_estoque(to_email: str, produtos: list) -> None:
     _send(to_email, 'SGG — Estoque crítico detectado', html)
 
 
+def send_feedback_request(to_email: str, username: str) -> None:
+    html = f"""
+    <html>
+    <body style="margin:0;padding:0;background:#F7F6F2;font-family:'DM Sans',Helvetica,sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr><td align="center" style="padding:40px 16px;">
+          <table width="520" cellpadding="0" cellspacing="0"
+                 style="background:#ffffff;border-radius:12px;overflow:hidden;
+                        box-shadow:0 4px 20px rgba(59,109,17,.10);">
+
+            <!-- Cabeçalho -->
+            <tr>
+              <td style="background:#27500A;padding:24px 32px;">
+                <p style="margin:0;color:#C0DD97;font-size:13px;font-weight:600;
+                           letter-spacing:0.08em;text-transform:uppercase;">
+                  SGG — Sistema de Gestão de Gado
+                </p>
+              </td>
+            </tr>
+
+            <!-- Corpo -->
+            <tr>
+              <td style="padding:36px 32px 28px;">
+                <p style="margin:0 0 20px;color:#111110;font-size:17px;line-height:1.5;">
+                  Olá, <strong>{username}</strong>.
+                </p>
+                <p style="margin:0 0 20px;color:#2E2E2B;font-size:15px;line-height:1.75;">
+                  Faz uma semana que você criou sua conta no SGG.
+                  Quero saber como está sendo — não como formulário, como pergunta direta mesmo.
+                </p>
+
+                <!-- Perguntas destacadas -->
+                <table cellpadding="0" cellspacing="0" width="100%"
+                       style="margin:0 0 24px;border-radius:8px;overflow:hidden;
+                              border:1px solid #EAF3DE;">
+                  <tr>
+                    <td style="background:#EAF3DE;padding:16px 20px;
+                                border-bottom:1px solid #C0DD97;">
+                      <p style="margin:0;color:#27500A;font-size:14px;font-weight:600;">
+                        O que você conseguiu fazer no sistema essa semana?
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="background:#F7FAF2;padding:16px 20px;">
+                      <p style="margin:0;color:#3B6D11;font-size:14px;font-weight:600;">
+                        O que faltou ou travou?
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 28px;color:#2E2E2B;font-size:15px;line-height:1.75;">
+                  Pode responder diretamente neste e-mail — sem formulário, sem campo obrigatório.
+                  Duas linhas já ajudam muito.
+                </p>
+
+                <!-- CTA -->
+                <table cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background:#3B6D11;border-radius:8px;">
+                      <a href="mailto:sistemadegestaodegado@gmail.com?subject=Feedback%20SGG%20-%20{username}"
+                         style="display:inline-block;color:#ffffff;font-size:15px;font-weight:600;
+                                text-decoration:none;padding:13px 24px;">
+                        Responder agora →
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Rodapé -->
+            <tr>
+              <td style="background:#F0EDE6;padding:16px 32px;
+                          border-top:1px solid #E8E4DB;">
+                <p style="margin:0;color:#999890;font-size:12px;line-height:1.6;">
+                  SGG — Sistema de Gestão de Gado &nbsp;·&nbsp;
+                  <a href="https://sistemadogado.up.railway.app"
+                     style="color:#639922;text-decoration:none;">sistemadogado.up.railway.app</a>
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td></tr>
+      </table>
+    </body>
+    </html>
+    """
+    _send(to_email, 'Como está sendo sua experiência com o SGG?', html)
+
+
 def send_reset_code(to_email: str, code: str) -> None:
     mail_server = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
     mail_port = int(os.getenv('MAIL_PORT', 587))

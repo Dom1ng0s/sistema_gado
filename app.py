@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, url_for, render_template
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
 from extensions import limiter, scheduler
@@ -65,17 +65,19 @@ def inject_user_info():
 def index():
     if current_user.is_authenticated:
         return redirect(url_for('operacional.painel'))
-    return redirect(url_for('auth.login'))
+    return render_template('landing.html')
 
 if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN'):
     from utils.alertas import (
         verificar_contas_vencendo,
         verificar_protocolos_vencendo,
         verificar_estoque_critico,
+        verificar_feedback_7dias,
     )
     scheduler.add_job(verificar_contas_vencendo,    'cron', hour=8, args=[app])
     scheduler.add_job(verificar_protocolos_vencendo,'cron', hour=8, args=[app])
     scheduler.add_job(verificar_estoque_critico,    'cron', day_of_week='mon', hour=8, args=[app])
+    scheduler.add_job(verificar_feedback_7dias,     'cron', hour=9, args=[app])
     scheduler.start()
 
 if __name__ == '__main__':
