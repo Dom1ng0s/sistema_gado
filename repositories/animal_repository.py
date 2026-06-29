@@ -77,7 +77,7 @@ def get_gmd_lote(animal_ids: list, user_id: int) -> dict:
         "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
         "  FROM pesagens p"
         "  JOIN animais a ON a.id = p.animal_id AND a.user_id = %s AND a.deleted_at IS NULL"
-        "  WHERE p.animal_id IN " + placeholders +
+        "  WHERE p.animal_id IN " + placeholders + " AND p.deleted_at IS NULL"
         "),"
         " pu AS ("
         "  SELECT animal_id,"
@@ -215,7 +215,7 @@ def get_animal_by_id(animal_id, user_id):
 def check_brinco_exists(brinco, user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT id FROM animais WHERE brinco = %s AND user_id = %s",
+            "SELECT id FROM animais WHERE brinco = %s AND user_id = %s AND deleted_at IS NULL",
             (brinco, user_id)
         )
         return cursor.fetchone() is not None
@@ -254,7 +254,7 @@ def get_gmd_by_animal(animal_id):
             "  SELECT data_pesagem, peso,"
             "    ROW_NUMBER() OVER (ORDER BY data_pesagem ASC)  AS rn_asc,"
             "    ROW_NUMBER() OVER (ORDER BY data_pesagem DESC) AS rn_desc"
-            "  FROM pesagens WHERE animal_id = %s"
+            "  FROM pesagens WHERE animal_id = %s AND deleted_at IS NULL"
             "),"
             " pu AS ("
             "  SELECT"
@@ -291,6 +291,7 @@ def get_gmd_medio_rebanho(user_id):
             "  FROM pesagens p"
             "  JOIN animais a ON a.id = p.animal_id"
             "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
+            "    AND p.deleted_at IS NULL"
             "),"
             " pu AS ("
             "  SELECT animal_id,"
@@ -320,6 +321,7 @@ def get_animais_com_gmd(user_id):
             "  FROM pesagens p"
             "  JOIN animais a ON a.id = p.animal_id"
             "    AND a.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL"
+            "    AND p.deleted_at IS NULL"
             "),"
             " pu AS ("
             "  SELECT animal_id,"
@@ -359,6 +361,7 @@ def get_animais_abaixo_gmd_medio(user_id):
             "  FROM pesagens p"
             "  JOIN animais a ON a.id = p.animal_id"
             "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
+            "    AND p.deleted_at IS NULL"
             "),"
             " pu AS ("
             "  SELECT animal_id,"
@@ -416,7 +419,7 @@ def get_progenie_by_touro(animal_id, user_id):
             "  FROM pesagens p"
             "  JOIN animais filho ON filho.id = p.animal_id"
             "    AND (filho.pai_id = %s OR filho.mae_id = %s)"
-            "    AND filho.user_id = %s AND filho.deleted_at IS NULL"
+            "    AND filho.user_id = %s AND filho.deleted_at IS NULL AND p.deleted_at IS NULL"
             "),"
             " pu AS ("
             "  SELECT animal_id,"
@@ -470,7 +473,8 @@ def get_ranking_touros(user_id):
             "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
             "  FROM pesagens p"
             "  JOIN animais filho ON filho.id = p.animal_id"
-            "    AND filho.user_id = %s AND filho.pai_id IS NOT NULL AND filho.deleted_at IS NULL"
+            "    AND filho.user_id = %s AND filho.pai_id IS NOT NULL"
+            "    AND filho.deleted_at IS NULL AND p.deleted_at IS NULL"
             "),"
             " pu AS ("
             "  SELECT animal_id,"
@@ -529,9 +533,13 @@ def get_pesos_atuais_rebanho(user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
             "SELECT p.peso FROM pesagens p "
-            "INNER JOIN (SELECT animal_id, MAX(id) AS m FROM pesagens GROUP BY animal_id) u ON p.id = u.m "
+            "INNER JOIN ("
+            "  SELECT animal_id, MAX(data_pesagem) AS max_dt "
+            "  FROM pesagens WHERE deleted_at IS NULL GROUP BY animal_id"
+            ") u ON p.animal_id = u.animal_id AND p.data_pesagem = u.max_dt "
             "INNER JOIN animais a ON p.animal_id = a.id "
-            "WHERE a.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL",
+            "WHERE a.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL "
+            "AND p.deleted_at IS NULL",
             (user_id,)
         )
         return cursor.fetchall()
@@ -568,7 +576,7 @@ def registrar_venda(animal_id, user_id, data_venda, preco_venda, peso_venda):
     """Atualiza venda e registra pesagem final na mesma transação. Retorna True se o animal pertence ao usuário."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT id FROM animais WHERE id = %s AND user_id = %s",
+            "SELECT id FROM animais WHERE id = %s AND user_id = %s AND deleted_at IS NULL",
             (animal_id, user_id)
         )
         if not cursor.fetchone():
@@ -588,7 +596,7 @@ def registrar_pesagem(animal_id, user_id, data_pesagem, peso):
     """Valida propriedade e insere pesagem na mesma transação. Retorna True se bem-sucedido."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT id FROM animais WHERE id = %s AND user_id = %s",
+            "SELECT id FROM animais WHERE id = %s AND user_id = %s AND deleted_at IS NULL",
             (animal_id, user_id)
         )
         if not cursor.fetchone():
@@ -604,7 +612,7 @@ def registrar_medicacao(animal_id, user_id, data_aplicacao, nome, custo, obs):
     """Valida propriedade e insere medicação na mesma transação. Retorna True se bem-sucedido."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT id FROM animais WHERE id = %s AND user_id = %s",
+            "SELECT id FROM animais WHERE id = %s AND user_id = %s AND deleted_at IS NULL",
             (animal_id, user_id)
         )
         if not cursor.fetchone():
@@ -617,24 +625,23 @@ def registrar_medicacao(animal_id, user_id, data_aplicacao, nome, custo, obs):
         return True
 
 
-def insert_medicacao_lote(animal_ids, data_aplicacao, nome, custo, obs, user_id=None):
+def insert_medicacao_lote(animal_ids, data_aplicacao, nome, custo, obs, user_id):
     """Insere medicação em múltiplos animais na mesma transação.
 
-    user_id obrigatório: apenas animais pertencentes ao usuário são processados.
+    Apenas animais ativos pertencentes ao user_id são processados.
     """
     if not animal_ids:
         return
     with get_db_cursor() as cursor:
-        if user_id is not None:
-            placeholders = ','.join(['%s'] * len(animal_ids))
-            cursor.execute(
-                f"SELECT id FROM animais WHERE id IN ({placeholders}) AND user_id = %s AND deleted_at IS NULL",
-                list(animal_ids) + [user_id]
-            )
-            ids_validos = {row[0] for row in cursor.fetchall()}
-            animal_ids = [aid for aid in animal_ids if int(aid) in ids_validos]
-            if not animal_ids:
-                return
+        placeholders = ','.join(['%s'] * len(animal_ids))
+        cursor.execute(
+            f"SELECT id FROM animais WHERE id IN ({placeholders}) AND user_id = %s AND deleted_at IS NULL",
+            list(animal_ids) + [user_id]
+        )
+        ids_validos = {row[0] for row in cursor.fetchall()}
+        animal_ids = [aid for aid in animal_ids if int(aid) in ids_validos]
+        if not animal_ids:
+            return
         cursor.executemany(
             "INSERT INTO medicacoes (animal_id, data_aplicacao, nome_medicamento, custo, observacoes) "
             "VALUES (%s, %s, %s, %s, %s)",

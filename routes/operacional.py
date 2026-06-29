@@ -20,6 +20,7 @@ def painel():
     pg = request.args.get('page', 1, type=int)
     limit, offset = 20, (pg - 1) * 20
     total_pg = 1
+    total = 0
     racas_disponiveis = []
 
     alertas_sanitarios = []
@@ -268,7 +269,8 @@ def vacinacao_coletiva():
             return redirect(url_for('operacional.painel'))
         except Exception as e:
             logger.error(f"Erro vacinacao lote: {e}", exc_info=True)
-            return "Erro ao processar vacinação."
+            lista_animais = animal_repository.get_animais_ativos(current_user.id)
+            return render_template('vacinacao_lote.html', erro="Erro interno ao processar vacinação.", animais=lista_animais), 500
 
     try:
         lista_animais = animal_repository.get_animais_ativos(current_user.id)

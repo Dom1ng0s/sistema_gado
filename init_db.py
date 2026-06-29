@@ -205,6 +205,14 @@ try:
         ("idx_animais_ativo_venda", "CREATE INDEX idx_animais_ativo_venda ON animais (user_id, deleted_at, data_venda)"),
         ("idx_animais_brinco",      "CREATE INDEX idx_animais_brinco ON animais (user_id, deleted_at, brinco)"),
         ("idx_sanitario_agenda",    "CREATE INDEX idx_sanitario_agenda ON protocolos_sanitarios (user_id, proxima_aplicacao, ativo)"),
+        # FK sem índice automático no MySQL — adicionados para suportar JOINs e filtros
+        ("idx_reproducao_vaca",     "CREATE INDEX idx_reproducao_vaca ON reproducao (vaca_id)"),
+        ("idx_reproducao_user",     "CREATE INDEX idx_reproducao_user ON reproducao (user_id, data_parto_prevista)"),
+        ("idx_estoque_mov_produto", "CREATE INDEX idx_estoque_mov_produto ON estoque_movimentacoes (produto_id, user_id)"),
+        ("idx_modulos_pasto",       "CREATE INDEX idx_modulos_pasto ON modulos (pasto_id)"),
+        ("idx_ocupacoes_modulo",    "CREATE INDEX idx_ocupacoes_modulo ON ocupacoes (modulo_id)"),
+        ("idx_ocupacao_animais_oc", "CREATE INDEX idx_ocupacao_animais_oc ON ocupacao_animais (ocupacao_id)"),
+        ("idx_animais_raca",        "CREATE INDEX idx_animais_raca ON animais (user_id, raca, deleted_at)"),
     ]
 
     for nome_idx, sql in indices_sql:
