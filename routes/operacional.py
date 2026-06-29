@@ -262,7 +262,8 @@ def vacinacao_coletiva():
                 request.form['data_aplicacao'],
                 request.form['nome'],
                 request.form['custo'],
-                request.form['obs']
+                request.form['obs'],
+                user_id=current_user.id,
             )
             return redirect(url_for('operacional.painel'))
         except Exception as e:
@@ -590,7 +591,7 @@ def importar_csv():
                     arr  = float((row.get('valor_arroba') or '').replace(',', '.'))
                     if peso <= 0 or arr <= 0:
                         raise ValueError
-                    preco_compra = round((peso / 15) * arr, 2)
+                    preco_compra = round((peso / 30) * arr, 2)
                 except (ValueError, TypeError):
                     linha_erros.append("peso_kg ou valor_arroba inválido")
 

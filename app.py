@@ -78,7 +78,17 @@ def index():
         return redirect(url_for('operacional.painel'))
     return render_template('landing.html')
 
-if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN'):
+# Em produção com Gunicorn + preload_app=True o scheduler inicia no processo master
+# (antes do fork). Com preload_app=False cada worker importaria o módulo e iniciaria
+# o scheduler individualmente — triplo disparo de emails. O guard abaixo cobre ambos
+# os casos: no dev server usa WERKZEUG_RUN_MAIN; no Gunicorn usa SCHEDULER_ENABLED
+# que gunicorn.conf.py seta como 'false' nos workers filhos (age > 1).
+_sched_permitido = (
+    os.environ.get('WERKZEUG_RUN_MAIN') == 'true'  # Flask dev server (reload)
+    or (not app.debug and os.environ.get('SCHEDULER_ENABLED', 'true') != 'false')
+)
+
+if _sched_permitido:
     from utils.alertas import (
         verificar_contas_vencendo,
         verificar_protocolos_vencendo,

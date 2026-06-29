@@ -77,11 +77,21 @@ def insert_custo_operacional(user_id, categoria, tipo_custo, valor, data_custo, 
         )
 
 
+_CATEGORIAS_CACHE = None
+
+
 def get_categorias_custo():
-    """Centros de custo da tabela de referência compartilhada (sem filtro user_id)."""
+    """Centros de custo da tabela de referência compartilhada (sem filtro user_id).
+
+    Resultado cacheado em memória — cost_centers nunca muda em runtime.
+    """
+    global _CATEGORIAS_CACHE
+    if _CATEGORIAS_CACHE is not None:
+        return _CATEGORIAS_CACHE
     with get_db_cursor() as cursor:
         cursor.execute("SELECT nome, categoria FROM cost_centers ORDER BY nome")
-        return cursor.fetchall()
+        _CATEGORIAS_CACHE = cursor.fetchall()
+    return _CATEGORIAS_CACHE
 
 
 # ---- AGENDAMENTOS FINANCEIROS ----

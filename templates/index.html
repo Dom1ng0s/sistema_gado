@@ -280,10 +280,10 @@ async function _aguardarPDF(job_id) {
   const btn = document.getElementById('btn-pdf');
   const statusUrl = `/api/v1/relatorio/pdf/${job_id}/status`;
   const downloadUrl = `/api/v1/relatorio/pdf/${job_id}/download`;
-  let tentativas = 0;
-  while (tentativas < 60) {
-    await new Promise(r => setTimeout(r, 2000));
-    tentativas++;
+  let delay = 1500;
+  for (let i = 0; i < 25; i++) {
+    await new Promise(r => setTimeout(r, delay));
+    delay = Math.min(Math.round(delay * 1.4), 5000); // backoff até 5s
     try {
       const s = await fetch(statusUrl).then(r => r.json());
       if (s.status === 'done') {

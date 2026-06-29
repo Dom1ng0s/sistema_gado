@@ -1,4 +1,4 @@
-import random
+import secrets
 import logging
 from datetime import datetime, timedelta
 
@@ -140,7 +140,7 @@ def esqueci_senha():
             user = auth_repository.get_user_by_email(email)
 
             if user:
-                code = str(random.randint(100000, 999999))
+                code = str(secrets.randbelow(900000) + 100000)
                 expires_at = datetime.utcnow() + timedelta(minutes=15)
                 auth_repository.save_reset_token(user[0], code, expires_at)
 

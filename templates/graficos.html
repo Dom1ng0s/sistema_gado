@@ -62,7 +62,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.simple.min.js"></script>
 <script>
 const PALETAS = {
   normal: {
@@ -218,9 +218,13 @@ function renderizarTudo() {
   }
 }
 
+let _resizeTimer;
 window.addEventListener('resize', () => {
-  instSexo?.resize();
-  instPeso?.resize();
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    instSexo?.resize();
+    instPeso?.resize();
+  }, 100);
 });
 
 document.addEventListener('DOMContentLoaded', carregarDados);

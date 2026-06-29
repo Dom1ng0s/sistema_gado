@@ -126,18 +126,16 @@ def registrar_saida(produto_id):
     if not data_mov:
         erros.append("Data da movimentação é obrigatória.")
 
-    if not erros:
-        saldo = estoque_repository.get_saldo_atual(produto_id, current_user.id)
-        if quantidade > saldo:
-            erros.append(f"Saldo insuficiente. Saldo atual: {saldo:.3f}.")
-
     if erros:
         for e in erros:
             flash(e, 'erro')
     else:
-        estoque_repository.insert_movimentacao(
-            current_user.id, produto_id, 'saida', quantidade, None, motivo, data_mov
-        )
-        flash("Saída registrada com sucesso.", 'sucesso')
+        try:
+            estoque_repository.insert_movimentacao(
+                current_user.id, produto_id, 'saida', quantidade, None, motivo, data_mov
+            )
+            flash("Saída registrada com sucesso.", 'sucesso')
+        except ValueError as e:
+            flash(str(e), 'erro')
 
     return redirect(url_for('estoque.detalhe_estoque', produto_id=produto_id))

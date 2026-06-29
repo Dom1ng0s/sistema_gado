@@ -22,6 +22,24 @@ _COTACOES_TTL = 30 * 60
 _cotacoes_lock = threading.Lock()
 _cotacoes_cache: dict = {'ts': 0.0, 'boi': [], 'novilha': []}
 
+# ── Cache de cidades IBGE (TTL 24h) ─────────────────────────────────────────
+_CIDADES_TTL = 24 * 3600
+_cidades_lock = threading.Lock()
+_cidades_cache: dict = {'ts': 0.0, 'dados': []}
+
+# ── Mapa completo UF → nome (todos os 27 estados) ───────────────────────────
+_MAPA_ESTADOS = {
+    'AC': 'Acre',               'AL': 'Alagoas',            'AP': 'Amapá',
+    'AM': 'Amazonas',           'BA': 'Bahia',              'CE': 'Ceará',
+    'DF': 'Distrito Federal',   'ES': 'Espírito Santo',     'GO': 'Goiás',
+    'MA': 'Maranhão',           'MT': 'Mato Grosso',        'MS': 'Mato Grosso do Sul',
+    'MG': 'Minas Gerais',       'PA': 'Pará',               'PB': 'Paraíba',
+    'PR': 'Paraná',             'PE': 'Pernambuco',         'PI': 'Piauí',
+    'RJ': 'Rio de Janeiro',     'RN': 'Rio Grande do Norte','RS': 'Rio Grande do Sul',
+    'RO': 'Rondônia',           'RR': 'Roraima',            'SC': 'Santa Catarina',
+    'SP': 'São Paulo',          'SE': 'Sergipe',            'TO': 'Tocantins',
+}
+
 _PDF_DIR = '/tmp'
 _UUID_RE = _re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
 
@@ -84,13 +102,19 @@ def _gerar_pdf_bg(job_id: str, html: str) -> None:
 def graficos_page():
     return render_template('graficos.html')
 
+def _with_cache(response, max_age=60):
+    """Adiciona Cache-Control private ao response JSON."""
+    response.headers['Cache-Control'] = f'private, max-age={max_age}'
+    return response
+
+
 @api_bp.route('/api/graficos/sexo')
 @login_required
 @limiter.limit("60 per minute")
 def graficos_sexo():
     try:
         rows = animal_repository.get_contagem_por_sexo(current_user.id)
-        return jsonify({sexo: qtd for sexo, qtd in rows})
+        return _with_cache(jsonify({sexo: qtd for sexo, qtd in rows}))
     except Exception as e:
         logger.error(f"Erro Gráfico Sexo: {e}")
         return jsonify({'error': str(e)}), 500
@@ -112,7 +136,7 @@ def graficos_peso():
                 cat_peso['15@ a 20@'] += 1
             else:
                 cat_peso['Mais de 20@'] += 1
-        return jsonify(cat_peso)
+        return _with_cache(jsonify(cat_peso))
     except Exception as e:
         logger.error(f"Erro Gráfico Peso: {e}")
         return jsonify({'error': str(e)}), 500
@@ -123,7 +147,7 @@ def graficos_peso():
 def graficos_gmd():
     try:
         gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
-        return jsonify({'gmd_medio': gmd_medio})
+        return _with_cache(jsonify({'gmd_medio': gmd_medio}))
     except Exception as e:
         logger.error(f"Erro Gráfico GMD: {e}")
         return jsonify({'error': str(e)}), 500
@@ -172,7 +196,7 @@ def dashboard_summary():
             limite    = None
             alertas   = []
 
-        return jsonify({
+        return _with_cache(jsonify({
             'sexo': sexo,
             'gmd': {'gmd_medio': gmd_medio},
             'alertas': {
@@ -181,7 +205,7 @@ def dashboard_summary():
                 'total': len(alertas),
                 'animais': alertas,
             },
-        })
+        }))
     except Exception as e:
         logger.error(f"Erro dashboard-summary: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
@@ -357,33 +381,45 @@ def alerta_gmd():
 
 # --- FIM DAS ROTAS DE GRÁFICOS ---
 
-@api_bp.route('/proxy-cidades')
-@limiter.limit("10 per minute")
-def proxy_cidades():
-    """
-    Busca cidades na API Oficial do IBGE.
-    Trata erros de estrutura (NoneType) e conexão.
-    """
+def _fetch_cidades_ibge() -> list:
+    """Retorna lista de cidades com cache em memória de 24h."""
+    now = time.time()
+    with _cidades_lock:
+        if now - _cidades_cache['ts'] < _CIDADES_TTL and _cidades_cache['dados']:
+            return _cidades_cache['dados']
+
     try:
         url = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
         response = requests.get(url, timeout=10)
-
-        if response.status_code == 200:
-            dados_brutos = response.json()
-            cidades_formatadas = []
-            for item in dados_brutos:
-                try:
-                    cidades_formatadas.append({
-                        "nome": item['nome'],
-                        "uf": item['microrregiao']['mesorregiao']['UF']['sigla']
-                    })
-                except (KeyError, TypeError):
-                    continue
-            return jsonify(cidades_formatadas)
-        else:
+        if response.status_code != 200:
             logger.error(f"Erro IBGE: Status {response.status_code}")
-            return jsonify({'error': f"Erro no IBGE: {response.status_code}"}), 502
+            return _cidades_cache['dados']  # retorna cache antigo se disponível
 
+        dados_brutos = response.json()
+        cidades_formatadas = []
+        for item in dados_brutos:
+            try:
+                cidades_formatadas.append({
+                    "nome": item['nome'],
+                    "uf": item['microrregiao']['mesorregiao']['UF']['sigla']
+                })
+            except (KeyError, TypeError):
+                continue
+
+        with _cidades_lock:
+            _cidades_cache.update({'ts': now, 'dados': cidades_formatadas})
+        return cidades_formatadas
+    except Exception as e:
+        logger.error(f"Erro fetch IBGE: {e}", exc_info=True)
+        return _cidades_cache['dados']
+
+
+@api_bp.route('/proxy-cidades')
+@limiter.limit("10 per minute")
+def proxy_cidades():
+    """Cidades brasileiras via IBGE — cache de 24h, evita chamada por request."""
+    try:
+        return jsonify(_fetch_cidades_ibge())
     except Exception as e:
         logger.error(f"Erro proxy: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
@@ -405,8 +441,7 @@ def cotacoes_regionais():
 
         boi_todos, novilha_todos = _fetch_cotacoes_github()
 
-        mapa_estados = {'AC': 'Acre', 'AL': 'Alagoas', 'RR': 'Roraima'}
-        nome_completo = mapa_estados.get(uf_usuario, '')
+        nome_completo = _MAPA_ESTADOS.get(uf_usuario, '')
 
         def filtrar(dados):
             out = []

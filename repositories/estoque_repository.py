@@ -67,6 +67,15 @@ def get_saldo_atual(produto_id, user_id):
 def insert_movimentacao(user_id, produto_id, tipo, quantidade, custo_unitario, motivo, data_mov,
                         lote_fabricante=None, data_validade=None):
     with get_db_cursor() as cursor:
+        if tipo == 'saida':
+            cursor.execute(
+                "SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN quantidade ELSE -quantidade END), 0) "
+                "FROM estoque_movimentacoes WHERE produto_id = %s AND user_id = %s FOR UPDATE",
+                (produto_id, user_id)
+            )
+            saldo = float(cursor.fetchone()[0])
+            if quantidade > saldo:
+                raise ValueError(f"Saldo insuficiente. Saldo atual: {saldo:.3f}.")
         cursor.execute(
             "INSERT INTO estoque_movimentacoes "
             "(user_id, produto_id, tipo, quantidade, custo_unitario, motivo, data_mov, "

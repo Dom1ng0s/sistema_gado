@@ -1,14 +1,16 @@
+import os
 import pytest
 import mysql.connector
 from app import app as flask_app
 from werkzeug.security import generate_password_hash
 
 # Credenciais fixas para o banco local de teste — isolado do .env de produção
-DB_HOST = "localhost"
-DB_USER = "gado_test"
-DB_PASSWORD = "gado123"
-DB_PORT = 3306
-TEST_DB_NAME = "sistema_gado_test"
+# Suportam override via variáveis de ambiente (útil para CI e instâncias temporárias)
+DB_HOST = os.getenv("TEST_DB_HOST", "localhost")
+DB_USER = os.getenv("TEST_DB_USER", "gado_test")
+DB_PASSWORD = os.getenv("TEST_DB_PASSWORD", "gado123")
+DB_PORT = int(os.getenv("TEST_DB_PORT", "3306"))
+TEST_DB_NAME = os.getenv("TEST_DB_NAME", "sistema_gado_test")
 
 DB_CONFIG = {
     "host": DB_HOST,
