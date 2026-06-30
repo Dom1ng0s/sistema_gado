@@ -322,7 +322,8 @@ def custos_por_ano():
             'categoria': r[1] or '',
             'descricao': r[2] or '',
             'valor':     float(r[3]) if r[3] is not None else 0.0,
-            'obs':       r[4] or '',
+            'qtd':       int(r[4]) if r[4] is not None else 1,
+            'obs':       r[5] or '',
         } for r in rows])
     except Exception as e:
         logger.error(f"Erro custos_por_ano: {e}", exc_info=True)
@@ -338,14 +339,15 @@ def export_financeiro_csv():
         rows = financeiro_repository.get_custos_por_ano(current_user.id, ano)
         buf = io.StringIO()
         writer = csv.writer(buf)
-        writer.writerow(['Data', 'Categoria', 'Tipo de Custo', 'Valor (R$)', 'Descrição'])
+        writer.writerow(['Data', 'Categoria', 'Tipo de Custo', 'Valor (R$)', 'Qtd', 'Descrição'])
         for r in rows:
             writer.writerow([
                 r[0].strftime('%d/%m/%Y') if r[0] else '',
                 r[1] or '',
                 r[2] or '',
                 f"{float(r[3]):.2f}" if r[3] is not None else '',
-                r[4] or '',
+                int(r[4]) if r[4] is not None else 1,
+                r[5] or '',
             ])
         nome_arquivo = f"financeiro_{ano}.csv"
         return Response(

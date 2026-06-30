@@ -72,11 +72,9 @@ def test_lancamento_custo(client):
     assert response.status_code == 200
     assert b"Custo registrado" in response.data
 
-    # 2. Verifica no Painel Financeiro se o valor aparece
+    # 2. Verifica no Painel Financeiro se o valor aparece (filtro |brl usa vírgula decimal)
     response_fin = client.get('/financeiro?ano=2024')
-    assert b"500.00" in response_fin.data
-    
-    # CORREÇÃO: Converter string com acento para bytes antes de comparar
+    assert "500,00".encode('utf-8') in response_fin.data
     assert "Salário".encode('utf-8') in response_fin.data
 
 def test_simulador_custo(client):
@@ -230,3 +228,34 @@ def test_financeiro_widget_gmd_sem_dados(client):
     response = client.get('/financeiro')
     assert response.status_code == 200
     assert 'Top M'.encode('utf-8') in response.data
+
+
+# ── Sprint 3 — Agrupamento de Custos ────────────────────────────────────────
+
+def test_custos_agrupados_exibe_contagem(client):
+    """3 custos do mesmo tipo no mesmo dia devem aparecer agrupados como (3x)."""
+    login(client)
+    ano = __import__('datetime').date.today().year
+    hoje = __import__('datetime').date.today().isoformat()
+
+    for _ in range(3):
+        client.post('/custos_operacionais', data={
+            'data': hoje,
+            'categoria': 'Variavel',
+            'tipo_variavel': 'Nutrição',
+            'valor': '100.00',
+            'descricao': '',
+        }, follow_redirects=True)
+
+    response = client.get(f'/financeiro?ano={ano}')
+    assert response.status_code == 200
+    assert b'(3x)' in response.data
+
+
+def test_export_csv_tem_coluna_qtd(client):
+    """CSV exportado deve ter cabeçalho com coluna Qtd."""
+    login(client)
+    response = client.get('/api/v1/export/financeiro.csv')
+    assert response.status_code == 200
+    text = response.data.decode('utf-8-sig')
+    assert 'Qtd' in text

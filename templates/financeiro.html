@@ -253,7 +253,8 @@
             {% else %}<span class="badge badge-neutral">{{ r[1] }}</span>{% endif %}
           </td>
           <td class="td-primary">
-            {{ r[2] }}{% if r[4] %}<br><small style="color:var(--color-ink-secondary);">{{ r[4] }}</small>{% endif %}
+            {{ r[2] }}{% if r[4] > 1 %} <span class="badge badge-neutral">({{ r[4] }}x)</span>{% endif %}
+            {% if r[5] %}<br><small style="color:var(--color-ink-secondary);">{{ r[5] }}</small>{% endif %}
           </td>
           <td style="text-align:right;color:var(--color-danger);font-weight:var(--weight-semibold);">- {{ r[3]|brl }}</td>
         </tr>

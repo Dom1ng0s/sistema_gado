@@ -44,23 +44,27 @@ def get_custos_por_tipo_trimestre(user_id, data_limite):
 
 
 def get_custos_por_ano(user_id, ano):
-    """Custos operacionais + medicações/vacinas de um ano, ordenados por data.
+    """Custos operacionais + medicações agrupados por (data, categoria, tipo).
 
-    Usa range explícito em vez de YEAR() para permitir uso de índice em data_custo
-    e data_aplicacao — YEAR(col) = %s impede range scan.
+    Retorna 6 colunas: data, categoria, tipo, valor_total (SUM), n (COUNT), descricao (MAX).
+    Usa range explícito em vez de YEAR() para permitir uso de índice.
     """
     inicio = date(ano, 1, 1)
     fim    = date(ano, 12, 31)
     with get_db_cursor() as cursor:
         cursor.execute(
-            "(SELECT data_custo, categoria, tipo_custo, valor, descricao "
+            "(SELECT data_custo, categoria, tipo_custo, "
+            " SUM(valor) AS valor_total, COUNT(*) AS n, MAX(descricao) AS descricao "
             " FROM custos_operacionais "
-            " WHERE user_id = %s AND data_custo >= %s AND data_custo <= %s AND deleted_at IS NULL) "
+            " WHERE user_id = %s AND data_custo >= %s AND data_custo <= %s AND deleted_at IS NULL "
+            " GROUP BY data_custo, categoria, tipo_custo) "
             "UNION ALL "
-            "(SELECT m.data_aplicacao, 'Sanitário', m.nome_medicamento, m.custo, m.observacoes "
+            "(SELECT m.data_aplicacao, 'Sanitário', m.nome_medicamento, "
+            " SUM(m.custo), COUNT(*), MAX(m.observacoes) "
             " FROM medicacoes m JOIN animais a ON m.animal_id = a.id "
             " WHERE a.user_id = %s AND m.data_aplicacao >= %s AND m.data_aplicacao <= %s "
-            "   AND m.deleted_at IS NULL AND a.deleted_at IS NULL) "
+            "   AND m.deleted_at IS NULL AND a.deleted_at IS NULL "
+            " GROUP BY m.data_aplicacao, m.nome_medicamento) "
             "ORDER BY 1 DESC",
             (user_id, inicio, fim, user_id, inicio, fim)
         )
