@@ -174,3 +174,17 @@ def get_gmd_por_modulo(user_id):
             (user_id,)
         )
         return cursor.fetchall()
+
+
+def get_top_gmd_por_modulo(user_id, limit=5):
+    """Top módulos por GMD médio, incluindo nome do pasto."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT g.modulo_nome, p.nome AS pasto_nome, g.gmd_medio, g.qtd_animais "
+            "FROM vw_gmd_por_modulo g "
+            "JOIN pastos p ON p.id = g.pasto_id "
+            "WHERE g.user_id = %s AND g.gmd_medio IS NOT NULL "
+            "ORDER BY g.gmd_medio DESC LIMIT %s",
+            (user_id, limit)
+        )
+        return cursor.fetchall()

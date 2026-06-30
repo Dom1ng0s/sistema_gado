@@ -65,3 +65,16 @@ def get_partos_previstos(user_id, dias=30):
             (user_id, dias)
         )
         return cursor.fetchall()
+
+
+def get_contagem_gestantes(user_id):
+    """Retorna o número de vacas com DG positivo e parto ainda não registrado."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT COUNT(*) FROM reproducao r "
+            "JOIN animais v ON r.vaca_id = v.id "
+            "WHERE v.user_id = %s AND r.diagnostico = 'positivo' "
+            "AND r.data_parto IS NULL AND v.deleted_at IS NULL",
+            (user_id,)
+        )
+        return cursor.fetchone()[0]

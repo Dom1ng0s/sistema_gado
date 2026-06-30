@@ -126,6 +126,105 @@
 </div>
 {% endif %}
 
+<!-- ── Widgets de Inteligência Zootécnica ─────────────── -->
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:var(--space-6); margin-bottom:var(--space-6);">
+
+  <!-- Widget Prenhez -->
+  <div class="card">
+    <div class="card-body">
+      <p class="label" style="margin-bottom:var(--space-3);">Reprodução — Próximos 30 dias</p>
+      <div style="display:flex; gap:var(--space-6); flex-wrap:wrap; margin-bottom:var(--space-4);">
+        <div>
+          <div class="metric-value" style="font-size:var(--text-2xl);">{{ total_gestantes }}</div>
+          <span class="metric-unit">vacas gestantes</span>
+        </div>
+        <div>
+          <div class="metric-value" style="font-size:var(--text-2xl);">{{ partos_previstos|length }}</div>
+          <span class="metric-unit">partos previstos</span>
+        </div>
+      </div>
+      {% if partos_previstos %}
+      <div class="table-wrapper" style="margin-top:0;">
+        <table>
+          <thead>
+            <tr>
+              <th>Vaca</th>
+              <th>Cobertura</th>
+              <th>Parto Previsto</th>
+              <th>Dias</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in partos_previstos %}
+            <tr>
+              <td class="td-primary">{{ p[1] }}</td>
+              <td>{{ p[2]|date_br }}</td>
+              <td>{{ p[3]|date_br }}</td>
+              <td>
+                {% if p[4] <= 7 %}<span class="badge badge-danger">{{ p[4] }}d</span>
+                {% elif p[4] <= 15 %}<span class="badge badge-warning">{{ p[4] }}d</span>
+                {% else %}<span class="badge badge-neutral">{{ p[4] }}d</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color:var(--color-ink-tertiary); font-size:var(--text-sm); margin:0;">
+        Nenhum parto previsto nos próximos 30 dias.
+      </p>
+      {% endif %}
+      <a href="{{ url_for('operacional.ranking_touros') }}"
+         class="btn btn-ghost btn-sm" style="margin-top:var(--space-3);">
+        Ver ranking de touros →
+      </a>
+    </div>
+  </div>
+
+  <!-- Widget GMD por Módulo -->
+  <div class="card">
+    <div class="card-body">
+      <p class="label" style="margin-bottom:var(--space-3);">Top Módulos por GMD</p>
+      {% if top_gmd_modulos %}
+      <div class="table-wrapper" style="margin-top:0;">
+        <table>
+          <thead>
+            <tr>
+              <th>Módulo</th>
+              <th>Pasto</th>
+              <th style="text-align:right;">GMD Médio</th>
+              <th style="text-align:right;">Animais</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in top_gmd_modulos %}
+            <tr>
+              <td class="td-primary">{{ m[0] }}</td>
+              <td>{{ m[1] }}</td>
+              <td style="text-align:right; font-weight:var(--weight-semibold); color:var(--color-primary);">
+                {{ m[2]|brl }} kg/d
+              </td>
+              <td style="text-align:right;">{{ m[3] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color:var(--color-ink-tertiary); font-size:var(--text-sm); margin:0;">
+        Nenhum módulo com dados de GMD disponíveis.
+      </p>
+      {% endif %}
+      <a href="{{ url_for('pastos.gmd_por_modulo') }}"
+         class="btn btn-ghost btn-sm" style="margin-top:var(--space-3);">
+        Ver GMD completo →
+      </a>
+    </div>
+  </div>
+
+</div>
+
 <!-- ── Tabela de custos ───────────────────────────────── -->
 <div class="flex justify-between items-center flex-wrap gap-3" style="margin-bottom:var(--space-4);">
   <h2 style="margin:0;">Detalhamento de Custos ({{ ano_selecionado }})</h2>
