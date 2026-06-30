@@ -213,6 +213,12 @@ try:
         ("idx_ocupacoes_modulo",    "CREATE INDEX idx_ocupacoes_modulo ON ocupacoes (modulo_id)"),
         ("idx_ocupacao_animais_oc", "CREATE INDEX idx_ocupacao_animais_oc ON ocupacao_animais (ocupacao_id)"),
         ("idx_animais_raca",        "CREATE INDEX idx_animais_raca ON animais (user_id, raca, deleted_at)"),
+        # financial_schedule não tinha índice — cobre get_agendamentos e alertas de vencimento
+        ("idx_financial_schedule_agenda", "CREATE INDEX idx_financial_schedule_agenda ON financial_schedule (user_id, deleted_at, vencimento)"),
+        # animais(lote_id) sem índice — cobre JOIN em vw_resultado_lote e get_animais_por_lote
+        ("idx_animais_lote",        "CREATE INDEX idx_animais_lote ON animais (lote_id, deleted_at)"),
+        # inclui deleted_at para cobrir v_fluxo_caixa após condition pushdown do MySQL 8.0.22+
+        ("idx_custos_user_del_data", "CREATE INDEX idx_custos_user_del_data ON custos_operacionais (user_id, deleted_at, data_custo)"),
     ]
 
     for nome_idx, sql in indices_sql:
