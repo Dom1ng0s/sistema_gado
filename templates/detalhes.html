@@ -177,56 +177,60 @@
 
     <!-- Dados fixos -->
     <div class="card">
-      <p class="label" style="margin-bottom:var(--space-3);">Dados do Animal</p>
-      <dl style="display:grid; grid-template-columns: auto 1fr;
-                 gap:var(--space-2) var(--space-3); font-size:var(--text-sm); margin:0;">
-        <dt style="color:var(--color-ink-secondary);">Sexo</dt>
-        <dd style="margin:0;">
-          <span class="badge {% if animal[2] == 'M' %}badge-success{% else %}badge-warning{% endif %}">
-            {{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}
-          </span>
-        </dd>
-        {% if animal[3] %}
-        <dt style="color:var(--color-ink-secondary);">Raça</dt>
-        <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[3] }}</dd>
-        {% endif %}
-        {% if animal[4] %}
-        <dt style="color:var(--color-ink-secondary);">Data de compra</dt>
-        <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[4]|date_br }}</dd>
-        {% endif %}
-        {% if idade_meses is not none and animal|length > 13 and animal[13] %}
-        <dt style="color:var(--color-ink-secondary);">Nascimento</dt>
-        <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[13]|date_br }}</dd>
-        {% endif %}
-        {% if animal[5] %}
-        <dt style="color:var(--color-ink-secondary);">Preço compra</dt>
-        <dd style="margin:0; font-weight:var(--weight-medium);">R$ {{ animal[5] }}</dd>
-        {% endif %}
-        {% if animal[6] %}
-          <dt style="color:var(--color-ink-secondary);">Data venda</dt>
-          <dd style="margin:0;">{{ animal[6]|date_br }}</dd>
-          <dt style="color:var(--color-ink-secondary);">Preço venda</dt>
-          <dd style="margin:0; font-weight:var(--weight-medium); color:var(--color-primary);">
-            R$ {{ animal[7] }}
+      <div class="card-body">
+        <p class="label" style="margin-bottom:var(--space-3);">Dados do Animal</p>
+        <dl style="display:grid; grid-template-columns: auto 1fr;
+                   gap:var(--space-2) var(--space-3); font-size:var(--text-sm); margin:0;">
+          <dt style="color:var(--color-ink-secondary);">Sexo</dt>
+          <dd style="margin:0;">
+            <span class="badge {% if animal[2] == 'M' %}badge-success{% else %}badge-warning{% endif %}">
+              {{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}
+            </span>
           </dd>
-        {% endif %}
-      </dl>
+          {% if animal[3] %}
+          <dt style="color:var(--color-ink-secondary);">Raça</dt>
+          <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[3] }}</dd>
+          {% endif %}
+          {% if animal[4] %}
+          <dt style="color:var(--color-ink-secondary);">Data de compra</dt>
+          <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[4]|date_br }}</dd>
+          {% endif %}
+          {% if idade_meses is not none and animal|length > 13 and animal[13] %}
+          <dt style="color:var(--color-ink-secondary);">Nascimento</dt>
+          <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[13]|date_br }}</dd>
+          {% endif %}
+          {% if animal[5] %}
+          <dt style="color:var(--color-ink-secondary);">Preço compra</dt>
+          <dd style="margin:0; font-weight:var(--weight-medium);">R$ {{ animal[5] }}</dd>
+          {% endif %}
+          {% if animal[6] %}
+            <dt style="color:var(--color-ink-secondary);">Data venda</dt>
+            <dd style="margin:0;">{{ animal[6]|date_br }}</dd>
+            <dt style="color:var(--color-ink-secondary);">Preço venda</dt>
+            <dd style="margin:0; font-weight:var(--weight-medium); color:var(--color-primary);">
+              R$ {{ animal[7] }}
+            </dd>
+          {% endif %}
+        </dl>
+      </div>
     </div>
 
     <!-- Genealogia -->
     <div class="card">
-      <p class="label" style="margin-bottom:var(--space-3);">Genealogia</p>
-      <div style="display:flex; flex-direction:column; gap:var(--space-2);">
-        <a href="{{ url_for('operacional.progenie_animal', id_animal=animal[0]) }}"
-           class="btn btn-secondary btn-sm">
-          <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="20" cy="8" r="2"/><path d="M20 14c1.7.7 3 2.3 3 4"/></svg>
-          Ver Progênie
-        </a>
-        <a href="{{ url_for('operacional.reproducao_animal', id_animal=animal[0]) }}"
-           class="btn btn-secondary btn-sm">
-          <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><circle cx="11" cy="11" r="3"/><path d="m21 21-4.35-4.35"/></svg>
-          Reprodução
-        </a>
+      <div class="card-body">
+        <p class="label" style="margin-bottom:var(--space-3);">Genealogia</p>
+        <div style="display:flex; flex-direction:column; gap:var(--space-2);">
+          <a href="{{ url_for('operacional.progenie_animal', id_animal=animal[0]) }}"
+             class="btn btn-secondary btn-sm">
+            <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="20" cy="8" r="2"/><path d="M20 14c1.7.7 3 2.3 3 4"/></svg>
+            Ver Progênie
+          </a>
+          <a href="{{ url_for('operacional.reproducao_animal', id_animal=animal[0]) }}"
+             class="btn btn-secondary btn-sm">
+            <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><circle cx="11" cy="11" r="3"/><path d="m21 21-4.35-4.35"/></svg>
+            Reprodução
+          </a>
+        </div>
       </div>
     </div>
 

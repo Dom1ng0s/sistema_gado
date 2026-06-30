@@ -157,6 +157,20 @@ try:
     );
     """)
 
+    # ==============================================================================
+    # Sprint 6: GMD meta configurável por usuário
+    # ==============================================================================
+    try:
+        cursor.execute(
+            "ALTER TABLE configuracoes ADD COLUMN gmd_meta DECIMAL(5,3) NOT NULL DEFAULT 0.800"
+        )
+        print("   -> Coluna 'gmd_meta' adicionada.")
+    except mysql.connector.Error as err:
+        if err.errno == 1060:
+            print("   -> Coluna 'gmd_meta' já existe.")
+        else:
+            print(f"   Alerta 'gmd_meta': {err}")
+
     print("  Criando tabela 'financial_schedule'...")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS financial_schedule (

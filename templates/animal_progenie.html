@@ -25,7 +25,7 @@
             border-radius:var(--radius-lg); padding:var(--space-5); margin-bottom:var(--space-6);">
   <p class="label" style="margin-bottom:var(--space-1);">GMD dos filhos por data de entrada</p>
   <p style="font-size:var(--text-xs); color:var(--color-ink-tertiary); margin-bottom:var(--space-3);">
-    🟢 Macho &nbsp;&nbsp; 🟡 Fêmea &nbsp;&nbsp; Linha tracejada = referência 0.800 kg/dia
+    🟢 Macho &nbsp;&nbsp; 🟡 Fêmea &nbsp;&nbsp; Linha tracejada = referência {{ "%.3f"|format(gmd_meta) }} kg/dia
   </p>
   <div id="chartProgenie" style="width:100%; height:280px;"></div>
 </div>
@@ -61,7 +61,7 @@
         <td style="text-align:right; font-weight:var(--weight-semibold);">
           {% if f[4] is not none %}
             {% set gmd = f[4] | float %}
-            <span style="color:{% if gmd >= 0.8 %}var(--color-primary){% elif gmd >= 0.6 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
+            <span style="color:{% if gmd >= gmd_meta %}var(--color-primary){% elif gmd >= gmd_meta * 0.75 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
               {{ "%.3f"|format(f[4]) }}
             </span>
           {% else %}
@@ -154,7 +154,7 @@ chart.setOption({
       silent: true,
       symbol: 'none',
       lineStyle: { color: '#9B9B99', type: 'dashed', width: 1.5 },
-      data: [{ yAxis: 0.8, name: 'Meta' }]
+      data: [{ yAxis: {{ gmd_meta }}, name: 'Meta' }]
     }
   },
   series: [
@@ -167,8 +167,8 @@ chart.setOption({
       markLine: {
         silent: true, symbol: 'none',
         lineStyle: { color: '#9B9B99', type: 'dashed', width: 1.5 },
-        data: [{ yAxis: 0.8 }],
-        label: { formatter: 'Ref. 0.800', color: '#9B9B99', fontSize: 10 }
+        data: [{ yAxis: {{ gmd_meta }} }],
+        label: { formatter: 'Ref. {{ "%.3f"|format(gmd_meta) }}', color: '#9B9B99', fontSize: 10 }
       }
     },
     {

@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 import math
 from datetime import date, timedelta
 import logging
-from repositories import animal_repository, financeiro_repository, reproducao_repository, pasto_repository
+from repositories import animal_repository, financeiro_repository, reproducao_repository, pasto_repository, configuracao_repository
 from routes.validators import validate
 
 financeiro_bp = Blueprint('financeiro', __name__)
@@ -116,10 +116,18 @@ def financeiro():
     except Exception as e:
         logger.error(f"Erro ao carregar GMD por módulo: {e}", exc_info=True)
 
+    animais_abaixo_meta = []
+    try:
+        cfg = configuracao_repository.get_configuracao(current_user.id)
+        gmd_meta_atual = float(cfg[3]) if (cfg and cfg[3] is not None) else 0.800
+        animais_abaixo_meta = animal_repository.get_animais_abaixo_gmd_meta(current_user.id, gmd_meta_atual)
+    except Exception as e:
+        logger.error(f"Erro ao carregar animais abaixo da meta: {e}", exc_info=True)
+
     return render_template('financeiro.html', financeiro=view_data, ano_selecionado=ano_sel, anos=anos,
                            custos=custos, pagina_atual=page, total_custos=total_custos, total_paginas=total_paginas,
                            partos_previstos=partos_previstos, total_gestantes=total_gestantes,
-                           top_gmd_modulos=top_gmd_modulos)
+                           top_gmd_modulos=top_gmd_modulos, animais_abaixo_meta=animais_abaixo_meta)
 
 
 @financeiro_bp.route('/simulador-custo', methods=['GET', 'POST'])

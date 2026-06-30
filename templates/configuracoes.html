@@ -36,6 +36,14 @@
                 <label for="area_total">Área Total (Hectares)</label>
                 <input type="number" step="0.01" id="area_total" name="area_total" value="{{ config.area_total if config else '' }}" placeholder="Ex: 150.5">
             </div>
+            <div class="form-group">
+                <label for="gmd_meta">GMD Meta (kg/dia)</label>
+                <input type="number" step="0.001" min="0.1" max="5" id="gmd_meta" name="gmd_meta"
+                       value="{{ config.gmd_meta if config and config.gmd_meta else '0.800' }}" placeholder="Ex: 0.800">
+                <small style="color: #666; display: block; margin-top: 5px;">
+                    Referência usada para colorir e plotar a linha de meta nos gráficos de GMD da progênie.
+                </small>
+            </div>
 
             <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;">Salvar Configurações</button>
         </form>

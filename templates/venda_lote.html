@@ -1,0 +1,430 @@
+{% extends 'base.html' %}
+{% block title %}Venda em Lote{% endblock %}
+
+{% block extra_css %}
+<style>
+  .filter-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding: var(--space-4) var(--space-6);
+    background: var(--color-surface);
+    border: 0.5px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+    margin-bottom: var(--space-6);
+  }
+
+  .filter-bar .form-group { flex: 1 1 180px; margin: 0; }
+
+  .sticky-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--color-surface);
+    border-bottom: 0.5px solid var(--color-border);
+    padding: var(--space-3) var(--space-6);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    box-shadow: var(--shadow-xs);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+
+  .sticky-toolbar .marcar-todos-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semi);
+    color: var(--color-primary-dark);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .sticky-toolbar .contagem {
+    font-size: var(--text-xs);
+    color: var(--color-ink-tertiary);
+  }
+
+  .table-wrapper {
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+
+  thead th:last-child, thead th:nth-last-child(2) { text-align: right; }
+
+  .linha-animal {
+    border-bottom: 0.5px solid var(--color-border);
+    transition: background var(--transition-fast);
+  }
+  .linha-animal:last-child { border-bottom: none; }
+  .linha-animal:nth-child(even) { background: var(--color-surface-raised); }
+  .linha-animal:hover { background: var(--color-primary-bg); }
+  .linha-animal.selecionado { background: var(--color-primary-bg) !important; }
+
+  .linha-animal td {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    vertical-align: middle;
+  }
+
+  .check-cell { width: 48px; text-align: center; }
+  .check-cell input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+  }
+
+  .brinco-cell {
+    font-weight: var(--weight-medium);
+    color: var(--color-ink);
+  }
+
+  .peso-atual-cell { text-align: right; color: var(--color-ink-tertiary); }
+
+  .peso-cell, .valor-cell { text-align: right; }
+
+  .peso-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    overflow: hidden;
+    max-width: 0;
+    opacity: 0;
+    transition: max-width 200ms ease, opacity 180ms ease;
+  }
+
+  .peso-wrapper.visivel { max-width: 200px; opacity: 1; }
+
+  .peso-input {
+    width: 110px;
+    padding: 6px var(--space-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-family: var(--font-body);
+    color: var(--color-ink);
+    background: var(--color-surface);
+    text-align: right;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+  .peso-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-bg);
+  }
+
+  .peso-unit {
+    font-size: var(--text-xs);
+    color: var(--color-ink-tertiary);
+    white-space: nowrap;
+  }
+
+  .valor-estimado {
+    font-weight: var(--weight-medium);
+    color: var(--color-primary-dark);
+    white-space: nowrap;
+  }
+
+  .empty-state {
+    padding: var(--space-12) var(--space-6);
+    text-align: center;
+    color: var(--color-ink-tertiary);
+  }
+  .empty-state svg { margin-bottom: var(--space-3); opacity: 0.35; }
+
+  .submit-bar {
+    margin-top: var(--space-6);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .resumo-total {
+    font-size: var(--text-sm);
+    color: var(--color-ink-secondary);
+  }
+  .resumo-total strong { color: var(--color-ink); }
+
+  @media (max-width: 600px) {
+    .filter-bar { flex-direction: column; }
+    .sticky-toolbar { flex-direction: column; align-items: flex-start; }
+    .peso-input { width: 90px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 980px; margin: 0 auto;">
+
+  <!-- Cabeçalho -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Venda em Lote</h1>
+      <p style="color: var(--color-ink-tertiary); font-size: var(--text-sm); margin-top: var(--space-1);">
+        Registre a venda de vários animais de uma só vez, informando o valor da arroba
+      </p>
+    </div>
+    <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary btn-sm">← Voltar</a>
+  </div>
+
+  <!-- Alertas de validação -->
+  {% if erro %}
+  <div class="alert alert-danger" style="margin-bottom: var(--space-5);">
+    <span class="alert-icon">!</span>
+    <span>{{ erro }}</span>
+  </div>
+  {% endif %}
+
+  <!-- Formulário de venda (POST) -->
+  <form method="POST" action="{{ url_for('operacional.venda_lote') }}" id="form-venda" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Campos globais: data e valor da arroba -->
+    <div class="filter-bar">
+      <div class="form-group">
+        <label class="label" for="data-venda">Data da venda</label>
+        <input type="date" name="data_venda" id="data-venda" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label class="label" for="valor-arroba">Valor da arroba (R$)</label>
+        <input type="number" name="valor_arroba" id="valor-arroba" class="form-input"
+               step="0.01" min="0.01" placeholder="Ex: 280.00" required>
+      </div>
+    </div>
+
+    <!-- Toolbar fixa com marcar-todos -->
+    <div class="sticky-toolbar">
+      <label class="marcar-todos-label">
+        <input type="checkbox" id="marcar-todos" style="width:17px;height:17px;accent-color:var(--color-primary);">
+        Marcar / desmarcar todos
+      </label>
+      <span class="contagem" id="contagem-txt">0 selecionado(s)</span>
+    </div>
+
+    <!-- Tabela de animais -->
+    <div class="table-wrapper">
+      <table>
+        <caption class="sr-only">Animais disponíveis para venda em lote</caption>
+        <thead>
+          <tr>
+            <th scope="col" class="check-cell"></th>
+            <th scope="col">Brinco</th>
+            <th scope="col">Raça</th>
+            <th scope="col" style="text-align:right;">Último peso (kg)</th>
+            <th scope="col" style="text-align:right;">Peso de venda (kg)</th>
+            <th scope="col" style="text-align:right;">Valor estimado</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-animais">
+          {% for animal in animais %}
+          {% set ultimo_peso = animal[3] %}
+          <tr class="linha-animal" data-animal-id="{{ animal[0] }}" data-ultimo-peso="{{ ultimo_peso or '' }}">
+            <td class="check-cell">
+              <input type="checkbox" class="animal-check"
+                     value="{{ animal[0] }}" id="chk-{{ animal[0] }}">
+            </td>
+            <td class="brinco-cell">
+              <label for="chk-{{ animal[0] }}" style="cursor:pointer; display:block;">
+                {{ animal[1] }}
+              </label>
+            </td>
+            <td>{{ animal[2] or '—' }}</td>
+            <td class="peso-atual-cell">{{ ultimo_peso if ultimo_peso else '—' }}</td>
+            <td class="peso-cell">
+              <div class="peso-wrapper" id="pw-{{ animal[0] }}">
+                <input type="number" name="pesos_venda[]" class="peso-input"
+                       min="0.1" max="2000" step="0.1"
+                       placeholder="0.0" disabled
+                       value="{{ ultimo_peso or '' }}"
+                       id="peso-{{ animal[0] }}">
+                <span class="peso-unit">kg</span>
+                <input type="hidden" name="animal_ids[]" value="{{ animal[0] }}" disabled
+                       id="hid-{{ animal[0] }}">
+              </div>
+            </td>
+            <td class="valor-cell">
+              <span class="valor-estimado" id="valor-{{ animal[0] }}">—</span>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="9"/>
+                  <path d="M12 8v4m0 4h.01"/>
+                </svg>
+                <p style="font-size:var(--text-sm); margin:0;">Nenhum animal ativo encontrado.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Barra de ação -->
+    <div class="submit-bar">
+      <div class="resumo-total">
+        <span id="resumo-kg">0 kg</span> selecionados &middot;
+        <strong id="resumo-total">R$ 0,00</strong> estimado
+      </div>
+      <div style="display:flex; gap:var(--space-3);">
+        <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary btn-lg" id="btn-confirmar" disabled>
+          Registrar venda
+        </button>
+      </div>
+    </div>
+  </form>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const checks       = document.querySelectorAll('.animal-check');
+  const marcarTodos  = document.getElementById('marcar-todos');
+  const btnConfirmar = document.getElementById('btn-confirmar');
+  const contagemTxt  = document.getElementById('contagem-txt');
+  const inputArroba  = document.getElementById('valor-arroba');
+  const resumoKg     = document.getElementById('resumo-kg');
+  const resumoTotal  = document.getElementById('resumo-total');
+
+  function fmtBRL(v) {
+    return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function calcularValor(id) {
+    const peso   = parseFloat(document.getElementById('peso-' + id).value);
+    const arroba = parseFloat(inputArroba.value);
+    const span   = document.getElementById('valor-' + id);
+    if (peso > 0 && arroba > 0) {
+      span.textContent = fmtBRL((peso / 30) * arroba);
+    } else {
+      span.textContent = '—';
+    }
+  }
+
+  function recalcularTudo() {
+    document.querySelectorAll('.animal-check:checked').forEach(chk => calcularValor(chk.value));
+    atualizarResumo();
+  }
+
+  function atualizarResumo() {
+    let kgTotal = 0, valorTotal = 0;
+    const arroba = parseFloat(inputArroba.value) || 0;
+    document.querySelectorAll('.animal-check:checked').forEach(chk => {
+      const peso = parseFloat(document.getElementById('peso-' + chk.value).value) || 0;
+      kgTotal += peso;
+      if (peso > 0 && arroba > 0) valorTotal += (peso / 30) * arroba;
+    });
+    resumoKg.textContent = kgTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' kg';
+    resumoTotal.textContent = fmtBRL(valorTotal);
+  }
+
+  function toggleAnimal(checkbox) {
+    const id  = checkbox.value;
+    const row = checkbox.closest('tr');
+    const pw  = document.getElementById('pw-' + id);
+    const inp = document.getElementById('peso-' + id);
+    const hid = document.getElementById('hid-' + id);
+
+    if (checkbox.checked) {
+      row.classList.add('selecionado');
+      pw.classList.add('visivel');
+      inp.disabled = false;
+      hid.disabled = false;
+      calcularValor(id);
+      inp.focus();
+      inp.select();
+    } else {
+      row.classList.remove('selecionado');
+      pw.classList.remove('visivel');
+      inp.disabled = true;
+      hid.disabled = true;
+      document.getElementById('valor-' + id).textContent = '—';
+    }
+    atualizarEstado();
+    atualizarResumo();
+  }
+
+  function atualizarEstado() {
+    const selecionados = document.querySelectorAll('.animal-check:checked').length;
+    contagemTxt.textContent = selecionados + ' selecionado(s)';
+    btnConfirmar.disabled = selecionados === 0;
+    marcarTodos.indeterminate = selecionados > 0 && selecionados < checks.length;
+    marcarTodos.checked = selecionados === checks.length && checks.length > 0;
+  }
+
+  checks.forEach(chk => {
+    chk.addEventListener('change', () => toggleAnimal(chk));
+  });
+
+  document.querySelectorAll('.peso-input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const id = inp.id.replace('peso-', '');
+      calcularValor(id);
+      atualizarResumo();
+    });
+  });
+
+  inputArroba.addEventListener('input', recalcularTudo);
+
+  marcarTodos.addEventListener('change', function () {
+    checks.forEach(chk => {
+      chk.checked = this.checked;
+      toggleAnimal(chk);
+    });
+  });
+
+  /* Validação antes do submit */
+  document.getElementById('form-venda').addEventListener('submit', function (e) {
+    const dataVenda = document.getElementById('data-venda').value;
+    if (!dataVenda) {
+      e.preventDefault();
+      sggToast('Informe a data da venda antes de confirmar.', 'error');
+      return;
+    }
+
+    if (!(parseFloat(inputArroba.value) > 0)) {
+      e.preventDefault();
+      sggToast('Informe o valor da arroba antes de confirmar.', 'error');
+      return;
+    }
+
+    const ativos = document.querySelectorAll('.animal-check:checked');
+    let invalido = false;
+    ativos.forEach(chk => {
+      const inp = document.getElementById('peso-' + chk.value);
+      if (!inp.value || parseFloat(inp.value) <= 0) {
+        inp.style.borderColor = 'var(--color-danger)';
+        invalido = true;
+      } else {
+        inp.style.borderColor = '';
+      }
+    });
+
+    if (invalido) {
+      e.preventDefault();
+      sggToast('Preencha o peso de venda de todos os animais selecionados.', 'error');
+      return;
+    }
+
+    btnConfirmar.classList.add('btn-loading');
+    btnConfirmar.disabled = true;
+  });
+})();
+</script>
+{% endblock %}

@@ -61,18 +61,22 @@ def format_date_br(value):
 @app.context_processor
 def inject_user_info():
     if not current_user.is_authenticated:
-        return {'nome_fazenda_header': "Meu Rebanho"}
+        return {'nome_fazenda_header': "Meu Rebanho", 'gmd_meta': 0.800}
 
     cached = session.get('nome_fazenda')
-    if cached is None:
+    gmd_meta = session.get('gmd_meta')
+    if cached is None or gmd_meta is None:
         try:
             res = configuracao_repository.get_configuracao(current_user.id)
             cached = res[0] if (res and res[0]) else "Meu Rebanho"
+            gmd_meta = float(res[3]) if (res and res[3] is not None) else 0.800
         except Exception:
-            cached = "Meu Rebanho"
+            cached = cached or "Meu Rebanho"
+            gmd_meta = gmd_meta or 0.800
         session['nome_fazenda'] = cached
+        session['gmd_meta'] = gmd_meta
 
-    return {'nome_fazenda_header': cached}
+    return {'nome_fazenda_header': cached, 'gmd_meta': gmd_meta}
 
 
 @app.after_request

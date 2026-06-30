@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 def painel():
     animais, termo, status = [], request.args.get('busca', ''), request.args.get('status', 'todos')
     raca = request.args.get('raca', '') or None
+    origem = request.args.get('origem', '') or None
     pg = request.args.get('page', 1, type=int)
     limit, offset = 20, (pg - 1) * 20
     total_pg = 1
@@ -27,8 +28,9 @@ def painel():
     alertas_sanitarios = []
     try:
         racas_disponiveis = animal_repository.get_racas_distintas(current_user.id)
-        total = animal_repository.count_animais(current_user.id, termo, status, raca=raca)
-        animais = animal_repository.get_animais_paginados(current_user.id, limit, offset, termo, status, raca=raca)
+        total = animal_repository.count_animais(current_user.id, termo, status, raca=raca, origem=origem)
+        animais = animal_repository.get_animais_paginados(current_user.id, limit, offset, termo, status,
+                                                           raca=raca, origem=origem)
         if total > 0:
             total_pg = math.ceil(total / limit)
         alertas_sanitarios = sanitario_repository.get_vencendo_em_dias(current_user.id, dias=7)
@@ -38,6 +40,7 @@ def painel():
     return render_template("index.html", lista_animais=animais, pagina_atual=pg,
                            total_paginas=total_pg, total_animais=total, busca=termo, status=status,
                            raca_filtro=raca or '', racas_disponiveis=racas_disponiveis,
+                           origem_filtro=origem or '',
                            alertas_sanitarios=alertas_sanitarios)
 
 @operacional_bp.route('/lixeira')
@@ -67,6 +70,11 @@ def restaurar_animal(id_animal):
     except Exception as e:
         logger.error(f"Erro restaurar: {e}", exc_info=True)
     return redirect(url_for('operacional.lixeira'))
+
+@operacional_bp.route('/transacoes')
+@login_required
+def transacoes():
+    return render_template('transacoes.html')
 
 @operacional_bp.route("/cadastro", methods=["GET", "POST"])
 @login_required
@@ -175,6 +183,59 @@ def vender(id_animal):
         except Exception as e:
             logger.error(f"Erro vender: {e}", exc_info=True)
     return render_template('vender.html', id_animal=id_animal)
+
+@operacional_bp.route('/venda-lote', methods=['GET', 'POST'])
+@login_required
+def venda_lote():
+    if request.method == 'POST':
+        errors = validate(request.form, [
+            ('data_venda',   {'required': True, 'type': 'date',  'label': 'Data de venda'}),
+            ('valor_arroba', {'required': True, 'type': 'float', 'min_val': 0.01, 'label': 'Valor da arroba'}),
+        ])
+        if errors:
+            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+            return render_template('venda_lote.html', animais=animais, erro=errors[0]), 400
+
+        animal_ids = request.form.getlist('animal_ids[]')
+        pesos = request.form.getlist('pesos_venda[]')
+
+        if not animal_ids:
+            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+            return render_template('venda_lote.html', animais=animais,
+                                   erro="Selecione pelo menos um animal."), 400
+
+        data_venda = request.form['data_venda']
+        valor_arroba = float(request.form['valor_arroba'])
+
+        vendas = []
+        for aid_str, peso_str in zip(animal_ids, pesos):
+            try:
+                aid = int(aid_str)
+                peso = float(peso_str)
+                if peso <= 0:
+                    raise ValueError
+                vendas.append((aid, peso, round((peso / 30) * valor_arroba, 2)))
+            except (ValueError, TypeError):
+                animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+                return render_template('venda_lote.html', animais=animais,
+                                       erro="Peso inválido em um ou mais animais."), 400
+
+        try:
+            vendidos, invalidos = animal_repository.registrar_venda_lote(vendas, current_user.id, data_venda)
+        except Exception as e:
+            logger.error(f"Erro venda lote: {e}", exc_info=True)
+            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+            return render_template('venda_lote.html', animais=animais,
+                                   erro="Erro ao registrar venda. Tente novamente."), 400
+
+        msg = f"{vendidos} animal(is) vendido(s) com sucesso."
+        if invalidos:
+            msg += f" {len(invalidos)} ignorado(s) (já vendido ou não pertence ao usuário)."
+        flash(msg, 'success')
+        return redirect(url_for('operacional.painel'))
+
+    animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+    return render_template('venda_lote.html', animais=animais)
 
 @operacional_bp.route('/medicar/<int:id_animal>', methods=['GET', 'POST'])
 @login_required

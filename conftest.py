@@ -45,7 +45,7 @@ def db_setup():
             brinco VARCHAR(50) NOT NULL,
             sexo CHAR(1) NOT NULL,
             raca VARCHAR(100) NULL,
-            data_compra DATE NOT NULL,
+            data_compra DATE NULL,
             data_nascimento DATE NULL,
             preco_compra DECIMAL(10, 2),
             data_venda DATE,
@@ -125,6 +125,7 @@ def db_setup():
             nome_fazenda VARCHAR(100),
             cidade_estado VARCHAR(100),
             area_total DECIMAL(10, 2),
+            gmd_meta DECIMAL(5,3) NOT NULL DEFAULT 0.800,
             FOREIGN KEY (user_id) REFERENCES usuarios(id)
         )""")
 

@@ -6,7 +6,7 @@ from datetime import datetime
 # Dados externos (usuário, banco, request) nunca devem ser interpolados em `conds` —
 # sempre vão para `params` e chegam ao banco via placeholder %s.
 # Adicionar um valor externo diretamente em `conds` introduz risco de SQL injection.
-def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, raca=None):
+def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, raca=None, origem=None):
     conds = ["user_id = %s"]
     params = [user_id]
     if na_lixeira:
@@ -23,19 +23,21 @@ def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, 
     if raca:
         conds.append("raca = %s")
         params.append(raca)
+    if origem == 'fazenda':
+        conds.append("data_compra IS NULL AND data_nascimento IS NOT NULL")
     return "WHERE " + " AND ".join(conds), params
 
 
 # ---- LISTAGENS E CONTAGENS ----
 
-def count_animais(user_id, termo=None, status='todos', raca=None):
-    where, params = _build_animais_where(user_id, termo, status, raca=raca)
+def count_animais(user_id, termo=None, status='todos', raca=None, origem=None):
+    where, params = _build_animais_where(user_id, termo, status, raca=raca, origem=origem)
     with get_db_cursor() as cursor:
         cursor.execute("SELECT COUNT(*) FROM animais " + where, tuple(params))
         return cursor.fetchone()[0]
 
 
-def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', raca=None):
+def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', raca=None, origem=None):
     conds = ["a.user_id = %s", "a.deleted_at IS NULL"]
     params = [user_id]
     if termo:
@@ -48,6 +50,8 @@ def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', ra
     if raca:
         conds.append("a.raca = %s")
         params.append(raca)
+    if origem == 'fazenda':
+        conds.append("a.data_compra IS NULL AND a.data_nascimento IS NOT NULL")
     where = "WHERE " + " AND ".join(conds)
     sql = (
         "SELECT a.id, a.brinco, a.sexo, a.raca, a.data_compra, a.preco_compra, "
@@ -135,6 +139,25 @@ def get_animais_ativos(user_id):
             "SELECT id, brinco FROM animais "
             "WHERE user_id = %s AND data_venda IS NULL AND deleted_at IS NULL "
             "ORDER BY brinco ASC",
+            (user_id,)
+        )
+        return cursor.fetchall()
+
+
+def get_animais_ativos_com_ultimo_peso(user_id):
+    """Animais ativos com o peso da pesagem mais recente (None se nunca pesado)."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "WITH ultimo AS ("
+            "  SELECT p.animal_id, p.peso,"
+            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC, p.id DESC) AS rn"
+            "  FROM pesagens p WHERE p.deleted_at IS NULL"
+            ")"
+            " SELECT a.id, a.brinco, a.raca, u.peso AS ultimo_peso"
+            " FROM animais a"
+            " LEFT JOIN ultimo u ON u.animal_id = a.id AND u.rn = 1"
+            " WHERE a.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL"
+            " ORDER BY LENGTH(a.brinco), a.brinco",
             (user_id,)
         )
         return cursor.fetchall()
@@ -400,6 +423,45 @@ def get_animais_abaixo_gmd_medio(user_id):
         return cursor.fetchall()
 
 
+def get_animais_abaixo_gmd_meta(user_id, gmd_meta):
+    """Animais ativos com GMD abaixo de 75% da meta configurável da fazenda."""
+    limite = float(gmd_meta) * 0.75
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "WITH po AS ("
+            "  SELECT p.animal_id, p.data_pesagem, p.peso,"
+            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
+            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
+            "  FROM pesagens p"
+            "  JOIN animais a ON a.id = p.animal_id"
+            "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
+            "    AND p.deleted_at IS NULL"
+            "),"
+            " pu AS ("
+            "  SELECT animal_id,"
+            "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
+            "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
+            "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
+            "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
+            "  FROM po GROUP BY animal_id"
+            " ),"
+            " gmd_calc AS ("
+            "  SELECT animal_id,"
+            "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
+            "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+            "      ELSE NULL END AS gmd"
+            "  FROM pu WHERE data_ini <> data_fim"
+            " )"
+            " SELECT g.animal_id, a.brinco, g.gmd"
+            " FROM gmd_calc g"
+            " JOIN animais a ON a.id = g.animal_id"
+            " WHERE g.gmd IS NOT NULL AND g.gmd < %s"
+            " ORDER BY g.gmd ASC",
+            (user_id, limite)
+        )
+        return cursor.fetchall()
+
+
 # ---- HEREDITARIEDADE ----
 
 def get_animais_ativos_por_sexo(user_id, sexo):
@@ -598,6 +660,43 @@ def registrar_venda(animal_id, user_id, data_venda, preco_venda, peso_venda):
             (animal_id, data_venda, peso_venda)
         )
         return True
+
+
+def registrar_venda_lote(vendas, user_id, data_venda):
+    """Registra venda de múltiplos animais em uma única transação.
+
+    vendas: lista de (animal_id, peso_venda, preco_venda).
+    Valida que todos os animal_ids pertencem ao user_id e ainda estão ativos.
+    Retorna (vendidos, ids_invalidos).
+    """
+    if not vendas:
+        return 0, []
+
+    animal_ids = [v[0] for v in vendas]
+    placeholders = ','.join(['%s'] * len(animal_ids))
+
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            f"SELECT id FROM animais WHERE id IN ({placeholders}) AND user_id = %s "
+            "AND data_venda IS NULL AND deleted_at IS NULL",
+            animal_ids + [user_id]
+        )
+        validos = {row[0] for row in cursor.fetchall()}
+        invalidos = [aid for aid in animal_ids if aid not in validos]
+
+        for animal_id, peso_venda, preco_venda in vendas:
+            if animal_id not in validos:
+                continue
+            cursor.execute(
+                "UPDATE animais SET data_venda = %s, preco_venda = %s WHERE id = %s",
+                (data_venda, preco_venda, animal_id)
+            )
+            cursor.execute(
+                "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
+                (animal_id, data_venda, peso_venda)
+            )
+
+    return len(validos), invalidos
 
 
 def registrar_pesagem(animal_id, user_id, data_pesagem, peso):
