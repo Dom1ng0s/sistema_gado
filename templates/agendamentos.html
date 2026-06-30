@@ -26,6 +26,14 @@
     </div>
   {% endif %}
 {% endif %}
+{% with msgs = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in msgs %}
+    <div class="alert {% if cat == 'sucesso' %}alert-success{% else %}alert-danger{% endif %}"
+         style="margin-bottom:var(--space-5);">
+      <div>{{ msg }}</div>
+    </div>
+  {% endfor %}
+{% endwith %}
 
 <!-- ── Formulário de novo agendamento ─────────────────── -->
 <div style="max-width:580px; margin-bottom:var(--space-8);">
@@ -96,12 +104,16 @@
         </td>
         <td style="text-align:center;">
           {% if item[4] == 'pendente' %}
-            <a href="{{ url_for('financeiro.baixar_agendamento', id_agendamento=item[0]) }}"
-               class="btn btn-primary btn-sm"
-               onclick="return confirm('Confirmar pagamento de R$ {{ '%.2f'|format(item[2]) }}?');">
-              <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-              Baixar
-            </a>
+            <form method="POST"
+                  action="{{ url_for('financeiro.baixar_agendamento', id_agendamento=item[0]) }}"
+                  onsubmit="return confirm('Confirmar pagamento de R$ {{ '%.2f'|format(item[2]) }}?');"
+                  style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-primary btn-sm">
+                <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                Baixar
+              </button>
+            </form>
           {% else %}
             <span style="color:var(--color-ink-tertiary);">—</span>
           {% endif %}

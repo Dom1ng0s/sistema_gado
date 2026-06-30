@@ -165,15 +165,15 @@ def test_medicar_animal_alheio_nao_cria_medicacao(cenario):
 
 
 def test_excluir_animal_alheio_nao_marca_deleted_at(cenario):
-    """GET /excluir_animal/<id_de_A> como B não deve marcar deleted_at."""
+    """POST /excluir_animal/<id_de_A> como B não deve marcar deleted_at."""
     client_b, aid, brinco_a, uid_a, uid_b = cenario
-    client_b.get(f"/excluir_animal/{aid}")
+    client_b.post(f"/excluir_animal/{aid}")
     row = _fetch_one("SELECT deleted_at FROM animais WHERE id = %s", (aid,))
     assert row[0] is None
 
 
 def test_restaurar_animal_alheio_nao_altera_deleted_at(cenario):
-    """GET /restaurar_animal/<id_de_A> como B não deve limpar deleted_at."""
+    """POST /restaurar_animal/<id_de_A> como B não deve limpar deleted_at."""
     client_b, aid, brinco_a, uid_a, uid_b = cenario
     # Soft-delete direto no banco para simular animal na lixeira de A
     conn = dbc.get_db_connection()
@@ -183,7 +183,7 @@ def test_restaurar_animal_alheio_nao_altera_deleted_at(cenario):
     cur.close()
     conn.close()
 
-    client_b.get(f"/restaurar_animal/{aid}")
+    client_b.post(f"/restaurar_animal/{aid}")
 
     row = _fetch_one("SELECT deleted_at FROM animais WHERE id = %s", (aid,))
     assert row[0] is not None  # deve continuar deletado

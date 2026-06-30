@@ -423,6 +423,10 @@ def app(db_setup):
         "WTF_CSRF_ENABLED": False,
         "RATELIMIT_ENABLED": False,
     })
+    # RATELIMIT_ENABLED no config não afeta limiter.enabled (instance attr definido no init).
+    # Precisamos desabilitar diretamente para que os testes não acumulem contadores.
+    from extensions import limiter as _limiter
+    _limiter.enabled = False
 
     import db_config
     db_config.db_settings.update({

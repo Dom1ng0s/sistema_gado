@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('operacional.painel'))
@@ -165,6 +166,7 @@ def esqueci_senha():
 
 
 @auth_bp.route('/verificar_codigo', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])
 def verificar_codigo():
     email = session.get('reset_email')
     if not email:

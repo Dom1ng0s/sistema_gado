@@ -206,7 +206,10 @@ def registrar_pesagens_lote(pairs, user_id, data_pesagem):
 def get_animal_by_id(animal_id, user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT * FROM animais WHERE id = %s AND user_id = %s",
+            "SELECT id, brinco, sexo, raca, data_compra, preco_compra, "
+            "data_venda, preco_venda, user_id, lote_id, deleted_at, "
+            "pai_id, mae_id, data_nascimento "
+            "FROM animais WHERE id = %s AND user_id = %s",
             (animal_id, user_id)
         )
         return cursor.fetchone()
@@ -226,7 +229,9 @@ def check_brinco_exists(brinco, user_id):
 def get_pesagens_by_animal(animal_id):
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT * FROM pesagens WHERE animal_id = %s AND deleted_at IS NULL ORDER BY data_pesagem DESC",
+            "SELECT id, animal_id, data_pesagem, peso, deleted_at "
+            "FROM pesagens WHERE animal_id = %s AND deleted_at IS NULL "
+            "ORDER BY data_pesagem DESC",
             (animal_id,)
         )
         return cursor.fetchall()
@@ -510,7 +515,8 @@ def get_ranking_touros(user_id):
 def get_medicacoes_by_animal(animal_id):
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT * FROM medicacoes WHERE animal_id = %s ORDER BY data_aplicacao DESC",
+            "SELECT id, animal_id, data_aplicacao, nome_medicamento, custo, observacoes "
+            "FROM medicacoes WHERE animal_id = %s ORDER BY data_aplicacao DESC",
             (animal_id,)
         )
         return cursor.fetchall()
@@ -532,14 +538,16 @@ def get_contagem_por_sexo(user_id):
 def get_pesos_atuais_rebanho(user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT p.peso FROM pesagens p "
-            "INNER JOIN ("
-            "  SELECT animal_id, MAX(data_pesagem) AS max_dt "
-            "  FROM pesagens WHERE deleted_at IS NULL GROUP BY animal_id"
-            ") u ON p.animal_id = u.animal_id AND p.data_pesagem = u.max_dt "
+            "SELECT p.peso "
+            "FROM pesagens p "
             "INNER JOIN animais a ON p.animal_id = a.id "
             "WHERE a.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL "
-            "AND p.deleted_at IS NULL",
+            "  AND p.deleted_at IS NULL "
+            "  AND p.id = ("
+            "    SELECT p2.id FROM pesagens p2 "
+            "    WHERE p2.animal_id = p.animal_id AND p2.deleted_at IS NULL "
+            "    ORDER BY p2.data_pesagem DESC, p2.id DESC LIMIT 1"
+            "  )",
             (user_id,)
         )
         return cursor.fetchall()

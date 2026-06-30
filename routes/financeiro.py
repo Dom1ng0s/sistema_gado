@@ -249,11 +249,17 @@ def detalhe_lote(lote_id):
     return render_template('detalhe_lote.html', lote=lote, animais=animais)
 
 
-@financeiro_bp.route('/financeiro/baixar/<int:id_agendamento>')
+@financeiro_bp.route('/financeiro/baixar/<int:id_agendamento>', methods=['POST'])
 @login_required
 def baixar_agendamento(id_agendamento):
+    from flask import flash
     try:
-        financeiro_repository.baixar_agendamento(id_agendamento, current_user.id)
+        ok = financeiro_repository.baixar_agendamento(id_agendamento, current_user.id)
+        if ok:
+            flash('Conta baixada com sucesso.', 'sucesso')
+        else:
+            flash('Agendamento não encontrado ou já foi pago.', 'erro')
     except Exception as e:
         logger.error(f"Erro ao dar baixa: {e}", exc_info=True)
+        flash('Erro ao processar baixa. Tente novamente.', 'erro')
     return redirect(url_for('financeiro.agendamentos'))

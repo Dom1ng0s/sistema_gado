@@ -403,6 +403,7 @@ class TestProxyCidadesCache:
 
         with patch('routes.api.requests.get', return_value=mock_resp) as mock_get:
             with app.test_client() as client:
+                client.post('/login', data={'username': 'testuser', 'password': '123'})
                 client.get('/proxy-cidades')
                 client.get('/proxy-cidades')
 
@@ -428,6 +429,7 @@ class TestProxyCidadesCache:
 
         with patch('routes.api.requests.get', return_value=mock_resp) as mock_get:
             with app.test_client() as client:
+                client.post('/login', data={'username': 'testuser', 'password': '123'})
                 client.get('/proxy-cidades')
 
             assert mock_get.call_count == 1, "Cache expirado deve refazer o request"
@@ -448,6 +450,7 @@ class TestProxyCidadesCache:
 
         with patch('routes.api.requests.get', return_value=mock_resp):
             with app.test_client() as client:
+                client.post('/login', data={'username': 'testuser', 'password': '123'})
                 resp = client.get('/proxy-cidades')
                 assert resp.status_code == 200
                 data = resp.get_json()

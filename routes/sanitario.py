@@ -34,7 +34,7 @@ def lista_protocolos():
                 mensagem = ('sucesso', 'Protocolo cadastrado com sucesso.')
             except Exception as e:
                 logger.error(f"Erro ao inserir protocolo: {e}", exc_info=True)
-                mensagem = ('erro', f'Erro ao salvar: {e}')
+                mensagem = ('erro', 'Erro ao salvar protocolo. Tente novamente.')
 
     protocolos = []
     try:

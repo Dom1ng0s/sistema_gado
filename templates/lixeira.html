@@ -51,11 +51,15 @@
         <td>{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</td>
         <td>{{ animal[3].strftime('%d/%m/%Y às %H:%M') }}</td>
         <td style="text-align:center;">
-          <a href="{{ url_for('operacional.restaurar_animal', id_animal=animal[0]) }}"
-             class="btn btn-primary btn-sm">
-            <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
-            Restaurar
-          </a>
+          <form method="POST"
+                action="{{ url_for('operacional.restaurar_animal', id_animal=animal[0]) }}"
+                style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary btn-sm">
+              <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+              Restaurar
+            </button>
+          </form>
         </td>
       </tr>
       {% else %}

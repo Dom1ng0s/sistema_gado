@@ -1,5 +1,6 @@
 import os
 import logging
+import subprocess as _sp
 from flask import Flask, redirect, url_for, render_template, session, request
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
@@ -71,6 +72,28 @@ def set_static_cache(response):
         response.cache_control.max_age = 31536000
         response.cache_control.public = True
     return response
+
+@app.after_request
+def set_security_headers(response):
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    return response
+
+
+def _git_sha():
+    try:
+        return _sp.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'], stderr=_sp.DEVNULL
+        ).decode().strip()
+    except Exception:
+        return '0'
+
+_CACHE_BUST = _git_sha()
+
+@app.context_processor
+def inject_cache_bust():
+    return {'cache_bust': _CACHE_BUST}
 
 @app.route('/')
 def index():

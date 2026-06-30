@@ -5,6 +5,7 @@ import logging
 import csv
 import io
 import re as _re
+from mysql.connector import errors as _mysql_errors
 from datetime import date as _date
 from repositories import animal_repository, reproducao_repository, sanitario_repository
 from routes.validators import validate
@@ -58,7 +59,7 @@ def lixeira():
 
     return render_template("lixeira.html", lista_animais=animais, pagina_atual=pg, total_paginas=total_pg, busca=termo)
 
-@operacional_bp.route('/restaurar_animal/<int:id_animal>')
+@operacional_bp.route('/restaurar_animal/<int:id_animal>', methods=['POST'])
 @login_required
 def restaurar_animal(id_animal):
     try:
@@ -138,10 +139,10 @@ def detalhes(id_animal):
             'custo_total': f"{(float(animal[5] or 0) + sum(float(m[4] or 0) for m in meds)):.2f}",
         }
 
-        # SELECT * column order after ADD COLUMN raca AFTER sexo:
+        # Índices da query explícita em get_animal_by_id:
         # 0=id 1=brinco 2=sexo 3=raca 4=data_compra 5=preco_compra 6=data_venda
         # 7=preco_venda 8=user_id 9=lote_id 10=deleted_at 11=pai_id 12=mae_id 13=data_nascimento
-        data_nasc = animal[13] if len(animal) > 13 else None
+        data_nasc = animal[13]
         idade_meses = None
         if data_nasc:
             delta = (_date.today() - data_nasc).days
@@ -217,7 +218,7 @@ def nova_pesagem(id_animal):
             logger.error(f"Erro pesar: {e}", exc_info=True)
     return render_template('nova_pesagem.html', id_animal=id_animal)
 
-@operacional_bp.route('/excluir_animal/<int:id_animal>')
+@operacional_bp.route('/excluir_animal/<int:id_animal>', methods=['POST'])
 @login_required
 def excluir_animal(id_animal):
     try:
@@ -226,7 +227,7 @@ def excluir_animal(id_animal):
         logger.error(f"Erro excluir: {e}", exc_info=True)
     return redirect(url_for('operacional.painel'))
 
-@operacional_bp.route('/excluir_pesagem/<int:id_pesagem>')
+@operacional_bp.route('/excluir_pesagem/<int:id_pesagem>', methods=['POST'])
 @login_required
 def excluir_pesagem(id_pesagem):
     aid = None
@@ -449,6 +450,15 @@ def registrar_reproducao():
 
     if not touro_id_raw and not touro_externo:
         erros.append("Informe o touro (interno ou nome externo).")
+    elif touro_id_raw:
+        try:
+            _tid = int(touro_id_raw)
+            if not animal_repository.get_animal_by_id(_tid, current_user.id):
+                erros.append("Touro informado não pertence ao seu rebanho.")
+                touro_id_raw = ''
+        except (ValueError, TypeError):
+            erros.append("Touro informado é inválido.")
+            touro_id_raw = ''
 
     if resultado == 'vivo' and data_parto:
         if not brinco_bezerro:
@@ -613,18 +623,22 @@ def importar_csv():
                     erros.append({'linha': i, 'msg': f"brinco '{brinco}' já existe"})
                     continue
 
-                cursor.execute(
-                    "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
-                    "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                    (brinco, sexo, raca, data_compra or None,
-                     data_nasc or None, preco_compra, current_user.id)
-                )
-                brincos_existentes.add(brinco)
-                inseridos += 1
+                try:
+                    cursor.execute(
+                        "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
+                        "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                        (brinco, sexo, raca, data_compra or None,
+                         data_nasc or None, preco_compra, current_user.id)
+                    )
+                    brincos_existentes.add(brinco)
+                    inseridos += 1
+                except _mysql_errors.IntegrityError:
+                    erros.append({'linha': i, 'msg': f"brinco '{brinco}' já existe (conflito)"})
 
     except Exception as e:
         logger.error(f"Erro importação CSV: {e}", exc_info=True)
-        return render_template('importar_csv.html', erro=f"Erro interno: {e}")
+        return render_template('importar_csv.html',
+                               erro="Erro interno ao processar importação. Verifique os dados e tente novamente.")
 
     return render_template('importar_csv.html',
                            resultado={'inseridos': inseridos, 'erros': erros})

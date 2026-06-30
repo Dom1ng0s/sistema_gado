@@ -140,10 +140,14 @@
             <td>{{ p[2] }}</td>
             <td class="td-primary">{{ p[3] }} kg</td>
             <td>
-              <a href="{{ url_for('operacional.excluir_pesagem', id_pesagem=p[0]) }}"
-                 class="btn btn-ghost btn-sm"
-                 style="color:var(--color-danger);"
-                 onclick="return confirm('Remover esta pesagem?');">Excluir</a>
+              <form method="POST"
+                    action="{{ url_for('operacional.excluir_pesagem', id_pesagem=p[0]) }}"
+                    onsubmit="return confirm('Remover esta pesagem?');"
+                    style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-ghost btn-sm"
+                        style="color:var(--color-danger);">Excluir</button>
+              </form>
             </td>
           </tr>
           {% else %}
@@ -243,12 +247,15 @@
           O animal irá para a lixeira e não será contabilizado nos relatórios.
         </span>
       </div>
-      <a href="{{ url_for('operacional.excluir_animal', id_animal=animal[0]) }}"
-         class="btn btn-danger btn-sm"
-         onclick="return confirm('Mover o animal para a lixeira?');">
-         <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-         Excluir animal
-      </a>
+      <form method="POST"
+            action="{{ url_for('operacional.excluir_animal', id_animal=animal[0]) }}"
+            onsubmit="return confirm('Mover o animal para a lixeira?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-danger btn-sm">
+          <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          Excluir animal
+        </button>
+      </form>
     </div>
 
   </div>

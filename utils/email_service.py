@@ -2,6 +2,8 @@ import smtplib
 import ssl
 import os
 import logging
+from html import escape as _esc
+from urllib.parse import quote as _quote
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -38,7 +40,7 @@ def send_welcome_email(to_email: str, username: str) -> None:
             <tr>
               <td style="padding:36px 32px;">
                 <h2 style="margin:0 0 8px;color:#1C1C1A;font-size:24px;font-weight:700;">
-                  Bem-vindo, {username}! 🐄
+                  Bem-vindo, {_esc(username)}! 🐄
                 </h2>
                 <p style="margin:0 0 24px;color:#4A4A46;font-size:15px;line-height:1.7;">
                   Sua conta no <strong>SGG</strong> foi criada com sucesso.<br>
@@ -239,7 +241,7 @@ def send_feedback_request(to_email: str, username: str) -> None:
             <tr>
               <td style="padding:36px 32px 28px;">
                 <p style="margin:0 0 20px;color:#111110;font-size:17px;line-height:1.5;">
-                  Olá, <strong>{username}</strong>.
+                  Olá, <strong>{_esc(username)}</strong>.
                 </p>
                 <p style="margin:0 0 20px;color:#2E2E2B;font-size:15px;line-height:1.75;">
                   Faz uma semana que você criou sua conta no SGG.
@@ -276,7 +278,7 @@ def send_feedback_request(to_email: str, username: str) -> None:
                 <table cellpadding="0" cellspacing="0">
                   <tr>
                     <td style="background:#3B6D11;border-radius:8px;">
-                      <a href="mailto:sistemadegestaodegado@gmail.com?subject=Feedback%20SGG%20-%20{username}"
+                      <a href="mailto:sistemadegestaodegado@gmail.com?subject={_quote('Feedback SGG - ' + username)}"
                          style="display:inline-block;color:#ffffff;font-size:15px;font-weight:600;
                                 text-decoration:none;padding:13px 24px;">
                         Responder agora →

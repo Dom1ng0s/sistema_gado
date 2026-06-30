@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, render_template, Response, request
+from flask import Blueprint, jsonify, render_template, Response, request, session
 from flask_login import login_required, current_user
 import csv
 import io
@@ -227,6 +227,9 @@ def relatorio_pdf():
                                data_geracao=date.today().strftime('%d/%m/%Y'))
 
         job_id = str(uuid.uuid4())
+        jobs = session.get('pdf_jobs', [])
+        jobs = (jobs[-9:] if len(jobs) >= 10 else jobs) + [job_id]
+        session['pdf_jobs'] = jobs
         open(f"{_PDF_DIR}/sgg_pdf_{job_id}.pending", 'w').close()
         threading.Thread(target=_gerar_pdf_bg, args=(job_id, html), daemon=True).start()
 
@@ -240,6 +243,8 @@ def relatorio_pdf():
 @login_required
 def pdf_status(job_id: str):
     if not _UUID_RE.match(job_id):
+        return jsonify({'status': 'not_found'}), 404
+    if job_id not in session.get('pdf_jobs', []):
         return jsonify({'status': 'not_found'}), 404
     if _os.path.exists(f"{_PDF_DIR}/sgg_pdf_{job_id}.pdf"):
         return jsonify({'status': 'done'})
@@ -255,6 +260,8 @@ def pdf_status(job_id: str):
 def pdf_download(job_id: str):
     if not _UUID_RE.match(job_id):
         return jsonify({'error': 'Invalid job ID'}), 400
+    if job_id not in session.get('pdf_jobs', []):
+        return jsonify({'error': 'PDF não encontrado ou expirado'}), 404
     pdf_path = f"{_PDF_DIR}/sgg_pdf_{job_id}.pdf"
     if not _os.path.exists(pdf_path):
         return jsonify({'error': 'PDF não encontrado ou expirado'}), 404
@@ -415,6 +422,7 @@ def _fetch_cidades_ibge() -> list:
 
 
 @api_bp.route('/proxy-cidades')
+@login_required
 @limiter.limit("10 per minute")
 def proxy_cidades():
     """Cidades brasileiras via IBGE — cache de 24h, evita chamada por request."""
