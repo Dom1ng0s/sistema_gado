@@ -97,7 +97,7 @@
           <span class="badge badge-neutral">{{ p[3] }} dias</span>
         </td>
         <td style="text-align:center; font-weight:var(--weight-semibold);">
-          {{ p[4] }}
+          {{ p[4]|date_br }}
         </td>
         <td style="text-align:center;" data-vencimento="{{ p[4] }}">
           <span class="badge badge-status" id="badge-{{ p[0] }}">—</span>

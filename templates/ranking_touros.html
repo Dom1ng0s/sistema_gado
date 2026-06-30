@@ -71,7 +71,8 @@
       </thead>
       <tbody>
         {% for r in touros_grupo %}
-        {% set diff = r[4] - gmd_medio %}
+        {% set gmd_r = r[4] if r[4] is not none else 0 %}
+        {% set diff = gmd_r - gmd_medio %}
         <tr>
           <td style="text-align:center; font-weight:var(--weight-bold); color:var(--color-ink-secondary);">
             {{ loop.index }}
@@ -79,11 +80,13 @@
           <td class="td-primary">{{ r[1] }}</td>
           <td style="text-align:center;">{{ r[3] }}</td>
           <td style="text-align:right; font-weight:var(--weight-semibold);
-                     color:{% if r[4] >= 0.8 %}var(--color-primary){% elif r[4] >= 0.6 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
-            {{ "%.3f"|format(r[4]) }} kg/dia
+                     color:{% if gmd_r >= 0.8 %}var(--color-primary){% elif gmd_r >= 0.6 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
+            {% if r[4] is not none %}{{ "%.3f"|format(r[4]) }} kg/dia{% else %}—{% endif %}
           </td>
           <td style="text-align:center;">
-            {% if diff >= 0 %}
+            {% if r[4] is none %}
+              <span class="badge badge-neutral">sem dados</span>
+            {% elif diff >= 0 %}
               <span class="badge badge-success">+{{ "%.3f"|format(diff) }}</span>
             {% else %}
               <span class="badge badge-danger">{{ "%.3f"|format(diff) }}</span>
@@ -116,7 +119,7 @@
 const gmdRebanho = {{ gmd_medio }};
 const touros = [
   {% for r in ranking %}
-  { brinco: "{{ r[1] | replace('"', '\\"') }}", gmd: {{ r[4] }}, filhos: {{ r[3] }} }{% if not loop.last %},{% endif %}
+  { brinco: "{{ r[1] | replace('"', '\\"') }}", gmd: {{ r[4] if r[4] is not none else 0 }}, filhos: {{ r[3] }} }{% if not loop.last %},{% endif %}
   {% endfor %}
 ];
 

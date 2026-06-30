@@ -49,6 +49,15 @@ def format_brl(value):
         return "0,00"
 
 
+@app.template_filter('date_br')
+def format_date_br(value):
+    if value is None:
+        return ''
+    if hasattr(value, 'strftime'):
+        return value.strftime('%d/%m/%Y')
+    return str(value)
+
+
 @app.context_processor
 def inject_user_info():
     if not current_user.is_authenticated:

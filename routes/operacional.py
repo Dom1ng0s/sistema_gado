@@ -542,8 +542,13 @@ def registrar_diagnostico(rep_id):
 @operacional_bp.route('/rebanho/ranking-touros')
 @login_required
 def ranking_touros():
-    ranking   = animal_repository.get_ranking_touros(current_user.id)
-    gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
+    import logging as _log
+    try:
+        ranking   = animal_repository.get_ranking_touros(current_user.id)
+        gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
+    except Exception:
+        _log.exception("Erro em ranking_touros user_id=%s", current_user.id)
+        ranking, gmd_medio = [], 0.0
     return render_template('ranking_touros.html', ranking=ranking, gmd_medio=gmd_medio)
 
 

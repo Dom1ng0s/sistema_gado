@@ -192,11 +192,11 @@
         {% endif %}
         {% if animal[4] %}
         <dt style="color:var(--color-ink-secondary);">Data de compra</dt>
-        <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[4] }}</dd>
+        <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[4]|date_br }}</dd>
         {% endif %}
         {% if idade_meses is not none and animal|length > 13 and animal[13] %}
         <dt style="color:var(--color-ink-secondary);">Nascimento</dt>
-        <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[13] }}</dd>
+        <dd style="margin:0; font-weight:var(--weight-medium);">{{ animal[13]|date_br }}</dd>
         {% endif %}
         {% if animal[5] %}
         <dt style="color:var(--color-ink-secondary);">Preço compra</dt>
@@ -204,7 +204,7 @@
         {% endif %}
         {% if animal[6] %}
           <dt style="color:var(--color-ink-secondary);">Data venda</dt>
-          <dd style="margin:0;">{{ animal[6] }}</dd>
+          <dd style="margin:0;">{{ animal[6]|date_br }}</dd>
           <dt style="color:var(--color-ink-secondary);">Preço venda</dt>
           <dd style="margin:0; font-weight:var(--weight-medium); color:var(--color-primary);">
             R$ {{ animal[7] }}
@@ -236,7 +236,7 @@
         <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
         <div>
           <strong>Animal vendido</strong><br>
-          <span style="font-size:var(--text-xs);">{{ animal[6] }} — R$ {{ animal[7] }}</span>
+          <span style="font-size:var(--text-xs);">{{ animal[6]|date_br }} — R$ {{ animal[7] }}</span>
         </div>
       </div>
     {% else %}

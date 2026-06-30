@@ -501,7 +501,7 @@ def get_ranking_touros(user_id):
             "  ROUND(AVG(gf.gmd), 3) AS gmd_medio_filhos"
             " FROM animais f"
             " JOIN animais t ON t.id = f.pai_id AND t.deleted_at IS NULL"
-            " LEFT JOIN gmd_filhos gf ON gf.animal_id = f.id"
+            " LEFT JOIN gmd_filhos gf ON gf.animal_id = f.id AND gf.gmd IS NOT NULL"
             " WHERE f.user_id = %s AND f.pai_id IS NOT NULL AND f.deleted_at IS NULL"
             " GROUP BY t.id, t.brinco, t.raca"
             " ORDER BY gmd_medio_filhos DESC",

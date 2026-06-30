@@ -147,7 +147,7 @@
       {% if custos %}
         {% for r in custos %}
         <tr>
-          <td>{{ r[0].strftime('%d/%m/%Y') if r[0] else '' }}</td>
+          <td>{{ r[0]|date_br }}</td>
           <td>
             {% if r[1] == 'Fixo' %}<span class="badge badge-success">Fixo</span>
             {% elif r[1] == 'Variavel' %}<span class="badge badge-warning">Variável</span>

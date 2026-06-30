@@ -869,8 +869,8 @@ tbody td {
 }
 
 /* ── Layout de detalhe de animal ────────────────────────────── */
-.detalhe-layout { display: grid; grid-template-columns: 1fr 300px; gap: var(--space-6); margin-bottom: var(--space-8); }
-@media (max-width: 760px) { .detalhe-layout { grid-template-columns: 1fr; } }
+.detalhe-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-6); margin-bottom: var(--space-8); }
+@media (max-width: 900px) { .detalhe-layout { grid-template-columns: 1fr; } }
 
 /* ══════════════════════════════════════════════════════════
    COMPONENTES DE COMPATIBILIDADE

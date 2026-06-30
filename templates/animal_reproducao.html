@@ -78,7 +78,7 @@
       <div style="flex:1;">
         <span style="font-weight:var(--weight-semibold);">{{ p[1] }}</span>
         <span style="color:var(--color-ink-secondary); margin-left:var(--space-2);">
-          · Previsto para {{ p[3] }}
+          · Previsto para {{ p[3]|date_br }}
         </span>
       </div>
       {% if dias <= 0 %}
@@ -125,9 +125,9 @@
 
   <div class="metric-card">
     <span class="label">1ª Cobertura</span>
-    <div class="metric-value" style="font-size:var(--text-xl);">{{ stats[4] }}</div>
+    <div class="metric-value" style="font-size:var(--text-xl);">{{ stats[4]|date_br }}</div>
     {% if stats[5] and stats[5] != stats[4] %}
-      <div class="metric-delta flat">Última: {{ stats[5] }}</div>
+      <div class="metric-delta flat">Última: {{ stats[5]|date_br }}</div>
     {% endif %}
   </div>
 
@@ -255,10 +255,10 @@
       <div style="display:flex; flex-wrap:wrap; gap:var(--space-4); margin-top:var(--space-3);
                   font-size:var(--text-sm); color:var(--color-ink-secondary);">
         {% if e[2] %}
-          <span>Parto: <strong style="color:var(--color-ink);">{{ e[2] }}</strong></span>
+          <span>Parto: <strong style="color:var(--color-ink);">{{ e[2]|date_br }}</strong></span>
         {% elif e[8] and dg == 'positivo' %}
           <span data-parto-previsto="{{ e[8] }}">
-            Previsto: <strong style="color:var(--color-ink);" class="parto-previsto-label">{{ e[8] }}</strong>
+            Previsto: <strong style="color:var(--color-ink);" class="parto-previsto-label">{{ e[8]|date_br }}</strong>
             <span class="parto-countdown badge" style="margin-left:var(--space-2);"></span>
           </span>
         {% endif %}
@@ -271,7 +271,7 @@
           <span style="color:var(--color-ink-tertiary);">Touro não informado</span>
         {% endif %}
         {% if e[7] %}
-          <span>DG em: <strong style="color:var(--color-ink);">{{ e[7] }}</strong></span>
+          <span>DG em: <strong style="color:var(--color-ink);">{{ e[7]|date_br }}</strong></span>
         {% endif %}
       </div>
 

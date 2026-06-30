@@ -203,7 +203,7 @@
     <tbody>
       {% for m in movimentacoes %}
       <tr {% if m[1] == 'saida' %}style="background:rgba(226,75,74,0.03);"{% endif %}>
-        <td style="text-align:center;">{{ m[5] }}</td>
+        <td style="text-align:center;">{{ m[5]|date_br }}</td>
         <td style="text-align:center;">
           <span class="badge {% if m[1] == 'entrada' %}badge-success{% else %}badge-danger{% endif %}">
             {{ m[1]|capitalize }}
