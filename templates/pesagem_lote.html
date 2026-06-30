@@ -50,33 +50,13 @@
     color: var(--color-ink-tertiary);
   }
 
-  /* Tabela de animais */
-  .animais-table-wrapper {
-    background: var(--color-surface);
-    border: 0.5px solid var(--color-border);
+  /* Pesagem-specific: conecta ao sticky-toolbar acima (sem borda superior nem radius) */
+  .table-wrapper {
     border-top: none;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-    overflow: hidden;
   }
 
-  .animais-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .animais-table thead th {
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semi);
-    color: var(--color-ink-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    padding: var(--space-3) var(--space-4);
-    background: var(--color-surface-raised);
-    border-bottom: 0.5px solid var(--color-border);
-    text-align: left;
-  }
-
-  .animais-table thead th:last-child { text-align: right; }
+  thead th:last-child { text-align: right; }
 
   .linha-animal {
     border-bottom: 0.5px solid var(--color-border);
@@ -186,13 +166,7 @@
     <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary btn-sm">← Voltar</a>
   </div>
 
-  <!-- Alertas -->
-  {% if mensagem %}
-  <div class="alert alert-success" style="margin-bottom: var(--space-5);">
-    <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
-    <span>{{ mensagem }}</span>
-  </div>
-  {% endif %}
+  <!-- Alertas de validação -->
   {% if erro %}
   <div class="alert alert-danger" style="margin-bottom: var(--space-5);">
     <span class="alert-icon">!</span>
@@ -242,13 +216,14 @@
     </div>
 
     <!-- Tabela de animais -->
-    <div class="animais-table-wrapper">
-      <table class="animais-table">
+    <div class="table-wrapper">
+      <table>
+        <caption class="sr-only">Animais disponíveis para pesagem em lote</caption>
         <thead>
           <tr>
-            <th class="check-cell"></th>
-            <th>Brinco</th>
-            <th style="text-align:right;">Peso (kg)</th>
+            <th scope="col" class="check-cell"></th>
+            <th scope="col">Brinco</th>
+            <th scope="col" style="text-align:right;">Peso (kg)</th>
           </tr>
         </thead>
         <tbody id="tbody-animais">
@@ -279,7 +254,7 @@
           <tr>
             <td colspan="3">
               <div class="empty-state">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+                <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="1.5">
                   <circle cx="12" cy="12" r="9"/>
                   <path d="M12 8v4m0 4h.01"/>
@@ -366,7 +341,7 @@
     const dataPesagem = document.getElementById('data-pesagem').value;
     if (!dataPesagem) {
       e.preventDefault();
-      alert('Informe a data da pesagem antes de confirmar.');
+      sggToast('Informe a data da pesagem antes de confirmar.', 'error');
       return;
     }
 
@@ -384,7 +359,7 @@
 
     if (invalido) {
       e.preventDefault();
-      alert('Preencha o peso de todos os animais selecionados.');
+      sggToast('Preencha o peso de todos os animais selecionados.', 'error');
       return;
     }
 

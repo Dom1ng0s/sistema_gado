@@ -12,13 +12,17 @@ logger = logging.getLogger(__name__)
 @pastos_bp.route('/pastos')
 @login_required
 def listar_pastos():
+    busca = request.args.get('busca', '').strip()
     try:
         pastos = pasto_repository.get_pastos(current_user.id)
+        if busca:
+            bl = busca.lower()
+            pastos = [p for p in pastos if bl in (p[1] or '').lower()]
     except Exception as e:
         logger.error(f"Erro ao listar pastos: {e}", exc_info=True)
-        flash("Erro ao carregar pastos. Execute init_db.py para criar as views necessárias.", 'erro')
+        flash("Erro ao carregar pastos. Execute init_db.py para criar as views necessárias.", 'error')
         pastos = []
-    return render_template('pastos_lista.html', pastos=pastos)
+    return render_template('pastos_lista.html', pastos=pastos, busca=busca)
 
 
 @pastos_bp.route('/pastos', methods=['POST'])
@@ -31,7 +35,7 @@ def criar_pasto():
         ('capacidade_ua', {'label': 'Capacidade UA', 'required': False, 'type': 'float', 'min': 0}),
     ])
     if erros:
-        flash(' | '.join(erros), 'erro')
+        flash(' | '.join(erros), 'error')
         return redirect(url_for('pastos.listar_pastos'))
 
     nome      = request.form.get('nome', '').strip()
@@ -45,7 +49,7 @@ def criar_pasto():
         forrageira,
         float(cap_ua) if cap_ua else None
     )
-    flash('Pasto cadastrado com sucesso.', 'sucesso')
+    flash('Pasto cadastrado com sucesso.', 'success')
     return redirect(url_for('pastos.listar_pastos'))
 
 
@@ -54,7 +58,7 @@ def criar_pasto():
 def detalhe_pasto(pasto_id):
     pasto = pasto_repository.get_pasto_by_id(pasto_id, current_user.id)
     if not pasto:
-        flash('Pasto não encontrado.', 'erro')
+        flash('Pasto não encontrado.', 'error')
         return redirect(url_for('pastos.listar_pastos'))
 
     modulos       = pasto_repository.get_modulos_by_pasto(pasto_id, current_user.id)
@@ -80,7 +84,7 @@ def detalhe_pasto(pasto_id):
 @login_required
 def criar_modulo(pasto_id):
     if not pasto_repository.get_pasto_by_id(pasto_id, current_user.id):
-        flash('Pasto não encontrado.', 'erro')
+        flash('Pasto não encontrado.', 'error')
         return redirect(url_for('pastos.listar_pastos'))
 
     erros = validate(request.form, [
@@ -89,7 +93,7 @@ def criar_modulo(pasto_id):
         ('capacidade_ua', {'label': 'Capacidade UA',   'required': False, 'type': 'float', 'min': 0}),
     ])
     if erros:
-        flash(' | '.join(erros), 'erro')
+        flash(' | '.join(erros), 'error')
         return redirect(url_for('pastos.detalhe_pasto', pasto_id=pasto_id))
 
     nome   = request.form.get('nome', '').strip()
@@ -101,7 +105,7 @@ def criar_modulo(pasto_id):
         float(area) if area else None,
         float(cap_ua) if cap_ua else None
     )
-    flash('Módulo cadastrado com sucesso.', 'sucesso')
+    flash('Módulo cadastrado com sucesso.', 'success')
     return redirect(url_for('pastos.detalhe_pasto', pasto_id=pasto_id))
 
 
@@ -110,13 +114,13 @@ def criar_modulo(pasto_id):
 def ocupar_modulo(modulo_id):
     modulo = pasto_repository.get_modulo_by_id(modulo_id, current_user.id)
     if not modulo:
-        flash('Módulo não encontrado.', 'erro')
+        flash('Módulo não encontrado.', 'error')
         return redirect(url_for('pastos.listar_pastos'))
 
     pasto_id = modulo[4]
 
     if pasto_repository.get_ocupacao_ativa(modulo_id, current_user.id):
-        flash('Módulo já possui uma ocupação ativa.', 'erro')
+        flash('Módulo já possui uma ocupação ativa.', 'error')
         return redirect(url_for('pastos.detalhe_pasto', pasto_id=pasto_id))
 
     erros = validate(request.form, [
@@ -126,12 +130,12 @@ def ocupar_modulo(modulo_id):
     if not animal_ids:
         erros.append("Selecione ao menos um animal.")
     if erros:
-        flash(' | '.join(erros), 'erro')
+        flash(' | '.join(erros), 'error')
         return redirect(url_for('pastos.detalhe_pasto', pasto_id=pasto_id))
 
     data_entrada = request.form.get('data_entrada')
     pasto_repository.iniciar_ocupacao(modulo_id, current_user.id, data_entrada, animal_ids)
-    flash('Ocupação iniciada com sucesso.', 'sucesso')
+    flash('Ocupação iniciada com sucesso.', 'success')
     return redirect(url_for('pastos.detalhe_pasto', pasto_id=pasto_id))
 
 
@@ -144,16 +148,16 @@ def encerrar_ocupacao(ocupacao_id):
         ('data_saida', {'label': 'Data de saída', 'required': True, 'type': 'date'}),
     ])
     if erros:
-        flash(' | '.join(erros), 'erro')
+        flash(' | '.join(erros), 'error')
         dest = url_for('pastos.detalhe_pasto', pasto_id=int(pasto_id)) if pasto_id else url_for('pastos.listar_pastos')
         return redirect(dest)
 
     data_saida = request.form.get('data_saida')
     ok = pasto_repository.encerrar_ocupacao(ocupacao_id, current_user.id, data_saida)
     if not ok:
-        flash('Ocupação não encontrada ou já encerrada.', 'erro')
+        flash('Ocupação não encontrada ou já encerrada.', 'error')
     else:
-        flash('Ocupação encerrada com sucesso.', 'sucesso')
+        flash('Ocupação encerrada com sucesso.', 'success')
 
     if pasto_id:
         return redirect(url_for('pastos.detalhe_pasto', pasto_id=int(pasto_id)))

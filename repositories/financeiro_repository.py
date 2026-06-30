@@ -190,6 +190,26 @@ def get_animais_por_lote(lote_id, user_id):
         return cursor.fetchall()
 
 
+def update_agendamento(id_agendamento, user_id, descricao, valor, vencimento):
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "UPDATE financial_schedule SET descricao=%s, valor=%s, vencimento=%s "
+            "WHERE id=%s AND user_id=%s AND status='pendente' AND deleted_at IS NULL",
+            (descricao, valor, vencimento, id_agendamento, user_id)
+        )
+        return cursor.rowcount > 0
+
+
+def delete_agendamento(id_agendamento, user_id):
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "UPDATE financial_schedule SET deleted_at=NOW() "
+            "WHERE id=%s AND user_id=%s AND status='pendente' AND deleted_at IS NULL",
+            (id_agendamento, user_id)
+        )
+        return cursor.rowcount > 0
+
+
 def baixar_agendamento(id_agendamento, user_id):
     """
     Operação atômica: verifica se o agendamento é pendente e pertence ao usuário,

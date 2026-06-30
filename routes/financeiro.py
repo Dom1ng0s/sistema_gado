@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, request, url_for, redirect
+from flask import Blueprint, render_template, request, url_for, redirect, flash
 from flask_login import login_required, current_user
+import math
 from datetime import date, timedelta
 import logging
 from repositories import animal_repository, financeiro_repository
@@ -86,7 +87,23 @@ def financeiro():
     except Exception as e:
         logger.error(f"Erro financeiro: {e}", exc_info=True)
 
-    return render_template('financeiro.html', financeiro=view_data, ano_selecionado=ano_sel, anos=anos)
+    PER_PAGE = 20
+    page = request.args.get('page', 1, type=int)
+    custos = []
+    total_custos = 0
+    total_paginas = 1
+    try:
+        all_custos = financeiro_repository.get_custos_por_ano(current_user.id, ano_sel)
+        total_custos = len(all_custos)
+        total_paginas = max(1, math.ceil(total_custos / PER_PAGE))
+        page = max(1, min(page, total_paginas))
+        inicio = (page - 1) * PER_PAGE
+        custos = all_custos[inicio:inicio + PER_PAGE]
+    except Exception as e:
+        logger.error(f"Erro ao carregar custos: {e}", exc_info=True)
+
+    return render_template('financeiro.html', financeiro=view_data, ano_selecionado=ano_sel, anos=anos,
+                           custos=custos, pagina_atual=page, total_custos=total_custos, total_paginas=total_paginas)
 
 
 @financeiro_bp.route('/simulador-custo', methods=['GET', 'POST'])
@@ -169,10 +186,12 @@ def custos_operacionais():
                 desc = request.form.get('descricao')
 
                 financeiro_repository.insert_custo_operacional(current_user.id, cat, tipo, val, dt, desc)
-                msg = "Custo registrado com sucesso."
+                flash("Custo registrado com sucesso.", 'success')
+                return redirect(url_for('financeiro.custos_operacionais'))
             except Exception as e:
                 logger.error(f"Erro custos: {e}", exc_info=True)
-                msg = f"Erro: {e}"
+                flash(f"Erro: {e}", 'error')
+                return redirect(url_for('financeiro.custos_operacionais'))
 
     cats_fixo, cats_variavel = [], []
     try:
@@ -209,18 +228,24 @@ def agendamentos():
                     float(request.form.get('valor')),
                     request.form.get('vencimento'),
                 )
-                msg = "Agendamento salvo com sucesso!"
+                flash("Agendamento salvo com sucesso!", 'success')
+                return redirect(url_for('financeiro.agendamentos'))
             except Exception as e:
                 logger.error(f"Erro ao agendar: {e}", exc_info=True)
-                msg = f"Erro ao salvar: {e}"
+                flash(f"Erro ao salvar: {e}", 'error')
+                return redirect(url_for('financeiro.agendamentos'))
 
     contas = []
+    editando = None
     try:
         contas = financeiro_repository.get_agendamentos(current_user.id)
+        editar_id = request.args.get('editar', type=int)
+        if editar_id:
+            editando = next((c for c in contas if c[0] == editar_id and c[4] == 'pendente'), None)
     except Exception as e:
         logger.error(f"Erro lista agendamentos: {e}", exc_info=True)
 
-    return render_template('agendamentos.html', agendamentos=contas, mensagem=msg, hoje=hoje)
+    return render_template('agendamentos.html', agendamentos=contas, mensagem=msg, hoje=hoje, editando=editando)
 
 
 @financeiro_bp.route('/financeiro/lotes')
@@ -249,17 +274,59 @@ def detalhe_lote(lote_id):
     return render_template('detalhe_lote.html', lote=lote, animais=animais)
 
 
+@financeiro_bp.route('/financeiro/agendamentos/<int:id_agendamento>/editar', methods=['POST'])
+@login_required
+def editar_agendamento(id_agendamento):
+    errors = validate(request.form, [
+        ('descricao',  {'required': True, 'type': 'str',   'max_len': 500, 'label': 'Descrição'}),
+        ('valor',      {'required': True, 'type': 'float', 'min_val': 0.01,'label': 'Valor'}),
+        ('vencimento', {'required': True, 'type': 'date',                  'label': 'Vencimento'}),
+    ])
+    if errors:
+        flash(errors[0], 'error')
+    else:
+        try:
+            ok = financeiro_repository.update_agendamento(
+                id_agendamento, current_user.id,
+                request.form.get('descricao'),
+                float(request.form.get('valor')),
+                request.form.get('vencimento'),
+            )
+            if ok:
+                flash('Agendamento atualizado com sucesso.', 'success')
+            else:
+                flash('Agendamento não encontrado, já pago ou sem permissão.', 'error')
+        except Exception as e:
+            logger.error(f"Erro editar agendamento {id_agendamento}: {e}", exc_info=True)
+            flash('Erro ao atualizar agendamento.', 'error')
+    return redirect(url_for('financeiro.agendamentos'))
+
+
+@financeiro_bp.route('/financeiro/agendamentos/<int:id_agendamento>/excluir', methods=['POST'])
+@login_required
+def excluir_agendamento(id_agendamento):
+    try:
+        ok = financeiro_repository.delete_agendamento(id_agendamento, current_user.id)
+        if ok:
+            flash('Agendamento excluído.', 'success')
+        else:
+            flash('Agendamento não encontrado, já pago ou sem permissão.', 'error')
+    except Exception as e:
+        logger.error(f"Erro excluir agendamento {id_agendamento}: {e}", exc_info=True)
+        flash('Erro ao excluir agendamento.', 'error')
+    return redirect(url_for('financeiro.agendamentos'))
+
+
 @financeiro_bp.route('/financeiro/baixar/<int:id_agendamento>', methods=['POST'])
 @login_required
 def baixar_agendamento(id_agendamento):
-    from flask import flash
     try:
         ok = financeiro_repository.baixar_agendamento(id_agendamento, current_user.id)
         if ok:
-            flash('Conta baixada com sucesso.', 'sucesso')
+            flash('Conta baixada com sucesso.', 'success')
         else:
-            flash('Agendamento não encontrado ou já foi pago.', 'erro')
+            flash('Agendamento não encontrado ou já foi pago.', 'error')
     except Exception as e:
         logger.error(f"Erro ao dar baixa: {e}", exc_info=True)
-        flash('Erro ao processar baixa. Tente novamente.', 'erro')
+        flash('Erro ao processar baixa. Tente novamente.', 'error')
     return redirect(url_for('financeiro.agendamentos'))

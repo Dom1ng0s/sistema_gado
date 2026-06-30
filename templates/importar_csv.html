@@ -87,7 +87,7 @@
         <input id="arquivo" type="file" name="arquivo" accept=".csv,text/csv"
                class="form-input" required>
       </div>
-      <button type="submit" class="btn btn-primary">Importar</button>
+      <button type="submit" class="btn btn-primary" id="btn-importar">Importar</button>
     </form>
   </div>
 </div>
@@ -128,4 +128,21 @@
 
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var form = document.querySelector('form[action*="importar"]');
+  if (!form) return;
+  form.addEventListener('submit', function () {
+    var btn = document.getElementById('btn-importar');
+    if (btn && !btn.classList.contains('btn-loading')) {
+      btn.textContent = 'Importando...';
+      btn.classList.add('btn-loading');
+      btn.disabled = true;
+    }
+  });
+}());
+</script>
 {% endblock %}

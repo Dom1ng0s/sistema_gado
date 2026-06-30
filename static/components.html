@@ -526,5 +526,135 @@
   });
 </script>
 
+<!-- ══════════════════════════════════════════════════════
+     MODAL DE CONFIRMAÇÃO GENÉRICO (C-5)
+     Substitui window.confirm() em toda a aplicação.
+     O HTML abaixo deve estar em base.html (uma única vez).
+     Use via sggConfirm(title, msg, callback).
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Modal de Confirmação — sggConfirm</div>
+
+  <button class="btn btn-danger"
+          onclick="sggConfirm('Mover para lixeira?', 'Esta ação pode ser desfeita na lixeira de animais.', () => alert('Confirmado!'))">
+    Demonstrar modal de confirmação
+  </button>
+</div>
+
+<!-- HTML global (incluído em base.html, não duplicar por template) -->
+<div id="sggConfirmModal" class="modal-overlay modal-confirm" role="dialog"
+     aria-modal="true" aria-labelledby="sgg-confirm-title" aria-hidden="true">
+  <div class="modal-content">
+    <h3 class="modal-title" id="sgg-confirm-title">Confirmar</h3>
+    <p class="modal-confirm-msg" id="sgg-confirm-msg"></p>
+    <div class="modal-confirm-actions">
+      <button class="btn btn-ghost" id="sgg-confirm-cancel">Cancelar</button>
+      <button class="btn btn-danger" id="sgg-confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TOAST / ALERTA INLINE JS (C-5)
+     Substitui window.alert() para erros de validação.
+     Container global em base.html (id sggToastContainer).
+     Use via sggToast(msg, type).
+══════════════════════════════════════════════════════ -->
+<div class="demo-section">
+  <div class="demo-label">Toast / Alerta inline JS — sggToast</div>
+  <div class="demo-row">
+    <button class="btn btn-danger"  onclick="sggToast('Preencha o peso de todos os animais selecionados.', 'error')">Toast erro</button>
+    <button class="btn btn-primary" onclick="sggToast('3 pesagens registradas com sucesso.', 'success')">Toast sucesso</button>
+    <button class="btn btn-accent"  onclick="sggToast('Informe a data da pesagem antes de confirmar.', 'warning')">Toast aviso</button>
+  </div>
+</div>
+
+<!-- Container global de toasts (incluído em base.html) -->
+<div class="toast-container" id="sggToastContainer" aria-live="polite" aria-atomic="false"></div>
+
+<script>
+/* ── sggConfirm ───────────────────────────────────────────
+   Uso: sggConfirm(title, msg, onConfirm)
+   Parâmetros:
+     title     — texto do título (string)
+     msg       — mensagem descritiva (string)
+     onConfirm — callback chamado ao clicar em Confirmar
+   ──────────────────────────────────────────────────────── */
+(function () {
+  let _pendingCallback = null;
+
+  const modal   = document.getElementById('sggConfirmModal');
+  const titleEl = document.getElementById('sgg-confirm-title');
+  const msgEl   = document.getElementById('sgg-confirm-msg');
+  const btnOk   = document.getElementById('sgg-confirm-ok');
+  const btnCancel = document.getElementById('sgg-confirm-cancel');
+
+  function open() {
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    btnOk.focus();
+  }
+
+  function close() {
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    _pendingCallback = null;
+  }
+
+  btnOk.addEventListener('click', () => {
+    const cb = _pendingCallback;
+    close();
+    if (cb) cb();
+  });
+
+  btnCancel.addEventListener('click', close);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) close();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.style.display === 'flex') close();
+  });
+
+  window.sggConfirm = function (title, msg, onConfirm) {
+    titleEl.textContent = title || 'Confirmar';
+    msgEl.textContent   = msg   || '';
+    _pendingCallback    = onConfirm || null;
+    open();
+  };
+}());
+
+/* ── sggToast ─────────────────────────────────────────────
+   Uso: sggToast(msg, type)
+   Parâmetros:
+     msg  — texto da mensagem (string)
+     type — 'error' | 'success' | 'warning'  (default: 'error')
+   ──────────────────────────────────────────────────────── */
+(function () {
+  const ICONS = { error: '✕', success: '✓', warning: '⚠' };
+  const DURATION = 4000;
+
+  window.sggToast = function (msg, type) {
+    type = type || 'error';
+    const container = document.getElementById('sggToastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.innerHTML =
+      '<span style="font-size:var(--text-base); flex-shrink:0;">' + (ICONS[type] || '●') + '</span>' +
+      '<span>' + msg + '</span>';
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.animation = 'toast-in 180ms ease reverse';
+      setTimeout(() => toast.remove(), 180);
+    }, DURATION);
+  };
+}());
+</script>
+
 </body>
 </html>

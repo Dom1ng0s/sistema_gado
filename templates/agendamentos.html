@@ -14,29 +14,46 @@
 </div>
 
 {% if mensagem %}
-  {% if 'sucesso' in mensagem.lower() or 'salvo' in mensagem.lower() %}
-    <div class="alert alert-success" style="margin-bottom:var(--space-5);">
-      <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
-      <div>{{ mensagem }}</div>
-    </div>
-  {% else %}
-    <div class="alert alert-danger" style="margin-bottom:var(--space-5);">
-      <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><path d="m10.29 3.86-8.6 14.9A2 2 0 0 0 3.43 22h17.14a2 2 0 0 0 1.74-2.84l-8.6-14.9a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></span>
-      <div>{{ mensagem }}</div>
-    </div>
-  {% endif %}
+  <div class="alert alert-danger" role="alert" style="margin-bottom:var(--space-5);">
+    <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" viewBox="0 0 24 24"><path d="m10.29 3.86-8.6 14.9A2 2 0 0 0 3.43 22h17.14a2 2 0 0 0 1.74-2.84l-8.6-14.9a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></span>
+    <div>{{ mensagem }}</div>
+  </div>
 {% endif %}
-{% with msgs = get_flashed_messages(with_categories=true) %}
-  {% for cat, msg in msgs %}
-    <div class="alert {% if cat == 'sucesso' %}alert-success{% else %}alert-danger{% endif %}"
-         style="margin-bottom:var(--space-5);">
-      <div>{{ msg }}</div>
-    </div>
-  {% endfor %}
-{% endwith %}
 
-<!-- ── Formulário de novo agendamento ─────────────────── -->
+<!-- ── Formulário de novo / editar agendamento ─────────── -->
 <div style="max-width:580px; margin-bottom:var(--space-8);">
+  {% if editando %}
+  <h2 style="margin-bottom:var(--space-4);">Editar Agendamento</h2>
+  <form method="POST" action="{{ url_for('financeiro.editar_agendamento', id_agendamento=editando[0]) }}" class="form-container">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label for="descricao">Descrição</label>
+      <input id="descricao" type="text" name="descricao" class="form-input"
+             required maxlength="500"
+             value="{{ editando[1] }}">
+    </div>
+
+    <div class="grid-2col">
+      <div class="form-group">
+        <label for="valor">Valor (R$)</label>
+        <input id="valor" type="number" name="valor" step="0.01" min="0.01"
+               class="form-input" required value="{{ '%.2f'|format(editando[2]) }}">
+        <span class="form-hint">Ex: 1500.00 (separador: ponto)</span>
+      </div>
+      <div class="form-group">
+        <label for="vencimento">Vencimento</label>
+        <input id="vencimento" type="date" name="vencimento"
+               class="form-input" required value="{{ editando[3] }}">
+      </div>
+    </div>
+
+    <div style="display:flex; gap:var(--space-3);">
+      <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+      <a href="{{ url_for('financeiro.agendamentos') }}" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+  {% else %}
   <h2 style="margin-bottom:var(--space-4);">Novo Agendamento</h2>
   <form method="POST" action="{{ url_for('financeiro.agendamentos') }}" class="form-container">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -52,7 +69,8 @@
       <div class="form-group">
         <label for="valor">Valor (R$)</label>
         <input id="valor" type="number" name="valor" step="0.01" min="0.01"
-               class="form-input" required placeholder="0,00">
+               class="form-input" required placeholder="0.00">
+        <span class="form-hint">Ex: 1500.00 (separador: ponto)</span>
       </div>
       <div class="form-group">
         <label for="vencimento">Vencimento</label>
@@ -63,6 +81,7 @@
 
     <button type="submit" class="btn btn-primary">Salvar Agendamento</button>
   </form>
+  {% endif %}
 </div>
 
 <!-- ── Lista de agendamentos ──────────────────────────── -->
@@ -104,16 +123,35 @@
         </td>
         <td style="text-align:center;">
           {% if item[4] == 'pendente' %}
-            <form method="POST"
-                  action="{{ url_for('financeiro.baixar_agendamento', id_agendamento=item[0]) }}"
-                  onsubmit="return confirm('Confirmar pagamento de R$ {{ '%.2f'|format(item[2]) }}?');"
-                  style="display:inline;">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-primary btn-sm">
-                <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                Baixar
-              </button>
-            </form>
+            <div style="display:flex; gap:var(--space-2); justify-content:center; flex-wrap:wrap;">
+              <form method="POST"
+                    action="{{ url_for('financeiro.baixar_agendamento', id_agendamento=item[0]) }}"
+                    data-confirm-title="Confirmar Pagamento"
+                    data-confirm-msg="Confirmar pagamento de R$ {{ '%.2f'|format(item[2]) }}?"
+                    style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary btn-sm">
+                  <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                  Baixar
+                </button>
+              </form>
+              <a href="{{ url_for('financeiro.agendamentos', editar=item[0]) }}"
+                 class="btn btn-ghost btn-sm" title="Editar agendamento">
+                <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
+                Editar
+              </a>
+              <form method="POST"
+                    action="{{ url_for('financeiro.excluir_agendamento', id_agendamento=item[0]) }}"
+                    data-confirm-title="Excluir Agendamento"
+                    data-confirm-msg="Excluir este agendamento?"
+                    style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--color-danger);" title="Excluir agendamento">
+                  <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  Excluir
+                </button>
+              </form>
+            </div>
           {% else %}
             <span style="color:var(--color-ink-tertiary);">—</span>
           {% endif %}
@@ -131,4 +169,34 @@
   </table>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  /* btn-loading para formulários de criação/edição */
+  document.querySelectorAll('.form-container').forEach(function (form) {
+    form.addEventListener('submit', function () {
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn && !btn.classList.contains('btn-loading')) {
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+      }
+    });
+  });
+
+  /* Modal de confirmação para ações destrutivas / pagamento */
+  document.querySelectorAll('form[data-confirm-msg]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      if (form.dataset.confirmed) return;
+      e.preventDefault();
+      sggConfirm(
+        form.dataset.confirmTitle || 'Confirmar',
+        form.dataset.confirmMsg,
+        function () { form.dataset.confirmed = '1'; form.submit(); }
+      );
+    });
+  });
+}());
+</script>
 {% endblock %}

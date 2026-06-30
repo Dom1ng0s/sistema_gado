@@ -101,6 +101,13 @@ def index():
         return redirect(url_for('operacional.painel'))
     return render_template('landing.html')
 
+
+@app.route('/styleguide')
+def styleguide():
+    if not app.debug:
+        return '', 404
+    return app.send_static_file('components.html')
+
 # Em produção com Gunicorn + preload_app=True o scheduler inicia no processo master
 # (antes do fork). Com preload_app=False cada worker importaria o módulo e iniciaria
 # o scheduler individualmente — triplo disparo de emails. O guard abaixo cobre ambos

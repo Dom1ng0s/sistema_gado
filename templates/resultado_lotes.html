@@ -22,7 +22,7 @@
 {% set total_med      = lotes | sum(attribute=7) %}
 {% set total_margem   = lotes | sum(attribute=9) %}
 
-<div class="grid-metrics" style="grid-template-columns: repeat(4, 1fr); margin-bottom:var(--space-6);">
+<div class="grid-metrics grid-4col">
 
   <div class="metric-card">
     <span class="label">Custo total de aquisição</span>
@@ -74,17 +74,18 @@
 
 <div class="table-wrapper">
   <table>
+    <caption class="sr-only">Resultado financeiro por lote</caption>
     <thead>
       <tr>
-        <th>Lote</th>
-        <th>Data aquisição</th>
-        <th style="text-align:right;">Animais</th>
-        <th style="text-align:right;">Vendidos</th>
-        <th style="text-align:right;">Custo aquisição (R$)</th>
-        <th style="text-align:right;">Receita (R$)</th>
-        <th style="text-align:right;">Custo sanitário (R$)</th>
-        <th style="text-align:right;">Margem bruta (R$)</th>
-        <th></th>
+        <th scope="col">Lote</th>
+        <th scope="col">Data aquisição</th>
+        <th scope="col" style="text-align:right;">Animais</th>
+        <th scope="col" style="text-align:right;">Vendidos</th>
+        <th scope="col" style="text-align:right;">Custo aquisição (R$)</th>
+        <th scope="col" style="text-align:right;">Receita (R$)</th>
+        <th scope="col" style="text-align:right;">Custo sanitário (R$)</th>
+        <th scope="col" style="text-align:right;">Margem bruta (R$)</th>
+        <th scope="col"></th>
       </tr>
     </thead>
     <tbody>
@@ -123,11 +124,13 @@
 
 {% else %}
 
-<div style="text-align:center; padding:var(--space-16) var(--space-4); color:var(--color-ink-secondary);">
-  <div style="font-size:3rem; margin-bottom:var(--space-4);">📦</div>
+<div style="text-align:center; padding:var(--space-12) var(--space-4); color:var(--color-ink-secondary);">
+  <div style="margin-bottom:var(--space-4); color:var(--color-ink-disabled);">
+    <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+  </div>
   <h2 style="color:var(--color-ink-secondary); margin-bottom:var(--space-2);">Nenhum lote cadastrado</h2>
   <p style="color:var(--color-ink-tertiary); margin-bottom:var(--space-6);">
-    Cadastre animais em lote para visualizar o P&L por grupo de compra.
+    Cadastre animais em lote para visualizar o P&amp;L por grupo de compra.
   </p>
   <a href="{{ url_for('operacional.cadastro_lote') }}" class="btn btn-primary">+ Cadastrar lote</a>
 </div>

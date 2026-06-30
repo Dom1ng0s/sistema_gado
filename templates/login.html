@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -142,7 +142,7 @@
 
         .brand-desc {
             font-size: 13.5px;
-            color: rgba(255,255,255,0.38);
+            color: rgba(255,255,255,0.65);
             line-height: 1.75;
             max-width: 290px;
             margin-bottom: 40px;
@@ -182,7 +182,7 @@
             padding-top: 20px;
             border-top: 0.5px solid rgba(255,255,255,0.08);
             font-size: 11px;
-            color: rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.55);
         }
 
         /* ── Form Panel ─────────────────────────── */
@@ -492,7 +492,7 @@
             {% endwith %}
 
             {% if mensagem %}
-                <div class="flash flash-error">{{ mensagem }}</div>
+                <div class="flash flash-error" id="login-error" role="alert">{{ mensagem }}</div>
             {% endif %}
 
             <!-- Form -->
@@ -504,7 +504,8 @@
                         <label class="field-label" for="username">Usuário ou Email</label>
                     </div>
                     <input type="text" id="username" name="username" class="field-input"
-                           required autocomplete="username" placeholder="Digite seu usuário ou email" autofocus>
+                           required autocomplete="username" placeholder="Digite seu usuário ou email" autofocus
+                           {% if mensagem %}aria-invalid="true" aria-describedby="login-error"{% endif %}>
                 </div>
 
                 <div class="field">
@@ -515,7 +516,8 @@
                     <div style="position:relative;">
                         <input type="password" id="password" name="password" class="field-input"
                                required autocomplete="current-password" placeholder="••••••••"
-                               style="padding-right:44px;">
+                               style="padding-right:44px;"
+                               {% if mensagem %}aria-invalid="true" aria-describedby="login-error"{% endif %}>
                         <button type="button" id="togglePwd" aria-label="Mostrar senha"
                                 style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
                                        background:none;border:none;cursor:pointer;padding:4px;
@@ -571,10 +573,12 @@
             inp.type = 'text';
             eye.style.display = 'none';
             eyeOff.style.display = '';
+            this.setAttribute('aria-label', 'Ocultar senha');
         } else {
             inp.type = 'password';
             eye.style.display = '';
             eyeOff.style.display = 'none';
+            this.setAttribute('aria-label', 'Mostrar senha');
         }
         this.style.color = inp.type === 'text' ? 'var(--color-primary)' : 'var(--color-ink-tertiary)';
     });

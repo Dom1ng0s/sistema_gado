@@ -37,7 +37,7 @@
     <!-- Raça -->
     <div class="form-group">
       <label for="raca">Raça <span style="color:var(--color-ink-tertiary); font-weight:normal;">(opcional)</span></label>
-      <select id="raca" name="raca" class="form-input" onchange="toggleRacaOutra(this)">
+      <select id="raca" name="raca" class="form-select" onchange="toggleRacaOutra(this)">
         <option value="">— selecione ou deixe em branco —</option>
         <option value="Nelore">Nelore</option>
         <option value="Angus">Angus</option>
@@ -78,7 +78,7 @@
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--space-4);">
       <div class="form-group">
         <label for="sexo">Sexo</label>
-        <select id="sexo" name="sexo" class="form-input">
+        <select id="sexo" name="sexo" class="form-select">
           <option value="M">Macho</option>
           <option value="F">Fêmea</option>
         </select>
@@ -106,6 +106,7 @@
         <label for="valor_arroba">Valor da Arroba na Compra (R$)</label>
         <input id="valor_arroba" type="number" step="0.01" name="valor_arroba"
                class="form-input" placeholder="Ex: 250.00">
+        <span class="form-hint">Ex: 1500.00 (separador: ponto)</span>
       </div>
     </div>
 

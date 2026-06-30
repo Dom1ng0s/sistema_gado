@@ -150,6 +150,22 @@
 
         .auth-link:hover { color: var(--color-primary); }
 
+        .auth-stepper { display:flex; align-items:center; margin-bottom:24px; }
+        .step-node { display:flex; flex-direction:column; align-items:center; gap:4px; }
+        .step-circle {
+            width:28px; height:28px; border-radius:50%;
+            display:flex; align-items:center; justify-content:center;
+            font-size:12px; font-weight:600;
+            border:1.5px solid var(--color-border-strong);
+            color:var(--color-ink-tertiary); background:var(--color-surface);
+        }
+        .step-node.done  .step-circle { background:var(--color-primary); border-color:var(--color-primary); color:#fff; }
+        .step-node.active .step-circle { border-color:var(--color-primary); color:var(--color-primary); }
+        .step-lbl { font-size:10px; color:var(--color-ink-tertiary); white-space:nowrap; }
+        .step-node.active .step-lbl { color:var(--color-primary); font-weight:500; }
+        .step-line { flex:1; height:1.5px; background:var(--color-border); margin:0 6px; margin-bottom:16px; }
+        .step-line.done { background:var(--color-primary); }
+
         .flash {
             display: flex;
             align-items: flex-start;
@@ -170,6 +186,23 @@
         <div class="auth-brand">
             <div class="auth-mark">S</div>
             <span class="auth-brand-text">Sistema de Gestão de Gado</span>
+        </div>
+
+        <div class="auth-stepper" role="progressbar" aria-label="Passo 1 de 3">
+            <div class="step-node active">
+                <div class="step-circle">1</div>
+                <span class="step-lbl">Email</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step-node">
+                <div class="step-circle">2</div>
+                <span class="step-lbl">Código</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step-node">
+                <div class="step-circle">3</div>
+                <span class="step-lbl">Nova senha</span>
+            </div>
         </div>
 
         <div class="auth-heading">

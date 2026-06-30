@@ -45,6 +45,10 @@
        class="nav-link{% if request.endpoint and request.endpoint.startswith('estoque') %} active{% endif %}">
       Estoque
     </a>
+    <a href="{{ url_for('sanitario.lista_protocolos') }}"
+       class="nav-link{% if request.endpoint and request.endpoint.startswith('sanitario') %} active{% endif %}">
+      Sanitário
+    </a>
     <a href="{{ url_for('api.graficos_page') }}"
        class="nav-link{% if request.endpoint == 'api.graficos_page' %} active{% endif %}">
       Relatórios
@@ -65,10 +69,34 @@
 </nav>
 
 <main class="page-container" id="main-content">
+  {% with _fmsgs = get_flashed_messages(with_categories=True) %}
+    {% for _cat, _fmsg in _fmsgs %}
+      <div class="alert {% if _cat == 'success' %}alert-success{% elif _cat == 'warning' %}alert-warning{% else %}alert-danger{% endif %}"
+           role="alert" style="margin-bottom:var(--space-5);">
+        <span class="alert-icon" aria-hidden="true">{% if _cat == 'success' %}<svg class="icon icon-md" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>{% else %}<svg class="icon icon-md" viewBox="0 0 24 24"><path d="m10.29 3.86-8.6 14.9A2 2 0 0 0 3.43 22h17.14a2 2 0 0 0 1.74-2.84l-8.6-14.9a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>{% endif %}</span>
+        <div>{{ _fmsg }}</div>
+      </div>
+    {% endfor %}
+  {% endwith %}
   {% block content %}{% endblock %}
 </main>
 
 {% block scripts %}{% endblock %}
+
+<!-- ── Componentes globais: modal de confirmação + toast ── -->
+<div id="sggConfirmModal" class="modal-overlay modal-confirm" role="dialog"
+     aria-modal="true" aria-labelledby="sgg-confirm-title" aria-hidden="true">
+  <div class="modal-content">
+    <h3 class="modal-title" id="sgg-confirm-title">Confirmar</h3>
+    <p class="modal-confirm-msg" id="sgg-confirm-msg"></p>
+    <div class="modal-confirm-actions">
+      <button class="btn btn-ghost" id="sgg-confirm-cancel">Cancelar</button>
+      <button class="btn btn-danger" id="sgg-confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="sggToastContainer" aria-live="polite" aria-atomic="false"></div>
 
 <script>
 (function () {
@@ -88,6 +116,51 @@
     });
   });
 })();
+
+/* ── sggConfirm ─────────────────────────────────────────── */
+(function () {
+  var _cb = null;
+  var modal = document.getElementById('sggConfirmModal');
+  var titleEl = document.getElementById('sgg-confirm-title');
+  var msgEl   = document.getElementById('sgg-confirm-msg');
+  var btnOk   = document.getElementById('sgg-confirm-ok');
+  var btnCan  = document.getElementById('sgg-confirm-cancel');
+
+  function close() { modal.style.display = 'none'; modal.setAttribute('aria-hidden', 'true'); _cb = null; }
+  function open()  { modal.style.display = 'flex'; modal.setAttribute('aria-hidden', 'false'); btnOk.focus(); }
+
+  btnOk.addEventListener('click', function () { var cb = _cb; close(); if (cb) cb(); });
+  btnCan.addEventListener('click', close);
+  modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
+
+  window.sggConfirm = function (title, msg, onConfirm) {
+    titleEl.textContent = title || 'Confirmar';
+    msgEl.textContent   = msg   || '';
+    _cb = onConfirm || null;
+    open();
+  };
+}());
+
+/* ── sggToast ───────────────────────────────────────────── */
+(function () {
+  var ICONS = { error: '✕', success: '✓', warning: '⚠' };
+
+  window.sggToast = function (msg, type) {
+    type = type || 'error';
+    var container = document.getElementById('sggToastContainer');
+    if (!container) return;
+    var t = document.createElement('div');
+    t.className = 'toast toast-' + type;
+    t.innerHTML = '<span style="flex-shrink:0;">' + (ICONS[type] || '●') + '</span><span>' + msg + '</span>';
+    container.appendChild(t);
+    setTimeout(function () {
+      t.style.opacity = '0';
+      t.style.transition = 'opacity 180ms ease';
+      setTimeout(function () { t.remove(); }, 200);
+    }, 4000);
+  };
+}());
 </script>
 
 </body>

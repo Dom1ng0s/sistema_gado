@@ -14,7 +14,7 @@
 <!-- ── Card GMD do rebanho ────────────────────────────── -->
 <div class="grid-metrics" style="margin-bottom:var(--space-6);">
   <div class="metric-card">
-    <span class="label">GMD médio do rebanho</span>
+    <span class="label" title="Ganho Médio Diário — kg/dia de ganho de peso">GMD médio do rebanho</span>
     <div>
       <span class="metric-value">{{ "%.3f"|format(gmd_medio) }}</span>
       <span class="metric-unit">kg/dia</span>
@@ -31,10 +31,11 @@
 {% if ranking %}
 
 <!-- ── Gráfico ECharts horizontal bar ─────────────────── -->
-<div style="background:var(--color-surface); border:1px solid var(--color-border);
-            border-radius:var(--radius-lg); padding:var(--space-5); margin-bottom:var(--space-6);">
-  <p class="label" style="margin-bottom:var(--space-3);">GMD médio dos filhos por touro (kg/dia)</p>
-  <div id="chartTouros" style="width:100%; height:{{ [ranking|length * 48 + 60, 200]|max }}px;"></div>
+<div class="card" style="margin-bottom:var(--space-6);">
+  <div class="card-body">
+    <p class="label" style="margin-bottom:var(--space-3);">GMD médio dos filhos por touro (kg/dia)</p>
+    <div id="chartTouros" style="width:100%; height:{{ [ranking|length * 48 + 60, 200]|max }}px;"></div>
+  </div>
 </div>
 
 <!-- ── Tabela agrupada por raça ─────────────────────────── -->
@@ -57,14 +58,15 @@
   {% endif %}
   <div class="table-wrapper" style="margin-bottom:var(--space-4);">
     <table>
+      <caption class="sr-only">Ranking de touros por GMD médio dos filhos</caption>
       <thead>
         <tr>
-          <th style="text-align:center; width:48px;">#</th>
-          <th>Brinco</th>
-          <th style="text-align:center;">Filhos</th>
-          <th style="text-align:right;">GMD médio filhos</th>
-          <th style="text-align:center;">vs Rebanho</th>
-          <th style="text-align:center;"></th>
+          <th scope="col" style="text-align:center; width:48px;">#</th>
+          <th scope="col">Brinco</th>
+          <th scope="col" style="text-align:center;">Filhos</th>
+          <th scope="col" style="text-align:right;" title="Ganho Médio Diário — kg/dia de ganho de peso">GMD médio filhos</th>
+          <th scope="col" style="text-align:center;">vs Rebanho</th>
+          <th scope="col" style="text-align:center;"></th>
         </tr>
       </thead>
       <tbody>

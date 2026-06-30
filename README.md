@@ -93,6 +93,8 @@ O banco não armazena dados brutos para o Python calcular. Cada view encapsula u
 
 ## Testes
 
+### Testes unitários e de integração
+
 ```bash
 # requer MySQL local com usuário gado_test/gado123
 pytest
@@ -100,6 +102,47 @@ pytest tests/test_tenant_isolation.py   # verifica isolamento multi-tenant por H
 ```
 
 Os testes de `test_tenant_isolation.py` verificam em nível HTTP que um usuário não consegue visualizar, vender, pesar, medicar ou excluir animais de outro usuário.
+
+### Testes E2E (Playwright)
+
+Os testes E2E em `tests/e2e/` cobrem os 3 fluxos mais frágeis do sistema com um browser real como linha de base de regressão: login, cadastro em lote e pesagem em lote.
+
+**Pré-requisitos:**
+
+```bash
+# 1. Instalar browser (já incluso no requirements.txt, só precisa do browser)
+playwright install chromium
+
+# 2. Criar usuário MySQL para os testes E2E (mesmas credenciais dos testes unitários)
+# Se gado_test já existe, apenas conceder o banco adicional:
+mysql -u root -p <<'SQL'
+GRANT ALL PRIVILEGES ON sistema_gado_e2e.* TO 'gado_test'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+```
+
+**Executar:**
+
+```bash
+# Todos os testes E2E
+pytest tests/e2e/ -v
+
+# Arquivo específico
+pytest tests/e2e/test_login.py -v
+pytest tests/e2e/test_cadastro_lote.py -v
+pytest tests/e2e/test_pesagem_lote.py -v
+```
+
+Os testes E2E criam e destroem o banco `sistema_gado_e2e` automaticamente a cada sessão. O servidor Flask sobe na porta **5099** durante os testes — certifique-se de que está livre.
+
+**Variáveis de ambiente opcionais** (mesmas dos testes unitários):
+
+| Variável | Padrão |
+|---|---|
+| `TEST_DB_HOST` | `localhost` |
+| `TEST_DB_USER` | `gado_test` |
+| `TEST_DB_PASSWORD` | `gado123` |
+| `TEST_DB_PORT` | `3306` |
 
 ## Licença
 

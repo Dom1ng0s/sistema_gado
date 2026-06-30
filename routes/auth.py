@@ -206,6 +206,37 @@ def verificar_codigo():
                            expires_in_seconds=expires_in_seconds)
 
 
+@auth_bp.route('/reenviar-codigo', methods=['POST'])
+@limiter.limit("5/hour")
+def reenviar_codigo():
+    email = session.get('reset_email')
+    if not email:
+        return redirect(url_for('auth.esqueci_senha'))
+
+    try:
+        user = auth_repository.get_user_by_email(email)
+        if user:
+            code = str(secrets.randbelow(900000) + 100000)
+            expires_at = datetime.utcnow() + timedelta(minutes=15)
+            auth_repository.save_reset_token(user[0], code, expires_at)
+            try:
+                send_reset_code(email, code)
+            except Exception as e:
+                logger.error(f"Erro reenvio email reset: {e}", exc_info=True)
+                flash('Erro ao reenviar email. Verifique a configuração de email.', 'error')
+                return redirect(url_for('auth.verificar_codigo'))
+
+            session['reset_expires_at'] = expires_at.timestamp()
+            flash('Novo código enviado. Verifique seu email.', 'success')
+        else:
+            flash('Email não encontrado.', 'error')
+    except Exception as e:
+        logger.error(f"Erro reenviar_codigo: {e}", exc_info=True)
+        flash('Erro interno. Tente novamente.', 'error')
+
+    return redirect(url_for('auth.verificar_codigo'))
+
+
 @auth_bp.route('/nova_senha', methods=['GET', 'POST'])
 def nova_senha():
     if not session.get('reset_verified') or not session.get('reset_user_id'):

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 import math
 import logging
@@ -109,11 +109,12 @@ def cadastro():
             if animal_repository.check_brinco_exists(brinco, current_user.id):
                 return render_template("cadastro.html", mensagem="Brinco já existe."), 400
 
-            animal_repository.cadastrar_animal(
+            new_id = animal_repository.cadastrar_animal(
                 brinco, sexo, data_compra, preco_compra, peso, current_user.id,
                 data_nascimento=data_nascimento, raca=raca,
             )
-            return render_template("cadastro.html", mensagem_ok=f"Animal {brinco} cadastrado com sucesso.")
+            flash(f"Animal {brinco} cadastrado com sucesso.", 'success')
+            return redirect(url_for('operacional.detalhes', id_animal=new_id))
         except Exception as e:
             logger.error(f"Erro cadastro: {e}", exc_info=True)
             msg = f"Erro: {e}"
@@ -267,6 +268,7 @@ def vacinacao_coletiva():
                 request.form['obs'],
                 user_id=current_user.id,
             )
+            flash(f"{len(animais_ids)} animal(is) vacinado(s) com sucesso.", 'success')
             return redirect(url_for('operacional.painel'))
         except Exception as e:
             logger.error(f"Erro vacinacao lote: {e}", exc_info=True)
@@ -306,7 +308,13 @@ def cadastro_lote():
                 except (ValueError, AttributeError):
                     errors.append(f"Peso do animal {i} é inválido.")
         if errors:
-            return render_template("cadastro_lote.html", mensagem=errors[0]), 400
+            restore_data = {
+                'brincos': request.form.getlist('brincos[]'),
+                'sexos': request.form.getlist('sexos[]'),
+                'pesos': request.form.getlist('pesos[]'),
+            }
+            return render_template("cadastro_lote.html", mensagem=errors[0],
+                                   form_data=request.form, restore_data=restore_data), 400
         try:
             codigo_lote = request.form["codigo_lote"].strip()
             descricao = request.form["descricao"]
@@ -382,9 +390,8 @@ def pesagem_lote():
             msg = f"{inseridos} pesagem(ns) registrada(s) com sucesso."
             if invalidos:
                 msg += f" {len(invalidos)} animal(is) ignorado(s) (não pertence ao usuário)."
-            animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
-            return render_template('pesagem_lote.html', lotes=lotes, animais=animais,
-                                   lote_id_selecionado=lote_id, mensagem=msg)
+            flash(msg, 'success')
+            return redirect(url_for('operacional.pesagem_lote', lote_id=lote_id))
 
         animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
     except Exception as e:
@@ -470,9 +477,8 @@ def registrar_reproducao():
         return redirect(url_for('operacional.painel'))
 
     if erros:
-        from flask import flash
         for e in erros:
-            flash(e, 'erro')
+            flash(e, 'error')
         return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))
 
     reproducao_repository.insert_reproducao(
@@ -485,25 +491,27 @@ def registrar_reproducao():
         resultado,
     )
 
+    bezerro_msg = ''
     if resultado == 'vivo' and data_parto and brinco_bezerro and sexo_bezerro:
         if not animal_repository.check_brinco_exists(brinco_bezerro, current_user.id):
-            animal_repository.cadastrar_animal(
+            bezerro_id = animal_repository.cadastrar_animal(
                 brinco_bezerro, sexo_bezerro,
                 data_compra=None, preco_compra=None, peso_entrada=None,
                 user_id=current_user.id,
                 data_nascimento=data_parto,
                 mae_id=id_animal,
             )
+            bezerro_msg = f' Bezerro criado automaticamente: brinco {brinco_bezerro} (ID #{bezerro_id}).'
+        else:
+            bezerro_msg = f' Brinco {brinco_bezerro} já existia — bezerro não duplicado.'
 
-    from flask import flash
-    flash('Evento reprodutivo registrado com sucesso.', 'sucesso')
+    flash(f'Evento reprodutivo registrado com sucesso.{bezerro_msg}', 'success')
     return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))
 
 
 @operacional_bp.route('/reproducao/<int:rep_id>/diagnostico', methods=['POST'])
 @login_required
 def registrar_diagnostico(rep_id):
-    from flask import flash
     erros = validate(request.form, [
         ('diagnostico',      {'required': True,  'choices': ['positivo', 'negativo'], 'label': 'Diagnóstico'}),
         ('data_diagnostico', {'required': True,  'type': 'date',                      'label': 'Data do DG'}),
@@ -512,7 +520,7 @@ def registrar_diagnostico(rep_id):
 
     if erros:
         for e in erros:
-            flash(e, 'erro')
+            flash(e, 'error')
     else:
         try:
             reproducao_repository.update_diagnostico(
@@ -521,10 +529,10 @@ def registrar_diagnostico(rep_id):
                 request.form.get('diagnostico'),
                 request.form.get('data_diagnostico'),
             )
-            flash('Diagnóstico registrado com sucesso.', 'sucesso')
+            flash('Diagnóstico registrado com sucesso.', 'success')
         except Exception as e:
             logger.error(f"Erro DG {rep_id}: {e}", exc_info=True)
-            flash('Erro ao registrar diagnóstico.', 'erro')
+            flash('Erro ao registrar diagnóstico.', 'error')
 
     if id_animal:
         return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))

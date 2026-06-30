@@ -1,5 +1,5 @@
 import logging
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from repositories import sanitario_repository
 from routes.validators import validate
@@ -11,8 +11,6 @@ logger = logging.getLogger(__name__)
 @sanitario_bp.route('/sanitario', methods=['GET', 'POST'])
 @login_required
 def lista_protocolos():
-    mensagem = None
-
     if request.method == 'POST':
         errors = validate(request.form, [
             ('nome',              {'required': True,  'type': 'str',  'max_len': 200, 'label': 'Nome'}),
@@ -21,7 +19,7 @@ def lista_protocolos():
             ('descricao',         {'required': False, 'type': 'str',  'max_len': 500, 'label': 'Descrição'}),
         ])
         if errors:
-            mensagem = ('erro', errors[0])
+            flash(errors[0], 'error')
         else:
             try:
                 sanitario_repository.insert_protocolo(
@@ -31,19 +29,24 @@ def lista_protocolos():
                     int(request.form.get('intervalo_dias')),
                     request.form.get('proxima_aplicacao'),
                 )
-                mensagem = ('sucesso', 'Protocolo cadastrado com sucesso.')
+                flash('Protocolo cadastrado com sucesso.', 'success')
             except Exception as e:
                 logger.error(f"Erro ao inserir protocolo: {e}", exc_info=True)
-                mensagem = ('erro', 'Erro ao salvar protocolo. Tente novamente.')
+                flash('Erro ao salvar protocolo. Tente novamente.', 'error')
+        return redirect(url_for('sanitario.lista_protocolos'))
 
+    busca = request.args.get('busca', '').strip()
     protocolos = []
     try:
         protocolos = sanitario_repository.get_protocolos(current_user.id)
+        if busca:
+            bl = busca.lower()
+            protocolos = [p for p in protocolos if bl in (p[1] or '').lower()]
     except Exception as e:
         logger.error(f"Erro ao listar protocolos: {e}", exc_info=True)
-        mensagem = ('erro', 'Erro ao carregar protocolos. Execute init_db.py.')
+        flash('Erro ao carregar protocolos. Execute init_db.py.', 'error')
 
-    return render_template('sanitario_lista.html', protocolos=protocolos, mensagem=mensagem)
+    return render_template('sanitario_lista.html', protocolos=protocolos, busca=busca)
 
 
 @sanitario_bp.route('/sanitario/<int:protocolo_id>/aplicar', methods=['POST'])

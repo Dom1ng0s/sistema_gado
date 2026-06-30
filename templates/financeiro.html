@@ -46,7 +46,7 @@
   </div>
 
   <div class="metric-card">
-    <span class="label">Custo de produção da @</span>
+    <span class="label" title="Arroba (@) — unidade de peso equivale a 15 kg; preço de referência para venda de boi gordo">Custo de produção da @</span>
     <div>
       <span class="metric-value">{{ financeiro.custo_arroba }}</span>
       {% if financeiro.custo_arroba != '---' %}
@@ -118,10 +118,11 @@
 
 <!-- ── Gráfico ECharts (breakdown do ano) ─────────────── -->
 {% if financeiro.entradas_ano != 0 or financeiro.saidas_ano != 0 %}
-<div style="background:var(--color-surface); border:1px solid var(--color-border);
-            border-radius:var(--radius-lg); padding:var(--space-5); margin-bottom:var(--space-8);">
-  <p class="label" style="margin-bottom:var(--space-3);">Composição do Exercício {{ ano_selecionado }}</p>
-  <div id="chartFinanceiro" style="width:100%; height:260px;"></div>
+<div class="card" style="margin-bottom:var(--space-8);">
+  <div class="card-body">
+    <p class="label" style="margin-bottom:var(--space-3);">Composição do Exercício {{ ano_selecionado }}</p>
+    <div id="chartFinanceiro" style="width:100%; height:260px;"></div>
+  </div>
 </div>
 {% endif %}
 
@@ -133,111 +134,72 @@
 
 <div class="table-wrapper">
   <table>
+    <caption class="sr-only">Custos operacionais do período selecionado</caption>
     <thead>
       <tr>
-        <th>Data</th>
-        <th>Categoria</th>
-        <th>Descrição</th>
-        <th style="text-align:right;">Valor (R$)</th>
+        <th scope="col">Data</th>
+        <th scope="col">Categoria</th>
+        <th scope="col">Descrição</th>
+        <th scope="col" style="text-align:right;">Valor (R$)</th>
       </tr>
     </thead>
-    <tbody id="tbody-custos">
-      <tr id="tr-custos-loading">
-        <td colspan="4" style="padding:var(--space-8);">
-          <div style="display:flex; flex-direction:column; gap:var(--space-3);">
-            {% for _ in range(5) %}
-            <span class="skeleton" style="display:block; height:18px; border-radius:3px; width:{{ loop.index0 % 3 == 0 and '100%' or loop.index0 % 3 == 1 and '85%' or '92%' }};"></span>
-            {% endfor %}
-          </div>
+    <tbody>
+      {% if custos %}
+        {% for r in custos %}
+        <tr>
+          <td>{{ r[0].strftime('%d/%m/%Y') if r[0] else '' }}</td>
+          <td>
+            {% if r[1] == 'Fixo' %}<span class="badge badge-success">Fixo</span>
+            {% elif r[1] == 'Variavel' %}<span class="badge badge-warning">Variável</span>
+            {% else %}<span class="badge badge-neutral">{{ r[1] }}</span>{% endif %}
+          </td>
+          <td class="td-primary">
+            {{ r[2] }}{% if r[4] %}<br><small style="color:var(--color-ink-secondary);">{{ r[4] }}</small>{% endif %}
+          </td>
+          <td style="text-align:right;color:var(--color-danger);font-weight:var(--weight-semibold);">- {{ r[3]|brl }}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
+      <tr>
+        <td colspan="4" style="text-align:center;padding:var(--space-8);color:var(--color-ink-tertiary);">
+          Nenhum custo operacional lançado neste ano.
         </td>
       </tr>
+      {% endif %}
     </tbody>
   </table>
 </div>
 
-<div id="paginacao-custos" style="display:none; justify-content:space-between; align-items:center; gap:var(--space-3); margin-top:var(--space-6); flex-wrap:wrap;">
-  <span id="info-custos" style="font-size:var(--text-sm); color:var(--color-ink-tertiary);"></span>
+{% if total_custos > 0 %}
+<div style="display:flex; justify-content:space-between; align-items:center; gap:var(--space-3); margin-top:var(--space-6); flex-wrap:wrap;">
+  <span style="font-size:var(--text-sm); color:var(--color-ink-tertiary);">
+    {% set inicio_idx = (pagina_atual - 1) * 20 + 1 %}
+    {% set fim_idx = [pagina_atual * 20, total_custos]|min %}
+    Exibindo {{ inicio_idx }}–{{ fim_idx }} de {{ total_custos }} lançamento{{ 's' if total_custos != 1 }}
+  </span>
   <div style="display:flex; align-items:center; gap:var(--space-3);">
-    <button id="btn-anterior-custos" class="btn btn-secondary btn-sm" onclick="mudarPaginaCustos(-1)">&laquo; Anterior</button>
-    <span id="pagina-custos" style="font-size:var(--text-sm); color:var(--color-ink-secondary);"></span>
-    <button id="btn-proximo-custos" class="btn btn-secondary btn-sm" onclick="mudarPaginaCustos(1)">Próximo &raquo;</button>
+    {% if pagina_atual > 1 %}
+      <a href="{{ url_for('financeiro.financeiro', ano=ano_selecionado, page=pagina_atual-1) }}"
+         class="btn btn-secondary btn-sm">&laquo; Anterior</a>
+    {% else %}
+      <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">&laquo; Anterior</span>
+    {% endif %}
+    <span style="font-size:var(--text-sm); color:var(--color-ink-secondary);">
+      Página {{ pagina_atual }} de {{ total_paginas }}
+    </span>
+    {% if pagina_atual < total_paginas %}
+      <a href="{{ url_for('financeiro.financeiro', ano=ano_selecionado, page=pagina_atual+1) }}"
+         class="btn btn-secondary btn-sm">Próximo &raquo;</a>
+    {% else %}
+      <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">Próximo &raquo;</span>
+    {% endif %}
   </div>
 </div>
+{% endif %}
 
 {% endblock %}
 
 {% block scripts %}
-<script>
-(function () {
-  const ANO      = {{ ano_selecionado }};
-  const PER_PAGE = 20;
-  const tbody    = document.getElementById('tbody-custos');
-  const paginDiv = document.getElementById('paginacao-custos');
-  const infoEl   = document.getElementById('info-custos');
-  const pageEl   = document.getElementById('pagina-custos');
-  const btnAnt   = document.getElementById('btn-anterior-custos');
-  const btnProx  = document.getElementById('btn-proximo-custos');
-
-  let _todos = [];
-  let _pagina = 1;
-
-  function badgeCategoria(cat) {
-    if (cat === 'Fixo')     return '<span class="badge badge-success">Fixo</span>';
-    if (cat === 'Variavel') return '<span class="badge badge-warning">Variável</span>';
-    return '<span class="badge badge-neutral">' + cat + '</span>';
-  }
-
-  function fmtBRL(v) {
-    return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-
-  function renderPagina(pagina) {
-    _pagina = pagina;
-    const total  = _todos.length;
-    const pages  = Math.ceil(total / PER_PAGE);
-    const inicio = (_pagina - 1) * PER_PAGE;
-    const fatia  = _todos.slice(inicio, inicio + PER_PAGE);
-
-    tbody.innerHTML = fatia.map(r => `
-      <tr>
-        <td>${r.data}</td>
-        <td>${badgeCategoria(r.categoria)}</td>
-        <td class="td-primary">${r.descricao}${r.obs ? '<br><small style="color:var(--color-ink-secondary);">' + r.obs + '</small>' : ''}</td>
-        <td style="text-align:right;color:var(--color-danger);font-weight:var(--weight-semibold);">- ${fmtBRL(r.valor)}</td>
-      </tr>`).join('');
-
-    const fim = Math.min(inicio + PER_PAGE, total);
-    infoEl.textContent = `Exibindo ${inicio + 1}–${fim} de ${total} lançamentos`;
-    pageEl.textContent = `Página ${_pagina} de ${pages}`;
-    btnAnt.disabled  = _pagina <= 1;
-    btnAnt.style.opacity  = _pagina <= 1  ? '.4' : '';
-    btnProx.disabled = _pagina >= pages;
-    btnProx.style.opacity = _pagina >= pages ? '.4' : '';
-    paginDiv.style.display = total > PER_PAGE ? 'flex' : 'none';
-  }
-
-  window.mudarPaginaCustos = function (delta) {
-    const pages = Math.ceil(_todos.length / PER_PAGE);
-    const nova  = Math.max(1, Math.min(_pagina + delta, pages));
-    if (nova !== _pagina) renderPagina(nova);
-  };
-
-  fetch('/api/financeiro/custos?ano=' + ANO)
-    .then(r => r.json())
-    .then(rows => {
-      if (!Array.isArray(rows) || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:var(--space-8);color:var(--color-ink-tertiary);">Nenhum custo operacional lançado neste ano.</td></tr>';
-        return;
-      }
-      _todos = rows;
-      renderPagina(1);
-    })
-    .catch(() => {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:var(--space-8);color:var(--color-danger);">Erro ao carregar custos. Recarregue a página.</td></tr>';
-    });
-}());
-</script>
-
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 {% if financeiro.entradas_ano != 0 or financeiro.saidas_ano != 0 %}
 <script>

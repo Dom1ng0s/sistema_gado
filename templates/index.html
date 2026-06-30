@@ -24,12 +24,53 @@
         Ver Brasil
       </button>
     </div>
-    <button id="btn-pdf" class="btn btn-secondary btn-sm" onclick="gerarPDF()">Relatório PDF</button>
-    <a href="{{ url_for('api.export_animais_csv') }}" class="btn btn-secondary btn-sm">Exportar CSV</a>
-    <a href="{{ url_for('operacional.importar_csv') }}" class="btn btn-secondary btn-sm">Importar CSV</a>
+    <!-- Dropdown "Mais ações" — agrupa ações secundárias para reduzir densidade no mobile -->
+    <div class="header-more-actions" style="position:relative;">
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-mais-acoes"
+              aria-haspopup="true" aria-expanded="false"
+              onclick="toggleMaisAcoes(event)">
+        Mais ações
+        <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" style="margin-left:2px;"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div id="menu-mais-acoes" role="menu" aria-labelledby="btn-mais-acoes"
+           style="display:none; position:absolute; top:calc(100% + 6px); right:0; z-index:200;
+                  background:var(--color-surface); border:1px solid var(--color-border);
+                  border-radius:var(--radius-md); box-shadow:var(--shadow-md);
+                  min-width:180px; padding:var(--space-1) 0;">
+        <button role="menuitem" onclick="gerarPDF(); fecharMaisAcoes();"
+                style="display:flex; align-items:center; gap:var(--space-2); width:100%; padding:var(--space-2) var(--space-3); background:none; border:none; cursor:pointer; font-size:var(--text-sm); color:var(--color-ink); text-align:left; white-space:nowrap;"
+                onmouseover="this.style.background='var(--color-bg)'" onmouseout="this.style.background='none'">
+          <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Relatório PDF
+        </button>
+        <a role="menuitem" href="{{ url_for('api.export_animais_csv') }}"
+           style="display:flex; align-items:center; gap:var(--space-2); padding:var(--space-2) var(--space-3); font-size:var(--text-sm); color:var(--color-ink); text-decoration:none; white-space:nowrap;"
+           onmouseover="this.style.background='var(--color-bg)'" onmouseout="this.style.background='none'">
+          <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar CSV
+        </a>
+        <a role="menuitem" href="{{ url_for('operacional.importar_csv') }}"
+           style="display:flex; align-items:center; gap:var(--space-2); padding:var(--space-2) var(--space-3); font-size:var(--text-sm); color:var(--color-ink); text-decoration:none; white-space:nowrap;"
+           onmouseover="this.style.background='var(--color-bg)'" onmouseout="this.style.background='none'">
+          <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><line x1="12" y1="3" x2="12" y2="9"/><polyline points="17 5 12 0 7 5"/></svg>
+          Importar CSV
+        </a>
+        <hr style="margin:var(--space-1) 0; border:none; border-top:1px solid var(--color-border);">
+        <a role="menuitem" href="{{ url_for('operacional.ranking_touros') }}"
+           style="display:flex; align-items:center; gap:var(--space-2); padding:var(--space-2) var(--space-3); font-size:var(--text-sm); color:var(--color-ink); text-decoration:none; white-space:nowrap;"
+           onmouseover="this.style.background='var(--color-bg)'" onmouseout="this.style.background='none'">
+          <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Ranking Touros
+        </a>
+      </div>
+    </div>
     <a href="{{ url_for('operacional.vacinacao_coletiva') }}" class="btn btn-accent btn-sm">
       <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="m18 2 4 4-1.5 1.5-4-4L18 2ZM10.5 9.5l4 4M7 8l4 4m-7 7 4-4m1-8 8 8"/><path d="m2 22 4-4"/></svg>
       Vacina em Lote
+    </a>
+    <a href="{{ url_for('operacional.pesagem_lote') }}" class="btn btn-secondary btn-sm">
+      <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 1 4 4v1h2a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2V6a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v1h4V6a2 2 0 0 0-2-2z"/></svg>
+      Pesagem em Lote
     </a>
     <a href="{{ url_for('operacional.cadastro_lote') }}" class="btn btn-secondary">+ Lote</a>
     <a href="{{ url_for('operacional.cadastro') }}" class="btn btn-primary">+ Novo Animal</a>
@@ -51,7 +92,7 @@
 
   <div class="metric-card">
     <span class="label skeleton skeleton-label" aria-hidden="true" id="sk-lbl-gmd"></span>
-    <span class="label" id="lbl-gmd" style="display:none;">GMD médio</span>
+    <span class="label" id="lbl-gmd" style="display:none;" title="Ganho Médio Diário — quanto o animal engordou por dia, em kg">GMD médio</span>
     <div aria-live="polite" aria-atomic="true">
       <span class="skeleton skeleton-value" aria-hidden="true" id="sk-gmd"></span>
       <span class="metric-value" id="val-gmd" style="display:none;"></span>
@@ -102,7 +143,7 @@
 {% endif %}
 
 <!-- ── Alertas de GMD ──────────────────────────────────── -->
-<div id="alertas-gmd" style="display:flex; flex-direction:column; gap:var(--space-2); margin-bottom:var(--space-6);"></div>
+<div id="alertas-gmd" role="status" style="display:flex; flex-direction:column; gap:var(--space-2); margin-bottom:var(--space-6);"></div>
 
 <!-- ── Busca ───────────────────────────────────────────── -->
 <form action="{{ url_for('operacional.painel') }}" method="GET"
@@ -124,13 +165,18 @@
 
 <!-- ── Filtros de status ───────────────────────────────── -->
 <div class="flex flex-wrap items-center gap-2" style="margin-bottom:var(--space-5);">
-  <span class="label">Exibir:</span>
-  <a href="{{ url_for('operacional.painel', status='todos',    busca=busca, raca=raca_filtro) }}"
-     class="btn btn-sm {% if status == 'todos'    %}btn-primary{% else %}btn-secondary{% endif %}">Todos</a>
-  <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca, raca=raca_filtro) }}"
-     class="btn btn-sm {% if status == 'ativos'   %}btn-primary{% else %}btn-secondary{% endif %}">Ativos</a>
-  <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca, raca=raca_filtro) }}"
-     class="btn btn-sm {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}">Vendidos</a>
+  <span class="label" id="status-tabs-label">Exibir:</span>
+  <div role="tablist" aria-labelledby="status-tabs-label" style="display:contents;">
+    <a href="{{ url_for('operacional.painel', status='todos',    busca=busca, raca=raca_filtro) }}"
+       role="tab" aria-selected="{{ 'true' if status == 'todos'    else 'false' }}"
+       class="btn btn-sm {% if status == 'todos'    %}btn-primary{% else %}btn-secondary{% endif %}">Todos</a>
+    <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca, raca=raca_filtro) }}"
+       role="tab" aria-selected="{{ 'true' if status == 'ativos'   else 'false' }}"
+       class="btn btn-sm {% if status == 'ativos'   %}btn-primary{% else %}btn-secondary{% endif %}">Ativos</a>
+    <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca, raca=raca_filtro) }}"
+       role="tab" aria-selected="{{ 'true' if status == 'vendidos' else 'false' }}"
+       class="btn btn-sm {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}">Vendidos</a>
+  </div>
   {% if racas_disponiveis | length > 1 %}
   <span class="label" style="margin-left:var(--space-4);">Raça:</span>
   <a href="{{ url_for('operacional.painel', status=status, busca=busca) }}"
@@ -150,15 +196,16 @@
 <!-- ── Tabela de animais ───────────────────────────────── -->
 <div class="table-wrapper">
   <table>
+    <caption class="sr-only">Lista de animais cadastrados</caption>
     <thead>
       <tr>
-        <th>Brinco</th>
-        <th>Sexo</th>
-        <th>Raça</th>
-        <th class="col-peso">Último Peso</th>
-        <th class="col-gmd">GMD</th>
-        <th>Status</th>
-        <th></th>
+        <th scope="col">Brinco</th>
+        <th scope="col">Sexo</th>
+        <th scope="col">Raça</th>
+        <th scope="col" class="col-peso">Último Peso</th>
+        <th scope="col" class="col-gmd" title="Ganho Médio Diário — kg/dia de ganho de peso">GMD</th>
+        <th scope="col">Status</th>
+        <th scope="col"></th>
       </tr>
     </thead>
     <tbody>
@@ -183,8 +230,17 @@
       </tr>
       {% else %}
       <tr>
-        <td colspan="6" style="text-align:center; padding:var(--space-10); color:var(--color-ink-tertiary);">
-          Seu rebanho está vazio ou nenhum animal encontrado.
+        <td colspan="7" style="text-align:center; padding:var(--space-12) var(--space-4);">
+          <div style="color:var(--color-ink-disabled); margin-bottom:var(--space-4);">
+            <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
+          </div>
+          <p style="color:var(--color-ink-secondary); font-weight:var(--weight-semibold); margin:0 0 var(--space-2);">
+            Rebanho vazio ou nenhum animal encontrado
+          </p>
+          <p style="color:var(--color-ink-tertiary); font-size:var(--text-sm); margin:0 0 var(--space-5);">
+            Cadastre o primeiro animal ou ajuste os filtros de busca.
+          </p>
+          <a href="{{ url_for('operacional.cadastro') }}" class="btn btn-primary btn-sm">+ Novo animal</a>
         </td>
       </tr>
       {% endfor %}
@@ -247,6 +303,14 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+document.querySelectorAll('[role="tab"]').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('[role="tab"]').forEach(function(t) { t.setAttribute('aria-selected', 'false'); });
+    this.setAttribute('aria-selected', 'true');
+  });
+});
+</script>
 <script>
 const API = {
   summary: "{{ url_for('api.dashboard_summary') }}",
@@ -520,6 +584,29 @@ document.addEventListener('keydown', function (e) {
   } else {
     if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
   }
+});
+
+function toggleMaisAcoes(e) {
+  e.stopPropagation();
+  var menu = document.getElementById('menu-mais-acoes');
+  var btn  = document.getElementById('btn-mais-acoes');
+  var open = menu.style.display === 'none';
+  menu.style.display = open ? 'block' : 'none';
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function fecharMaisAcoes() {
+  var menu = document.getElementById('menu-mais-acoes');
+  if (menu) { menu.style.display = 'none'; }
+  var btn = document.getElementById('btn-mais-acoes');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+document.addEventListener('click', function (e) {
+  if (!document.getElementById('btn-mais-acoes').contains(e.target)) {
+    fecharMaisAcoes();
+  }
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') fecharMaisAcoes();
 });
 
 document.addEventListener('DOMContentLoaded', () => {

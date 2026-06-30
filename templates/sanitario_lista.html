@@ -8,15 +8,9 @@
     <p class="label">{{ nome_fazenda_header }}</p>
     <h1 class="page-title">Calendário Sanitário</h1>
   </div>
+  <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">← Painel</a>
 </div>
 
-{% if mensagem %}
-  {% set tipo, texto = mensagem %}
-  <div class="alert {% if tipo == 'erro' %}alert-danger{% else %}alert-success{% endif %}"
-       style="margin-bottom:var(--space-5);">
-    {{ texto }}
-  </div>
-{% endif %}
 
 <!-- ── Formulário de cadastro ─────────────────────────── -->
 <div class="card card-accent-green" style="margin-bottom:var(--space-6);">
@@ -54,6 +48,22 @@
   </div>
 </div>
 
+<!-- ── Busca ─────────────────────────────────────────── -->
+<form action="{{ url_for('sanitario.lista_protocolos') }}" method="GET"
+      class="flex flex-wrap items-center gap-2" style="margin-bottom:var(--space-4);">
+  <input type="search" name="busca" class="form-input"
+         placeholder="Buscar protocolo..."
+         value="{{ busca }}"
+         style="flex:1; min-width:180px;">
+  <button type="submit" class="btn btn-secondary btn-sm">
+    <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    Buscar
+  </button>
+  {% if busca %}
+    <a href="{{ url_for('sanitario.lista_protocolos') }}" class="btn btn-ghost btn-sm">Limpar</a>
+  {% endif %}
+</form>
+
 <!-- ── Lista de protocolos ───────────────────────────── -->
 {% if protocolos %}
 
@@ -64,13 +74,14 @@
 
 <div class="table-wrapper">
   <table>
+    <caption class="sr-only">Protocolos sanitários cadastrados</caption>
     <thead>
       <tr>
-        <th>Protocolo</th>
-        <th style="text-align:center;">Intervalo</th>
-        <th style="text-align:center;">Próxima aplicação</th>
-        <th style="text-align:center;">Status</th>
-        <th></th>
+        <th scope="col">Protocolo</th>
+        <th scope="col" style="text-align:center;">Intervalo</th>
+        <th scope="col" style="text-align:center;">Próxima aplicação</th>
+        <th scope="col" style="text-align:center;">Status</th>
+        <th scope="col"></th>
       </tr>
     </thead>
     <tbody>
@@ -91,18 +102,23 @@
         <td style="text-align:center;" data-vencimento="{{ p[4] }}">
           <span class="badge badge-status" id="badge-{{ p[0] }}">—</span>
         </td>
-        <td style="white-space:nowrap; display:flex; gap:var(--space-2); justify-content:flex-end;">
-          <form method="POST" action="{{ url_for('sanitario.aplicar_protocolo', protocolo_id=p[0]) }}"
-                style="display:inline;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-primary btn-sm">Aplicar agora</button>
-          </form>
-          <form method="POST" action="{{ url_for('sanitario.desativar_protocolo', protocolo_id=p[0]) }}"
-                style="display:inline;"
-                onsubmit="return confirm('Desativar protocolo {{ p[1] | e }}?');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-danger btn-sm">Remover</button>
-          </form>
+        <td style="white-space:nowrap;">
+          <div style="display:flex; gap:var(--space-2); justify-content:flex-end;">
+            <form method="POST" action="{{ url_for('sanitario.aplicar_protocolo', protocolo_id=p[0]) }}"
+                  style="display:inline;"
+                  data-confirm-title="Aplicar protocolo"
+                  data-confirm-msg="Registrar aplicação de '{{ p[1] | e }}' e avançar a próxima data?">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-primary btn-sm">Aplicar agora</button>
+            </form>
+            <form method="POST" action="{{ url_for('sanitario.desativar_protocolo', protocolo_id=p[0]) }}"
+                  style="display:inline;"
+                  data-confirm-title="Remover Protocolo"
+                  data-confirm-msg="Desativar protocolo {{ p[1] | e }}?">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-danger btn-sm">Remover</button>
+            </form>
+          </div>
         </td>
       </tr>
       {% endfor %}
@@ -152,6 +168,18 @@
       badge.textContent = dias + 'd';
       badge.className = 'badge badge-success';
     }
+  });
+
+  document.querySelectorAll('form[data-confirm-msg]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      if (form.dataset.confirmed) return;
+      e.preventDefault();
+      sggConfirm(
+        form.dataset.confirmTitle || 'Confirmar',
+        form.dataset.confirmMsg,
+        function () { form.dataset.confirmed = '1'; form.submit(); }
+      );
+    });
   });
 }());
 </script>

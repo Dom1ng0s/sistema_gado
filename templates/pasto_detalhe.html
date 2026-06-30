@@ -36,7 +36,13 @@ details summary {
 <!-- ── Cabeçalho ─────────────────────────────────────── -->
 <div class="page-header">
   <div>
-    <p class="label">Pastos</p>
+    <nav aria-label="Localização" style="margin-bottom:var(--space-1);">
+      <ol style="display:flex;align-items:center;gap:var(--space-2);list-style:none;margin:0;padding:0;font-size:var(--text-xs);color:var(--color-ink-secondary);">
+        <li><a href="{{ url_for('pastos.listar_pastos') }}" style="color:var(--color-primary);">Pastos</a></li>
+        <li aria-hidden="true">&rsaquo;</li>
+        <li aria-current="page">{{ pasto[1] }}</li>
+      </ol>
+    </nav>
     <h1 class="page-title">{{ pasto[1] }}</h1>
     <div style="display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-1);">
       {% if pasto[2] %}<span class="tag">{{ pasto[2] }} ha</span>{% endif %}
@@ -47,38 +53,26 @@ details summary {
   <a href="{{ url_for('pastos.listar_pastos') }}" class="btn btn-ghost btn-sm">← Todos os Pastos</a>
 </div>
 
-<!-- ── Flash messages ──────────────────────────────── -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for category, msg in messages %}
-    <div class="alert {% if category == 'sucesso' %}alert-success{% else %}alert-danger{% endif %}"
-         style="margin-bottom:var(--space-3);">
-      <span class="alert-icon">{% if category == 'sucesso' %}<svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>{% else %}<svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><path d="m10.29 3.86-8.6 14.9A2 2 0 0 0 3.43 22h17.14a2 2 0 0 0 1.74-2.84l-8.6-14.9a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>{% endif %}</span>
-      <div>{{ msg }}</div>
-    </div>
-  {% endfor %}
-{% endwith %}
 
 <!-- ── Adicionar Módulo (accordion) ───────────────────── -->
-<details style="background:var(--color-surface); border:1px solid var(--color-border);
-                border-radius:var(--radius-lg); padding:var(--space-4);
-                margin-bottom:var(--space-6);">
+<details class="accordion">
   <summary>+ Adicionar Módulo</summary>
   <form method="POST" action="{{ url_for('pastos.criar_modulo', pasto_id=pasto[0]) }}"
         style="margin-top:var(--space-4);">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:var(--space-3);">
       <div class="form-group" style="margin:0;">
-        <label>Nome do módulo <span style="color:var(--color-danger);">*</span></label>
-        <input type="text" name="nome" class="form-input" required maxlength="100"
+        <label for="mod-nome">Nome do módulo <span style="color:var(--color-danger);">*</span></label>
+        <input id="mod-nome" type="text" name="nome" class="form-input" required maxlength="100"
                placeholder="Ex: Módulo A">
       </div>
       <div class="form-group" style="margin:0;">
-        <label>Área (ha)</label>
-        <input type="number" name="area_hectares" step="0.01" min="0" class="form-input">
+        <label for="mod-area">Área (ha)</label>
+        <input id="mod-area" type="number" name="area_hectares" step="0.01" min="0" class="form-input">
       </div>
       <div class="form-group" style="margin:0;">
-        <label>Capacidade (UA)</label>
-        <input type="number" name="capacidade_ua" step="0.1" min="0" class="form-input">
+        <label for="mod-capacidade" title="Unidade Animal — equivale a um bovino de 450 kg; usada para medir a carga do pasto">Capacidade (UA)</label>
+        <input id="mod-capacidade" type="number" name="capacidade_ua" step="0.1" min="0" class="form-input">
       </div>
     </div>
     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:var(--space-3);">
@@ -131,7 +125,7 @@ details summary {
       {% if m[3] and pct is not none %}
       <div style="display:flex; align-items:center; gap:var(--space-3); margin-bottom:var(--space-3);">
         <span style="font-size:var(--text-sm); color:var(--color-ink-secondary); white-space:nowrap;">
-          {{ m[4] or 0 }} / {{ m[3] }} UA
+          {{ m[4] or 0 }} / {{ m[3] }} <abbr title="Unidade Animal — equivale a um bovino de 450 kg">UA</abbr>
         </span>
         <div class="lotacao-bar" style="flex:1;">
           <div class="lotacao-fill {% if superlotado %}danger{% elif alerta %}warning{% else %}ok{% endif %}"
@@ -155,6 +149,8 @@ details summary {
 
       <!-- Encerrar ocupação -->
       <form method="POST" action="{{ url_for('pastos.encerrar_ocupacao', ocupacao_id=m[6]) }}"
+            data-confirm-title="Encerrar Ocupação"
+            data-confirm-msg="Confirmar encerramento da ocupação?"
             style="display:flex; align-items:center; gap:var(--space-3);">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="pasto_id" value="{{ pasto[0] }}">
@@ -163,8 +159,7 @@ details summary {
         </label>
         <input type="date" name="data_saida" value="{{ hoje }}" required class="form-input"
                style="width:auto;">
-        <button type="submit" class="btn btn-secondary btn-sm"
-                onclick="return confirm('Confirmar encerramento da ocupação?')">
+        <button type="submit" class="btn btn-secondary btn-sm">
           Encerrar
         </button>
       </form>
@@ -185,7 +180,7 @@ details summary {
       </div>
 
       {% if animais_ativos %}
-      <details>
+      <details class="accordion">
         <summary>▶ Iniciar Ocupação</summary>
         <form method="POST" action="{{ url_for('pastos.ocupar_modulo', modulo_id=m[0]) }}"
               style="margin-top:var(--space-3);">
@@ -230,4 +225,22 @@ details summary {
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  document.querySelectorAll('form[data-confirm-msg]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      if (form.dataset.confirmed) return;
+      e.preventDefault();
+      sggConfirm(
+        form.dataset.confirmTitle || 'Confirmar',
+        form.dataset.confirmMsg,
+        function () { form.dataset.confirmed = '1'; form.submit(); }
+      );
+    });
+  });
+}());
+</script>
 {% endblock %}

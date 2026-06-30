@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, session
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from flask_login import login_required, current_user
 import logging
 from repositories import configuracao_repository
@@ -28,10 +28,12 @@ def settings():
 
             configuracao_repository.upsert_configuracao(current_user.id, nome, cidade, area)
             session.pop('nome_fazenda', None)
-            msg = "Configurações salvas com sucesso!"
+            flash("Configurações salvas com sucesso!", 'success')
+            return redirect(url_for('configuracoes.settings'))
         except Exception as e:
             logger.error(f"Erro ao salvar configurações: {e}", exc_info=True)
-            msg = "Erro ao salvar dados."
+            flash("Erro ao salvar dados.", 'error')
+            return redirect(url_for('configuracoes.settings'))
 
     dados_atuais = {}
     try:
@@ -41,4 +43,4 @@ def settings():
     except Exception as e:
         logger.error(f"Erro ao carregar configurações: {e}", exc_info=True)
 
-    return render_template('configuracoes.html', config=dados_atuais, mensagem=msg)
+    return render_template('configuracoes.html', config=dados_atuais)
