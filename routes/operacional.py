@@ -9,6 +9,7 @@ from mysql.connector import errors as _mysql_errors
 from datetime import date as _date
 from repositories import animal_repository, reproducao_repository, sanitario_repository
 from routes.validators import validate
+from decimal import Decimal
 
 operacional_bp = Blueprint('operacional', __name__)
 logger = logging.getLogger(__name__)
@@ -605,13 +606,18 @@ def registrar_diagnostico(rep_id):
 def ranking_touros():
     import logging as _log
     try:
-        ranking   = animal_repository.get_ranking_touros(current_user.id)
-        gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
+        ranking = animal_repository.get_ranking_touros(current_user.id)
+        gmd_medio_raw = animal_repository.get_gmd_medio_rebanho(current_user.id)
+        
+        # Converte o valor retornado para Decimal, ou usa Decimal('0.0') se vier vazio/None
+        gmd_medio = Decimal(str(gmd_medio_raw)) if gmd_medio_raw else Decimal('0.0')
+        
     except Exception:
         _log.exception("Erro em ranking_touros user_id=%s", current_user.id)
-        ranking, gmd_medio = [], 0.0
+        # Substitui o 0.0 (float) por Decimal('0.0') no fallback do erro
+        ranking, gmd_medio = [], Decimal('0.0')
+        
     return render_template('ranking_touros.html', ranking=ranking, gmd_medio=gmd_medio)
-
 
 _CSV_COLUNAS_OBRIGATORIAS = {'brinco', 'sexo', 'data_compra', 'peso_kg', 'valor_arroba'}
 _CSV_MAX_BYTES = 1 * 1024 * 1024  # 1 MB
