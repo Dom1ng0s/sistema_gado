@@ -292,13 +292,18 @@
           <td>
             {% if r[1] == 'Fixo' %}<span class="badge badge-success">Fixo</span>
             {% elif r[1] == 'Variavel' %}<span class="badge badge-warning">Variável</span>
+            {% elif r[1] == 'Aporte' %}<span class="badge badge-success">Aporte</span>
             {% else %}<span class="badge badge-neutral">{{ r[1] }}</span>{% endif %}
           </td>
           <td class="td-primary">
             {{ r[2] }}{% if r[4] > 1 %} <span class="badge badge-neutral">({{ r[4] }}x)</span>{% endif %}
             {% if r[5] %}<br><small style="color:var(--color-ink-secondary);">{{ r[5] }}</small>{% endif %}
           </td>
+          {% if r[3] < 0 %}
+          <td style="text-align:right;color:var(--color-success);font-weight:var(--weight-semibold);">+ {{ (r[3]|abs)|brl }}</td>
+          {% else %}
           <td style="text-align:right;color:var(--color-danger);font-weight:var(--weight-semibold);">- {{ r[3]|brl }}</td>
+          {% endif %}
         </tr>
         {% endfor %}
       {% else %}
