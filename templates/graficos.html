@@ -59,6 +59,48 @@
 
 </div>
 
+<!-- ── Widget Animais Abaixo da Meta GMD ───────────────── -->
+<div class="card" style="margin-top:var(--space-6);">
+  <div class="card-body">
+    <p class="label" style="margin-bottom:var(--space-3);">Abaixo da Meta GMD ({{ "%.3f"|format(gmd_meta) }} kg/dia)</p>
+    {% if animais_abaixo_meta %}
+    <div class="table-wrapper" style="margin-top:0;">
+      <table>
+        <thead>
+          <tr>
+            <th>Brinco</th>
+            <th style="text-align:right;">GMD</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in animais_abaixo_meta[:8] %}
+          <tr>
+            <td class="td-primary">{{ a[1] }}</td>
+            <td style="text-align:right; font-weight:var(--weight-semibold); color:var(--color-danger);">
+              {{ "%.3f"|format(a[2]) }} kg/d
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if animais_abaixo_meta|length > 8 %}
+    <p style="color:var(--color-ink-tertiary); font-size:var(--text-xs); margin:var(--space-2) 0 0;">
+      +{{ animais_abaixo_meta|length - 8 }} animal(is) também abaixo da meta.
+    </p>
+    {% endif %}
+    {% else %}
+    <p style="color:var(--color-ink-tertiary); font-size:var(--text-sm); margin:0;">
+      Nenhum animal abaixo de 75% da meta configurada.
+    </p>
+    {% endif %}
+    <a href="{{ url_for('configuracoes.settings') }}"
+       class="btn btn-ghost btn-sm" style="margin-top:var(--space-3);">
+      Ajustar meta →
+    </a>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}

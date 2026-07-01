@@ -100,7 +100,16 @@ def _gerar_pdf_bg(job_id: str, html: str) -> None:
 @login_required
 @limiter.limit("60 per minute")
 def graficos_page():
-    return render_template('graficos.html')
+    animais_abaixo_meta = []
+    gmd_meta_atual = 0.800
+    try:
+        cfg = configuracao_repository.get_configuracao(current_user.id)
+        gmd_meta_atual = float(cfg[3]) if (cfg and cfg[3] is not None) else 0.800
+        animais_abaixo_meta = animal_repository.get_animais_abaixo_gmd_meta(current_user.id, gmd_meta_atual)
+    except Exception as e:
+        logger.error(f"Erro ao carregar animais abaixo da meta: {e}", exc_info=True)
+
+    return render_template('graficos.html', animais_abaixo_meta=animais_abaixo_meta)
 
 def _with_cache(response, max_age=60):
     """Adiciona Cache-Control private ao response JSON."""
