@@ -4,7 +4,8 @@ __pycache__/
 .env
 CLAUDE.md
 /.claude/
-seed_domingos.py
-capture_demo.py
+scripts/auditoria_seed.py
+scripts/reset_admin.py
+scripts/capture_demo.py
 photos/demo_*.png
 /.agents

@@ -73,7 +73,7 @@ playwright install chromium
 
 # configure .env a partir de .env-example
 python init_db.py          # cria tabelas, views e índices
-python seed_db.py          # popula com dados demo (opcional)
+python scripts/seed_demo_historico.py  # popula com dados demo (opcional)
 python app.py
 ```
 

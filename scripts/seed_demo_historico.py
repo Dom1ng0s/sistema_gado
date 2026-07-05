@@ -48,7 +48,7 @@ Outras decisões de modelagem:
     uma gestação ainda em curso na data de hoje.
 
 Rodar:
-    python seed_demo_historico.py
+    python scripts/seed_demo_historico.py
 """
 import os
 import random
