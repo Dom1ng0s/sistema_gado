@@ -1,0 +1,21 @@
+{% macro paginacao(endpoint, pagina_atual, total_paginas) %}
+<div style="display:flex; align-items:center; gap:var(--space-3);">
+  {% if pagina_atual > 1 %}
+    <a href="{{ url_for(endpoint, page=pagina_atual-1, **kwargs) }}"
+       class="btn btn-secondary btn-sm">&laquo; Anterior</a>
+  {% else %}
+    <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">&laquo; Anterior</span>
+  {% endif %}
+
+  <span style="font-size:var(--text-sm); color:var(--color-ink-secondary);">
+    Página {{ pagina_atual }} de {{ total_paginas }}
+  </span>
+
+  {% if pagina_atual < total_paginas %}
+    <a href="{{ url_for(endpoint, page=pagina_atual+1, **kwargs) }}"
+       class="btn btn-secondary btn-sm">Próximo &raquo;</a>
+  {% else %}
+    <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">Próximo &raquo;</span>
+  {% endif %}
+</div>
+{% endmacro %}

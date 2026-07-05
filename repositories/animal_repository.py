@@ -6,25 +6,25 @@ from datetime import datetime
 # Dados externos (usuário, banco, request) nunca devem ser interpolados em `conds` —
 # sempre vão para `params` e chegam ao banco via placeholder %s.
 # Adicionar um valor externo diretamente em `conds` introduz risco de SQL injection.
-def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, raca=None, origem=None):
-    conds = ["user_id = %s"]
+def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, raca=None, origem=None, alias=''):
+    conds = [f"{alias}user_id = %s"]
     params = [user_id]
     if na_lixeira:
-        conds.append("deleted_at IS NOT NULL")
+        conds.append(f"{alias}deleted_at IS NOT NULL")
     else:
-        conds.append("deleted_at IS NULL")
+        conds.append(f"{alias}deleted_at IS NULL")
     if termo:
-        conds.append("brinco LIKE %s")
+        conds.append(f"{alias}brinco LIKE %s")
         params.append(termo + "%")
     if status == 'ativos':
-        conds.append("data_venda IS NULL")
+        conds.append(f"{alias}data_venda IS NULL")
     elif status == 'vendidos':
-        conds.append("data_venda IS NOT NULL")
+        conds.append(f"{alias}data_venda IS NOT NULL")
     if raca:
-        conds.append("raca = %s")
+        conds.append(f"{alias}raca = %s")
         params.append(raca)
     if origem == 'fazenda':
-        conds.append("data_compra IS NULL AND data_nascimento IS NOT NULL")
+        conds.append(f"{alias}data_compra IS NULL AND {alias}data_nascimento IS NOT NULL")
     return "WHERE " + " AND ".join(conds), params
 
 
@@ -38,21 +38,7 @@ def count_animais(user_id, termo=None, status='todos', raca=None, origem=None):
 
 
 def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', raca=None, origem=None):
-    conds = ["a.user_id = %s", "a.deleted_at IS NULL"]
-    params = [user_id]
-    if termo:
-        conds.append("a.brinco LIKE %s")
-        params.append(termo + "%")
-    if status == 'ativos':
-        conds.append("a.data_venda IS NULL")
-    elif status == 'vendidos':
-        conds.append("a.data_venda IS NOT NULL")
-    if raca:
-        conds.append("a.raca = %s")
-        params.append(raca)
-    if origem == 'fazenda':
-        conds.append("a.data_compra IS NULL AND a.data_nascimento IS NOT NULL")
-    where = "WHERE " + " AND ".join(conds)
+    where, params = _build_animais_where(user_id, termo, status, raca=raca, origem=origem, alias='a.')
     sql = (
         "SELECT a.id, a.brinco, a.sexo, a.raca, a.data_compra, a.preco_compra, "
         "       a.data_venda, a.preco_venda "

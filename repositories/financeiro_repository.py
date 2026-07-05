@@ -124,12 +124,17 @@ def insert_agendamento(user_id, descricao, valor, vencimento):
 
 # ---- RESULTADO POR LOTE (P&L) ----
 
+_COLUNAS_RESULTADO_LOTE = (
+    "lote_id, codigo_lote, descricao, data_aquisicao, "
+    "total_animais, custo_aquisicao, receita_vendas, "
+    "custo_medicacoes, animais_vendidos, margem_bruta"
+)
+
+
 def get_resultado_lotes(user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT lote_id, codigo_lote, descricao, data_aquisicao, "
-            "total_animais, custo_aquisicao, receita_vendas, "
-            "custo_medicacoes, animais_vendidos, margem_bruta "
+            f"SELECT {_COLUNAS_RESULTADO_LOTE} "
             "FROM vw_resultado_lote "
             "WHERE user_id = %s ORDER BY data_aquisicao DESC",
             (user_id,)
@@ -140,9 +145,7 @@ def get_resultado_lotes(user_id):
 def get_resultado_lote_by_id(lote_id, user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT lote_id, codigo_lote, descricao, data_aquisicao, "
-            "total_animais, custo_aquisicao, receita_vendas, "
-            "custo_medicacoes, animais_vendidos, margem_bruta "
+            f"SELECT {_COLUNAS_RESULTADO_LOTE} "
             "FROM vw_resultado_lote "
             "WHERE lote_id = %s AND user_id = %s",
             (lote_id, user_id)

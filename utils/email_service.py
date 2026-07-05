@@ -11,20 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 def send_welcome_email(to_email: str, username: str) -> None:
-    mail_server = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-    mail_port = int(os.getenv('MAIL_PORT', 587))
-    mail_user = os.getenv('MAIL_USERNAME')
-    mail_pass = os.getenv('MAIL_PASSWORD')
-    mail_from = os.getenv('MAIL_FROM', mail_user)
-
-    if not mail_user or not mail_pass:
-        raise RuntimeError("MAIL_USERNAME e MAIL_PASSWORD não configurados no .env")
-
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = 'Bem-vindo ao SGG — Sistema de Gestão de Gado'
-    msg['From'] = mail_from
-    msg['To'] = to_email
-
     html = f"""
     <html>
     <body style="margin:0;padding:0;background:#EAF3DE;font-family:'DM Sans',sans-serif;">
@@ -85,15 +71,7 @@ def send_welcome_email(to_email: str, username: str) -> None:
     </body>
     </html>
     """
-
-    msg.attach(MIMEText(html, 'html'))
-
-    context = ssl.create_default_context()
-    with smtplib.SMTP(mail_server, mail_port, timeout=10) as server:
-        server.ehlo()
-        server.starttls(context=context)
-        server.login(mail_user, mail_pass)
-        server.sendmail(mail_from, to_email, msg.as_string())
+    _send(to_email, 'Bem-vindo ao SGG — Sistema de Gestão de Gado', html, required=True)
 
 
 # ── Helpers internos ───────────────────────────────────────────────────────
@@ -110,9 +88,14 @@ def _get_smtp_config():
     }
 
 
-def _send(to_email: str, subject: str, html: str) -> None:
+def _send(to_email: str, subject: str, html: str, required: bool = False) -> None:
+    """Envia um email HTML. Se `required`, ausência de config levanta RuntimeError
+    (caminhos síncronos como reset de senha precisam que o chamador saiba que falhou);
+    caso contrário, ignora silenciosamente (alertas/boas-vindas são best-effort)."""
     cfg = _get_smtp_config()
     if not cfg['user'] or not cfg['pwd']:
+        if required:
+            raise RuntimeError("MAIL_USERNAME e MAIL_PASSWORD não configurados no .env")
         logger.debug("MAIL não configurado — alerta ignorado.")
         return
     msg = MIMEMultipart('alternative')
@@ -311,20 +294,6 @@ def send_feedback_request(to_email: str, username: str) -> None:
 
 
 def send_reset_code(to_email: str, code: str) -> None:
-    mail_server = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-    mail_port = int(os.getenv('MAIL_PORT', 587))
-    mail_user = os.getenv('MAIL_USERNAME')
-    mail_pass = os.getenv('MAIL_PASSWORD')
-    mail_from = os.getenv('MAIL_FROM', mail_user)
-
-    if not mail_user or not mail_pass:
-        raise RuntimeError("MAIL_USERNAME e MAIL_PASSWORD não configurados no .env")
-
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = 'Código de Verificação — SGG Sistema de Gado'
-    msg['From'] = mail_from
-    msg['To'] = to_email
-
     html = f"""
     <html>
     <body style="margin:0;padding:0;background:#EAF3DE;font-family:'DM Sans',sans-serif;">
@@ -363,12 +332,4 @@ def send_reset_code(to_email: str, code: str) -> None:
     </body>
     </html>
     """
-
-    msg.attach(MIMEText(html, 'html'))
-
-    context = ssl.create_default_context()
-    with smtplib.SMTP(mail_server, mail_port, timeout=10) as server:
-        server.ehlo()
-        server.starttls(context=context)
-        server.login(mail_user, mail_pass)
-        server.sendmail(mail_from, to_email, msg.as_string())
+    _send(to_email, 'Código de Verificação — SGG Sistema de Gado', html, required=True)

@@ -8,70 +8,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Rubik:wght@400;500;600&display=swap">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: var(--font-body);
-            background: var(--color-surface-sunken);
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 40px 24px;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        .auth-card {
-            background: var(--color-surface);
-            border-radius: var(--radius-xl);
-            border: 0.5px solid var(--color-border);
-            box-shadow: var(--shadow-md);
-            padding: 44px 40px;
-            width: 100%;
-            max-width: 440px;
-            animation: rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-        }
-
-        @keyframes rise {
-            from { opacity: 0; transform: translateY(14px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        .auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
-
-        .auth-mark {
-            width: 34px; height: 34px;
-            background: var(--color-primary);
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            font-family: var(--font-display); font-size: 15px; font-weight: 600; color: #fff;
-            flex-shrink: 0;
-        }
-
-        .auth-brand-text { font-family: var(--font-display); font-size: 13px; color: var(--color-ink-tertiary); }
-
-        .auth-heading { margin-bottom: 28px; }
-
-        .auth-heading h1 {
-            font-family: var(--font-display);
-            font-size: var(--text-xl);
-            font-weight: 600;
-            color: var(--color-ink);
-            letter-spacing: -0.02em;
-            margin-bottom: 6px;
-        }
-
-        .auth-heading p { font-size: var(--text-sm); color: var(--color-ink-tertiary); }
-
+        body { align-items: flex-start; padding: 40px 24px; }
+        .auth-card { max-width: 440px; }
+        .auth-heading p { line-height: normal; }
         .field { margin-bottom: 16px; }
-
-        .field-label {
-            display: block;
-            font-size: var(--text-sm);
-            font-weight: 500;
-            color: var(--color-ink-secondary);
-            margin-bottom: 6px;
-        }
 
         .field-label .opt {
             font-size: var(--text-xs);
@@ -79,29 +21,6 @@
             color: var(--color-ink-disabled);
             margin-left: 4px;
         }
-
-        .field-input {
-            font-family: var(--font-body);
-            font-size: var(--text-base);
-            color: var(--color-ink);
-            background: var(--color-surface-raised);
-            border: 0.5px solid var(--color-border-strong);
-            border-radius: var(--radius-md);
-            padding: 10px 14px;
-            width: 100%;
-            outline: none;
-            transition: border-color 150ms, box-shadow 150ms, background 150ms;
-        }
-
-        .field-input:focus {
-            background: var(--color-surface);
-            border-color: var(--color-primary-mid);
-            box-shadow: 0 0 0 3px var(--color-primary-bg);
-        }
-
-        .field-input::placeholder { color: var(--color-ink-disabled); }
-
-        .field-hint { font-size: var(--text-xs); color: var(--color-ink-tertiary); margin-top: 5px; display: block; }
 
         .section-sep {
             display: flex;
@@ -120,25 +39,7 @@
             color: var(--color-ink-tertiary);
         }
 
-        .btn-submit {
-            width: 100%;
-            padding: 11px 16px;
-            background: var(--color-primary);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius-md);
-            font-family: var(--font-body);
-            font-size: var(--text-base);
-            font-weight: 500;
-            cursor: pointer;
-            margin-top: 8px;
-            transition: background 150ms, box-shadow 150ms, transform 80ms;
-            box-shadow: 0 1px 3px rgba(59,109,17,0.3);
-        }
-
-        .btn-submit:hover { background: var(--color-primary-dark); box-shadow: 0 2px 8px rgba(59,109,17,0.4); }
-        .btn-submit:active { transform: scale(0.99); }
-        .btn-submit:disabled { opacity: 0.65; pointer-events: none; }
+        .btn-submit { margin-top: 8px; }
 
         .sep { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
         .sep-line { flex: 1; height: 0.5px; background: var(--color-border); }
@@ -160,10 +61,6 @@
         }
 
         .btn-login:hover { background: var(--color-surface-raised); color: var(--color-ink); }
-
-        .flash { padding: 10px 12px; border-radius: var(--radius-md); font-size: var(--text-sm); line-height: 1.5; margin-bottom: 20px; }
-        .flash-error   { background: var(--color-danger-bg);  color: var(--color-danger-dark);  border-left: 3px solid var(--color-danger); }
-        .flash-success { background: var(--color-success-bg); color: var(--color-primary-dark); border-left: 3px solid var(--color-primary); }
     </style>
 </head>
 <body>

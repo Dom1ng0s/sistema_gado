@@ -292,12 +292,9 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/lote-selecao.js') }}"></script>
 <script>
 (function () {
-  const checks       = document.querySelectorAll('.animal-check');
-  const marcarTodos  = document.getElementById('marcar-todos');
-  const btnConfirmar = document.getElementById('btn-confirmar');
-  const contagemTxt  = document.getElementById('contagem-txt');
   const inputArroba  = document.getElementById('valor-arroba');
   const resumoKg     = document.getElementById('resumo-kg');
   const resumoTotal  = document.getElementById('resumo-total');
@@ -311,15 +308,10 @@
     const arroba = parseFloat(inputArroba.value);
     const span   = document.getElementById('valor-' + id);
     if (peso > 0 && arroba > 0) {
-      span.textContent = fmtBRL((peso / 30) * arroba);
+      span.textContent = fmtBRL((peso / KG_POR_ARROBA) * arroba);
     } else {
       span.textContent = '—';
     }
-  }
-
-  function recalcularTudo() {
-    document.querySelectorAll('.animal-check:checked').forEach(chk => calcularValor(chk.value));
-    atualizarResumo();
   }
 
   function atualizarResumo() {
@@ -328,48 +320,15 @@
     document.querySelectorAll('.animal-check:checked').forEach(chk => {
       const peso = parseFloat(document.getElementById('peso-' + chk.value).value) || 0;
       kgTotal += peso;
-      if (peso > 0 && arroba > 0) valorTotal += (peso / 30) * arroba;
+      if (peso > 0 && arroba > 0) valorTotal += (peso / KG_POR_ARROBA) * arroba;
     });
     resumoKg.textContent = kgTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' kg';
     resumoTotal.textContent = fmtBRL(valorTotal);
   }
 
-  function toggleAnimal(checkbox) {
-    const id  = checkbox.value;
-    const row = checkbox.closest('tr');
-    const pw  = document.getElementById('pw-' + id);
-    const inp = document.getElementById('peso-' + id);
-    const hid = document.getElementById('hid-' + id);
-
-    if (checkbox.checked) {
-      row.classList.add('selecionado');
-      pw.classList.add('visivel');
-      inp.disabled = false;
-      hid.disabled = false;
-      calcularValor(id);
-      inp.focus();
-      inp.select();
-    } else {
-      row.classList.remove('selecionado');
-      pw.classList.remove('visivel');
-      inp.disabled = true;
-      hid.disabled = true;
-      document.getElementById('valor-' + id).textContent = '—';
-    }
-    atualizarEstado();
-    atualizarResumo();
-  }
-
-  function atualizarEstado() {
-    const selecionados = document.querySelectorAll('.animal-check:checked').length;
-    contagemTxt.textContent = selecionados + ' selecionado(s)';
-    btnConfirmar.disabled = selecionados === 0;
-    marcarTodos.indeterminate = selecionados > 0 && selecionados < checks.length;
-    marcarTodos.checked = selecionados === checks.length && checks.length > 0;
-  }
-
-  checks.forEach(chk => {
-    chk.addEventListener('change', () => toggleAnimal(chk));
+  const { btnConfirmar } = initSelecaoLote({
+    onCheck: (id, inp) => { calcularValor(id); inp.focus(); inp.select(); atualizarResumo(); },
+    onUncheck: (id) => { document.getElementById('valor-' + id).textContent = '—'; atualizarResumo(); },
   });
 
   document.querySelectorAll('.peso-input').forEach(inp => {
@@ -380,13 +339,9 @@
     });
   });
 
-  inputArroba.addEventListener('input', recalcularTudo);
-
-  marcarTodos.addEventListener('change', function () {
-    checks.forEach(chk => {
-      chk.checked = this.checked;
-      toggleAnimal(chk);
-    });
+  inputArroba.addEventListener('input', () => {
+    document.querySelectorAll('.animal-check:checked').forEach(chk => calcularValor(chk.value));
+    atualizarResumo();
   });
 
   /* Validação antes do submit */

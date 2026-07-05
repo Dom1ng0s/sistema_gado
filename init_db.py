@@ -1,13 +1,11 @@
 import mysql.connector
 import os
 import sys
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
 
-print("\n---  INICIANDO SETUP COMPLETO DO BANCO DE DADOS ---")
-
-import time
 
 def _connect(retries=5, delay=3):
     cfg = dict(
@@ -27,16 +25,19 @@ def _connect(retries=5, delay=3):
                 time.sleep(delay)
     raise RuntimeError("Não foi possível conectar ao banco após várias tentativas.")
 
-try:
-    # 1. Conexão
-    conn = _connect()
-    cursor = conn.cursor()
-    print(" Conexão estabelecida.")
 
+def criar_schema(cursor):
+    """Cria/atualiza tabelas, colunas, índices e views no banco selecionado por `cursor`.
+
+    Idempotente (IF NOT EXISTS / try-except em ALTERs) — pode ser chamada tanto
+    contra um banco de produção já populado (python init_db.py) quanto contra um
+    banco de teste recém-criado (conftest.py:db_setup), sempre convergindo para
+    o mesmo schema. Não faz commit — quem chama controla a transação.
+    """
     # ==============================================================================
     # ETAPA 1: TABELAS FUNDAMENTAIS (Ordem de Dependência: Usuários -> Outros)
     # ==============================================================================
-    
+
     # 1.1 Tabela USUÁRIOS
     print(" [1/6] Criando tabela 'usuarios'...")
     cursor.execute("""
@@ -59,7 +60,7 @@ try:
         else:
             raise err
 
-    # 1.3 Tabela ANIMAIS 
+    # 1.3 Tabela ANIMAIS
     print(" [2/6] Criando tabela 'animais'...")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS animais (
@@ -77,9 +78,9 @@ try:
     );
     """)
 
-    # 1.4 Tabelas Satélites 
+    # 1.4 Tabelas Satélites
     print(" [3/6] Criando tabelas satélites (pesagens, medicacoes, custos)...")
-    
+
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS pesagens (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -99,7 +100,7 @@ try:
         codigo_lote VARCHAR(50) NOT NULL,
         descricao VARCHAR(200),
         data_aquisicao DATE NOT NULL,
-        custo_medio_cabeca DECIMAL(10, 2), 
+        custo_medio_cabeca DECIMAL(10, 2),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         deleted_at DATETIME NULL DEFAULT NULL,
         FOREIGN KEY (user_id) REFERENCES usuarios(id)
@@ -112,7 +113,7 @@ try:
         cursor.execute("ALTER TABLE animais ADD CONSTRAINT fk_animais_lote FOREIGN KEY (lote_id) REFERENCES lotes(id)")
         print("   -> Coluna 'lote_id' adicionada com sucesso.")
     except mysql.connector.Error as err:
-        if err.errno == 1060: 
+        if err.errno == 1060:
             print("   -> Coluna 'lote_id' já existe. Nenhuma alteração necessária.")
         else:
             print(f"    Alerta não crítico: {err}")
@@ -144,7 +145,7 @@ try:
     );
     """)
 
-    # 1.4 Tabela CONFIGURAÇÕES 
+    # 1.4 Tabela CONFIGURAÇÕES
     print("  Criando tabela 'configuracoes'...")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS configuracoes (
@@ -207,7 +208,7 @@ try:
     # ETAPA 1.5: ÍNDICES DE PERFORMANCE (OTIMIZAÇÃO)
     # ==============================================================================
     print(" Aplicando índices de performance...")
-    
+
     indices_sql = [
         ("idx_pesagens_otimizada",  "CREATE INDEX idx_pesagens_otimizada ON pesagens (animal_id, data_pesagem)"),
         ("idx_pesagens_max",        "CREATE INDEX idx_pesagens_max ON pesagens (animal_id, id DESC)"),
@@ -240,13 +241,10 @@ try:
             cursor.execute(sql)
             print(f"   -> Índice '{nome_idx}' verificado/criado.")
         except mysql.connector.Error as err:
-            if err.errno == 1061:  
+            if err.errno == 1061:
                 print(f"   -> Índice '{nome_idx}' já existe.")
             else:
                 print(f"     Erro ao criar '{nome_idx}': {err}")
-
-
-    
 
     # ==============================================================================
     # ETAPA 1.6: GESTÃO DE PASTOS
@@ -414,7 +412,7 @@ try:
     cursor.execute("""
     CREATE OR REPLACE VIEW v_gmd_analitico AS
     WITH PesagensOrdenadas AS (
-        SELECT 
+        SELECT
             animal_id, data_pesagem, peso,
             ROW_NUMBER() OVER(PARTITION BY animal_id ORDER BY data_pesagem ASC) as rn_asc,
             ROW_NUMBER() OVER(PARTITION BY animal_id ORDER BY data_pesagem DESC) as rn_desc
@@ -422,7 +420,7 @@ try:
         WHERE deleted_at IS NULL
     ),
     PrimeiraUltima AS (
-        SELECT 
+        SELECT
             animal_id,
             MAX(CASE WHEN rn_asc = 1 THEN data_pesagem END) AS data_inicial,
             MAX(CASE WHEN rn_asc = 1 THEN peso END) AS peso_inicial,
@@ -431,15 +429,15 @@ try:
         FROM PesagensOrdenadas
         GROUP BY animal_id
     )
-    SELECT 
+    SELECT
         a.user_id, a.id as animal_id, a.brinco,
         p.peso_final,
         (p.peso_final - p.peso_inicial) as ganho_total,
         DATEDIFF(p.data_final, p.data_inicial) as dias,
-        CASE 
-            WHEN DATEDIFF(p.data_final, p.data_inicial) > 0 
+        CASE
+            WHEN DATEDIFF(p.data_final, p.data_inicial) > 0
             THEN (p.peso_final - p.peso_inicial) / DATEDIFF(p.data_final, p.data_inicial)
-            ELSE 0 
+            ELSE 0
         END as gmd
     FROM PrimeiraUltima p
     JOIN animais a ON p.animal_id = a.id
@@ -652,7 +650,7 @@ try:
     print(" [5/6] Atualizando View de Inteligência Financeira (Fluxo de Caixa)...")
     cursor.execute("""
     CREATE OR REPLACE VIEW v_fluxo_caixa AS
-    SELECT 
+    SELECT
         user_id,
         ano,
         SUM(receita) as total_entradas,
@@ -674,7 +672,6 @@ try:
     ) as uniao_geral
     GROUP BY user_id, ano;
     """)
-
 
     # ==============================================================================
     # ETAPA 5.2: CALENDÁRIO SANITÁRIO — PROTOCOLOS VACINAIS
@@ -728,13 +725,25 @@ try:
     GROUP BY l.id, l.user_id, l.codigo_lote, l.descricao, l.data_aquisicao;
     """)
 
-    conn.commit()
-    cursor.close()
-    conn.close()
-    print("\n [6/6] SUCESSO! ")
 
-except Exception as e:
-    print(f"\n ERRO FATAL: {e}")
-    sys.exit(1)
+def main():
+    print("\n---  INICIANDO SETUP COMPLETO DO BANCO DE DADOS ---")
+    try:
+        conn = _connect()
+        cursor = conn.cursor()
+        print(" Conexão estabelecida.")
 
-sys.exit(0)
+        criar_schema(cursor)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("\n [6/6] SUCESSO! ")
+    except Exception as e:
+        print(f"\n ERRO FATAL: {e}")
+        sys.exit(1)
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()

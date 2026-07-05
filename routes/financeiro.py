@@ -5,6 +5,7 @@ from datetime import date, timedelta
 import logging
 from repositories import animal_repository, financeiro_repository, reproducao_repository, pasto_repository
 from routes.validators import validate
+from utils.calculo import KG_POR_ARROBA
 
 financeiro_bp = Blueprint('financeiro', __name__)
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ def calcular_kpis_unificados(user_id):
     if dados['qtd_animais'] > 0:
         dados['custo_diaria'] = (tot_anual / dados['qtd_animais']) / 365
     if dados['gmd_medio'] > 0:
-        dados['dias_para_arroba'] = 30 / dados['gmd_medio']
+        dados['dias_para_arroba'] = KG_POR_ARROBA / dados['gmd_medio']
         dados['custo_arroba'] = dados['custo_diaria'] * dados['dias_para_arroba']
 
     return dados
@@ -162,7 +163,7 @@ def simulador_custo():
 
             c_anual = c_arr + c_sup + c_mao + c_ext
             c_dia = (c_anual / qtd / 365) if qtd > 0 else 0
-            d_arr = (30 / gmd) if gmd > 0 else 0
+            d_arr = (KG_POR_ARROBA / gmd) if gmd > 0 else 0
             c_arr_val = c_dia * d_arr
 
             res = {

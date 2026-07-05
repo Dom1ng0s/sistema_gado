@@ -287,53 +287,12 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/lote-selecao.js') }}"></script>
 <script>
 (function () {
-  const checks   = document.querySelectorAll('.animal-check');
-  const marcarTodos = document.getElementById('marcar-todos');
-  const btnConfirmar = document.getElementById('btn-confirmar');
-  const contagemTxt  = document.getElementById('contagem-txt');
-
-  function toggleAnimal(checkbox) {
-    const id  = checkbox.value;
-    const row = checkbox.closest('tr');
-    const pw  = document.getElementById('pw-' + id);
-    const inp = document.getElementById('peso-' + id);
-    const hid = document.getElementById('hid-' + id);
-
-    if (checkbox.checked) {
-      row.classList.add('selecionado');
-      pw.classList.add('visivel');
-      inp.disabled = false;
-      hid.disabled = false;
-      inp.focus();
-    } else {
-      row.classList.remove('selecionado');
-      pw.classList.remove('visivel');
-      inp.disabled = true;
-      inp.value = '';
-      hid.disabled = true;
-    }
-    atualizarEstado();
-  }
-
-  function atualizarEstado() {
-    const selecionados = document.querySelectorAll('.animal-check:checked').length;
-    contagemTxt.textContent = selecionados + ' selecionado(s)';
-    btnConfirmar.disabled = selecionados === 0;
-    marcarTodos.indeterminate = selecionados > 0 && selecionados < checks.length;
-    marcarTodos.checked = selecionados === checks.length && checks.length > 0;
-  }
-
-  checks.forEach(chk => {
-    chk.addEventListener('change', () => toggleAnimal(chk));
-  });
-
-  marcarTodos.addEventListener('change', function () {
-    checks.forEach(chk => {
-      chk.checked = this.checked;
-      toggleAnimal(chk);
-    });
+  const { btnConfirmar } = initSelecaoLote({
+    onCheck:   (id, inp) => inp.focus(),
+    onUncheck: (id, inp) => { inp.value = ''; },
   });
 
   /* Validação antes do submit */

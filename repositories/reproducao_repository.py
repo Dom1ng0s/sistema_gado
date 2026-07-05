@@ -1,10 +1,9 @@
 from db_config import get_db_cursor
-from datetime import timedelta, date
+from datetime import timedelta, date, datetime
 
 
 def insert_reproducao(user_id, vaca_id, touro_id, touro_externo, data_cobertura, data_parto, resultado):
     if isinstance(data_cobertura, str):
-        from datetime import datetime
         data_cobertura_obj = datetime.strptime(data_cobertura, '%Y-%m-%d').date()
     else:
         data_cobertura_obj = data_cobertura

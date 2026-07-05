@@ -1,13 +1,17 @@
 from db_config import get_db_cursor
 
+_COLUNAS_SALDO_ESTOQUE = (
+    "produto_id, user_id, nome, unidade, categoria, estoque_minimo, "
+    "total_entradas, total_saidas, saldo_atual, abaixo_minimo, "
+    "proxima_validade, tem_vencido"
+)
+
 
 def get_produtos(user_id):
     """Retorna todos os produtos do usuário com saldo atual (via vw_saldo_estoque)."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT produto_id, user_id, nome, unidade, categoria, estoque_minimo, "
-            "    total_entradas, total_saidas, saldo_atual, abaixo_minimo, "
-            "    proxima_validade, tem_vencido "
+            f"SELECT {_COLUNAS_SALDO_ESTOQUE} "
             "FROM vw_saldo_estoque WHERE user_id = %s ORDER BY nome ASC",
             (user_id,)
         )
@@ -28,9 +32,7 @@ def get_produto_by_id(produto_id, user_id):
     """Retorna dados do produto com saldo atual (via view). Valida propriedade."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT produto_id, user_id, nome, unidade, categoria, estoque_minimo, "
-            "    total_entradas, total_saidas, saldo_atual, abaixo_minimo, "
-            "    proxima_validade, tem_vencido "
+            f"SELECT {_COLUNAS_SALDO_ESTOQUE} "
             "FROM vw_saldo_estoque WHERE produto_id = %s AND user_id = %s",
             (produto_id, user_id)
         )

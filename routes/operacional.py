@@ -9,6 +9,7 @@ from mysql.connector import errors as _mysql_errors
 from datetime import date as _date
 from repositories import animal_repository, reproducao_repository, sanitario_repository
 from routes.validators import validate
+from utils.calculo import preco_por_arroba
 from decimal import Decimal
 
 operacional_bp = Blueprint('operacional', __name__)
@@ -113,7 +114,7 @@ def cadastro():
 
             peso = float(peso_str) if peso_str else None
             val_arr = float(val_arr_str) if val_arr_str else None
-            preco_compra = (peso / 30) * val_arr if (peso and val_arr) else None
+            preco_compra = preco_por_arroba(peso, val_arr) if (peso and val_arr) else None
 
             if animal_repository.check_brinco_exists(brinco, current_user.id):
                 return render_template("cadastro.html", mensagem="Brinco já existe."), 400
@@ -179,7 +180,7 @@ def vender(id_animal):
             dt = request.form['data_venda']
             peso = float(request.form['peso_venda'])
             val = float(request.form['valor_arroba'])
-            animal_repository.registrar_venda(id_animal, current_user.id, dt, (peso / 30) * val, peso)
+            animal_repository.registrar_venda(id_animal, current_user.id, dt, preco_por_arroba(peso, val), peso)
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro vender: {e}", exc_info=True)
@@ -215,7 +216,7 @@ def venda_lote():
                 peso = float(peso_str)
                 if peso <= 0:
                     raise ValueError
-                vendas.append((aid, peso, round((peso / 30) * valor_arroba, 2)))
+                vendas.append((aid, peso, preco_por_arroba(peso, valor_arroba)))
             except (ValueError, TypeError):
                 animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
                 return render_template('venda_lote.html', animais=animais,
@@ -388,7 +389,7 @@ def cadastro_lote():
             raca = raca_outra if raca_raw == '__outra__' else (raca_raw or None)
 
             animais_data = [
-                (brinco, sexo, float(peso_txt), (float(peso_txt) / 30) * valor_arroba)
+                (brinco, sexo, float(peso_txt), preco_por_arroba(float(peso_txt), valor_arroba))
                 for brinco, sexo, peso_txt in zip(brincos, sexos, pesos_str)
             ]
 
@@ -604,16 +605,15 @@ def registrar_diagnostico(rep_id):
 @operacional_bp.route('/rebanho/ranking-touros')
 @login_required
 def ranking_touros():
-    import logging as _log
     try:
         ranking = animal_repository.get_ranking_touros(current_user.id)
         gmd_medio_raw = animal_repository.get_gmd_medio_rebanho(current_user.id)
-        
+
         # Converte o valor retornado para Decimal, ou usa Decimal('0.0') se vier vazio/None
         gmd_medio = Decimal(str(gmd_medio_raw)) if gmd_medio_raw else Decimal('0.0')
-        
+
     except Exception:
-        _log.exception("Erro em ranking_touros user_id=%s", current_user.id)
+        logger.exception("Erro em ranking_touros user_id=%s", current_user.id)
         # Substitui o 0.0 (float) por Decimal('0.0') no fallback do erro
         ranking, gmd_medio = [], Decimal('0.0')
         
@@ -683,7 +683,7 @@ def importar_csv():
                     arr  = float((row.get('valor_arroba') or '').replace(',', '.'))
                     if peso <= 0 or arr <= 0:
                         raise ValueError
-                    preco_compra = round((peso / 30) * arr, 2)
+                    preco_compra = preco_por_arroba(peso, arr)
                 except (ValueError, TypeError):
                     linha_erros.append("peso_kg ou valor_arroba inválido")
 
