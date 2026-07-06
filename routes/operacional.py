@@ -642,6 +642,7 @@ def ranking_touros():
 _CSV_COLUNAS_OBRIGATORIAS = {'brinco', 'sexo', 'data_compra', 'peso_kg', 'valor_arroba'}
 _CSV_MAX_BYTES = 1 * 1024 * 1024  # 1 MB
 _CSV_MAX_LINHAS = 5000
+_CSV_CHUNK_SIZE = 500
 
 
 @operacional_bp.route('/importar-csv', methods=['GET', 'POST'])
@@ -679,6 +680,7 @@ def importar_csv():
                 (current_user.id,)
             )
             brincos_existentes = {row[0] for row in cursor.fetchall()}
+            linhas_validas = []  # (linha, brinco, sexo, raca, data_compra, data_nasc, preco_compra)
 
             for i, row in enumerate(reader, start=2):
                 if i - 1 > _CSV_MAX_LINHAS:
@@ -723,17 +725,36 @@ def importar_csv():
                     erros.append({'linha': i, 'msg': f"brinco '{brinco}' já existe"})
                     continue
 
+                brincos_existentes.add(brinco)
+                linhas_validas.append((i, brinco, sexo, raca, data_compra or None,
+                                        data_nasc or None, preco_compra))
+
+            # Insere em chunks via executemany — muito mais rápido que 1 INSERT
+            # por linha. Se um chunk falhar (ex.: duas linhas do próprio CSV com
+            # o mesmo brinco, que o set em memória não pega porque nenhuma das
+            # duas foi inserida ainda), refaz esse chunk linha a linha só para
+            # isolar e reportar qual(is) linha(s) conflitam.
+            for inicio in range(0, len(linhas_validas), _CSV_CHUNK_SIZE):
+                chunk = linhas_validas[inicio:inicio + _CSV_CHUNK_SIZE]
                 try:
-                    cursor.execute(
+                    cursor.executemany(
                         "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
                         "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                        (brinco, sexo, raca, data_compra or None,
-                         data_nasc or None, preco_compra, current_user.id)
+                        [(brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.id)
+                         for _, brinco, sexo, raca, data_compra, data_nasc, preco_compra in chunk]
                     )
-                    brincos_existentes.add(brinco)
-                    inseridos += 1
+                    inseridos += len(chunk)
                 except _mysql_errors.IntegrityError:
-                    erros.append({'linha': i, 'msg': f"brinco '{brinco}' já existe (conflito)"})
+                    for linha, brinco, sexo, raca, data_compra, data_nasc, preco_compra in chunk:
+                        try:
+                            cursor.execute(
+                                "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
+                                "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                                (brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.id)
+                            )
+                            inseridos += 1
+                        except _mysql_errors.IntegrityError:
+                            erros.append({'linha': linha, 'msg': f"brinco '{brinco}' já existe (conflito)"})
 
     except Exception as e:
         logger.error(f"Erro importação CSV: {e}", exc_info=True)

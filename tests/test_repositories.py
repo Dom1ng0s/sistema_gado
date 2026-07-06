@@ -209,6 +209,29 @@ def test_cadastrar_animal_cria_pesagem_inicial(um):
     assert float(pesagens[0][3]) == pytest.approx(280.0)  # índice 3 = peso
 
 
+def test_cadastrar_lote_associa_pesagem_ao_animal_correto(um):
+    """cadastrar_lote insere animais e pesagens via executemany, mapeando o
+    animal_id de volta por brinco — cada pesagem tem que ficar com o animal certo,
+    não embaralhada entre os animais do mesmo lote."""
+    animais_data = [
+        (f"LOTE{_n()}A", "M", 250.0, 900.0),
+        (f"LOTE{_n()}B", "F", 300.0, 1100.0),
+        (f"LOTE{_n()}C", "M", 275.0, 950.0),
+    ]
+    lote_id = animal_repository.cadastrar_lote(um, f"L{_n()}", "Lote teste", "2024-01-01", animais_data)
+    assert lote_id is not None
+
+    for brinco, sexo, peso, custo in animais_data:
+        row = _fetch_one("SELECT id, sexo, preco_compra FROM animais WHERE brinco = %s AND user_id = %s", (brinco, um))
+        assert row is not None
+        aid, sexo_db, preco_db = row
+        assert sexo_db == sexo
+        assert float(preco_db) == pytest.approx(custo)
+        pesagens = animal_repository.get_pesagens_by_animal(aid)
+        assert len(pesagens) == 1
+        assert float(pesagens[0][3]) == pytest.approx(peso)  # índice 3 = peso
+
+
 def test_get_gmd_medio_rebanho_filtra_por_sexo(um):
     """sexo='M'/'F' restringe o cálculo ao grupo — segregação de matrizes do GMD geral."""
     macho = _make_animal(um, sexo="M")
