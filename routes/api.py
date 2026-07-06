@@ -51,7 +51,25 @@ _MAPA_ESTADOS = {
 }
 
 _PDF_DIR = '/tmp'
+_PDF_MAX_AGE = 3600  # 1h — jobs abandonados (.pdf/.error/.pending) viram lixo em /tmp
 _UUID_RE = _re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
+
+
+def _limpar_pdfs_orfaos() -> None:
+    """Remove sgg_pdf_* com mais de 1h ao criar um job novo — limpeza
+    oportunística, sem worker/cron dedicado.
+    ponytail: best-effort, nunca propaga erro para a geração do relatório."""
+    corte = time.time() - _PDF_MAX_AGE
+    try:
+        with _os.scandir(_PDF_DIR) as it:
+            for entry in it:
+                if entry.name.startswith('sgg_pdf_') and entry.stat().st_mtime < corte:
+                    try:
+                        _os.remove(entry.path)
+                    except OSError:
+                        pass
+    except OSError:
+        pass
 
 
 def _csv_response(filename: str, header: list, rows: list) -> Response:
@@ -241,6 +259,7 @@ def relatorio_pdf():
                            gmd_medio=gmd_medio,
                            data_geracao=date.today().strftime('%d/%m/%Y'))
 
+    _limpar_pdfs_orfaos()
     job_id = str(uuid.uuid4())
     jobs = session.get('pdf_jobs', [])
     jobs = (jobs[-9:] if len(jobs) >= 10 else jobs) + [job_id]
