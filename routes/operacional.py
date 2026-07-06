@@ -41,6 +41,7 @@ def painel():
         alertas_sanitarios = sanitario_repository.get_vencendo_em_dias(current_user.id, dias=7)
     except Exception as e:
         logger.error(f"Erro painel: {e}", exc_info=True)
+        flash("Não foi possível carregar o rebanho agora. Tente novamente em instantes.", 'error')
 
     return render_template("index.html", lista_animais=animais, pagina_atual=pg,
                            total_paginas=total_pg, total_animais=total, busca=termo, status=status,
@@ -64,6 +65,7 @@ def lixeira():
             total_pg = math.ceil(total / limit)
     except Exception as e:
         logger.error(f"Erro lixeira: {e}", exc_info=True)
+        flash("Não foi possível carregar a lixeira agora. Tente novamente em instantes.", 'error')
 
     return render_template("lixeira.html", lista_animais=animais, pagina_atual=pg, total_paginas=total_pg, busca=termo)
 
@@ -128,9 +130,17 @@ def cadastro():
             )
             flash(f"Animal {brinco} cadastrado com sucesso.", 'success')
             return redirect(url_for('operacional.detalhes', id_animal=new_id))
+        except _mysql_errors.IntegrityError:
+            # UNIQUE (brinco, user_id) conta linhas soft-deletadas, que
+            # check_brinco_exists ignora — o brinco pode estar na lixeira.
+            logger.warning("IntegrityError cadastro (brinco duplicado) user=%s", current_user.id)
+            return render_template(
+                "cadastro.html",
+                mensagem="Já existe um animal com esse brinco. Verifique a lixeira — ele pode estar excluído.",
+                form_data=request.form), 400
         except Exception as e:
             logger.error(f"Erro cadastro: {e}", exc_info=True)
-            msg = f"Erro: {e}"
+            msg = "Não foi possível cadastrar o animal. Tente novamente."
     return render_template("cadastro.html", mensagem=msg)
 
 @operacional_bp.route('/animal/<int:id_animal>')
@@ -166,6 +176,7 @@ def detalhes(id_animal):
                                historico_med=meds, indicadores=kpis, idade_meses=idade_meses)
     except Exception as e:
         logger.error(f"Erro detalhes: {e}", exc_info=True)
+        flash("Não foi possível carregar os dados do animal agora. Tente novamente.", 'error')
         return redirect(url_for('operacional.painel'))
 
 @operacional_bp.route('/vender/<int:id_animal>', methods=['GET', 'POST'])
