@@ -233,7 +233,8 @@ def relatorio_pdf():
     config    = configuracao_repository.get_configuracao(current_user.id)
     fluxo     = financeiro_repository.get_fluxo_caixa(current_user.id)
     animais   = animal_repository.get_animais_com_gmd(current_user.id)
-    gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
+    gmds      = [float(a[5]) for a in animais if a[5] is not None]
+    gmd_medio = sum(gmds) / len(gmds) if gmds else 0.0
 
     html = render_template('relatorio_pdf.html',
                            config=config, fluxo=fluxo, animais=animais,

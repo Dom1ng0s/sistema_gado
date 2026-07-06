@@ -92,3 +92,50 @@ def test_verificar_contas_chama_send_quando_ha_dados(app, db_setup):
     cur2.execute("DELETE FROM financial_schedule WHERE user_id=%s", (uid,))
     cur2.execute("DELETE FROM usuarios WHERE id=%s", (uid,))
     conn2.commit(); cur2.close(); conn2.close()
+
+
+def test_verificar_contas_vencendo_agrupa_por_usuario(app, db_setup):
+    """A query agrupada não deve misturar as contas de usuários diferentes."""
+    import itertools
+    from werkzeug.security import generate_password_hash
+    import db_config as dbc
+
+    seq = itertools.count(89000)
+    n1, n2 = next(seq), next(seq)
+    conn = dbc.get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO usuarios (username, password_hash, email) VALUES (%s, %s, %s)",
+        (f"alerta_u{n1}", generate_password_hash("x"), f"alerta{n1}@test.com")
+    )
+    uid1 = cur.lastrowid
+    cur.execute(
+        "INSERT INTO usuarios (username, password_hash, email) VALUES (%s, %s, %s)",
+        (f"alerta_u{n2}", generate_password_hash("x"), f"alerta{n2}@test.com")
+    )
+    uid2 = cur.lastrowid
+    cur.execute(
+        "INSERT INTO financial_schedule (user_id, descricao, valor, vencimento, status) "
+        "VALUES (%s, 'Ração', 2000.00, CURDATE(), 'pendente')",
+        (uid1,)
+    )
+    cur.execute(
+        "INSERT INTO financial_schedule (user_id, descricao, valor, vencimento, status) "
+        "VALUES (%s, 'Sal Mineral', 500.00, CURDATE(), 'pendente')",
+        (uid2,)
+    )
+    conn.commit(); cur.close(); conn.close()
+
+    with patch('utils.email_service.send_alert_contas') as mock_send:
+        from utils.alertas import verificar_contas_vencendo
+        verificar_contas_vencendo(app)
+        assert mock_send.call_count == 2
+        chamadas = {c.args[0]: c.args[1] for c in mock_send.call_args_list}
+        assert chamadas[f"alerta{n1}@test.com"][0][0] == 'Ração'
+        assert chamadas[f"alerta{n2}@test.com"][0][0] == 'Sal Mineral'
+
+    conn2 = dbc.get_db_connection()
+    cur2 = conn2.cursor()
+    cur2.execute("DELETE FROM financial_schedule WHERE user_id IN (%s, %s)", (uid1, uid2))
+    cur2.execute("DELETE FROM usuarios WHERE id IN (%s, %s)", (uid1, uid2))
+    conn2.commit(); cur2.close(); conn2.close()
