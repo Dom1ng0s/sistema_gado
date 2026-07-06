@@ -214,12 +214,11 @@ function carregarDados() {
   instPeso.showLoading({ text: 'Carregando...', color: '#3B6D11' });
 
   Promise.all([
-    fetch("{{ url_for('api.graficos_sexo') }}").then(r => r.json()),
-    fetch("{{ url_for('api.graficos_peso') }}").then(r => r.json()),
-    fetch("{{ url_for('api.graficos_gmd') }}").then(r => r.json())
-  ]).then(([sexo, peso, gmdData]) => {
-    if (sexo.error || peso.error || gmdData.error) throw new Error('API error');
-    dadosGlobais = { sexo, peso, gmd_medio: gmdData.gmd_medio };
+    fetch("{{ url_for('api.dashboard_summary') }}").then(r => r.json()),
+    fetch("{{ url_for('api.graficos_peso') }}").then(r => r.json())
+  ]).then(([summary, peso]) => {
+    if (summary.error || peso.error) throw new Error('API error');
+    dadosGlobais = { sexo: summary.sexo, peso, gmd_medio: summary.gmd.gmd_medio };
     localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), dados: dadosGlobais }));
     instSexo.hideLoading();
     instPeso.hideLoading();
