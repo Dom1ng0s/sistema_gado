@@ -1,5 +1,6 @@
 from db_config import get_db_cursor
 from datetime import date
+from repositories.animal_repository import _gmd_ctes
 
 
 # ---- REBANHO ----
@@ -184,22 +185,11 @@ def get_resultado_lote_by_id(lote_id, user_id):
 def get_animais_por_lote(lote_id, user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
-            "WITH po AS ("
-            "  SELECT p.animal_id, p.data_pesagem, p.peso,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
-            "  FROM pesagens p"
-            "  JOIN animais a ON a.id = p.animal_id"
-            "    AND a.lote_id = %s AND a.user_id = %s AND a.deleted_at IS NULL"
-            "),"
-            " pu AS ("
-            "  SELECT animal_id,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
-            "  FROM po GROUP BY animal_id"
-            " ),"
+            _gmd_ctes(
+                "JOIN animais a ON a.id = p.animal_id"
+                "    AND a.lote_id = %s AND a.user_id = %s AND a.deleted_at IS NULL"
+            ) + (
+            ","
             " gmd_calc AS ("
             "  SELECT animal_id,"
             "    peso_fim AS peso_final,"
@@ -219,7 +209,8 @@ def get_animais_por_lote(lote_id, user_id):
             "   ON m.animal_id = a.id"
             " LEFT JOIN gmd_calc g ON g.animal_id = a.id"
             " WHERE a.lote_id = %s AND a.user_id = %s AND a.deleted_at IS NULL"
-            " ORDER BY a.brinco ASC",
+            " ORDER BY a.brinco ASC"
+            ),
             (lote_id, user_id, lote_id, user_id)
         )
         return cursor.fetchall()
