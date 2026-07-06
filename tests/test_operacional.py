@@ -58,6 +58,31 @@ def test_validacao_cadastro_duplicado(client):
     # Verifica se a mensagem de erro aparece
     assert b"Erro" in response.data or b"existe" in response.data
 
+def test_cadastro_brinco_na_lixeira_mensagem_amigavel(client):
+    """Issue #32 — recadastrar brinco de animal soft-deletado bate na UNIQUE KEY;
+    a rota deve mostrar mensagem amigável (aponta a lixeira), não o erro cru do MySQL."""
+    login(client)
+    client.post('/cadastro', data={
+        'brinco': 'LIXO-BRINCO', 'sexo': 'M', 'data_compra': '2024-01-01',
+        'peso_compra': '300', 'valor_arroba': '250',
+    })
+    row = _fetch_one("SELECT id FROM animais WHERE brinco='LIXO-BRINCO' AND deleted_at IS NULL")
+    assert row is not None
+    conn = dbc.get_db_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE animais SET deleted_at = NOW() WHERE id = %s", (row[0],))
+    conn.commit(); cur.close(); conn.close()
+
+    response = client.post('/cadastro', data={
+        'brinco': 'LIXO-BRINCO', 'sexo': 'M', 'data_compra': '2024-02-01',
+        'peso_compra': '310', 'valor_arroba': '250',
+    })
+    assert response.status_code == 400
+    text = response.data.decode('utf-8')
+    assert 'lixeira' in text.lower()
+    assert 'IntegrityError' not in text and 'Duplicate' not in text
+
+
 def test_venda_animal(client):
     """Cadastra e Vende um animal, verificando a baixa de estoque."""
     login(client)
