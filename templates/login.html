@@ -273,39 +273,19 @@
 
         .field-input::placeholder { color: var(--color-ink-disabled); }
 
-        /* Submit */
-        .btn-enter {
-            width: 100%;
-            padding: 14px 16px;
-            background: var(--color-primary);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius-md);
-            font-family: var(--font-body);
-            font-size: var(--text-base);
-            font-weight: 500;
-            letter-spacing: 0.04em;
-            cursor: pointer;
+        /* Submit — spinner de loading (classes base vêm de design_system.css: .btn .btn-primary .btn-block) */
+        #btnEnter {
             margin-top: 8px;
             position: relative;
-            transition: background 150ms, box-shadow 150ms, transform 80ms;
-            box-shadow: 0 1px 3px rgba(59,109,17,0.35);
         }
 
-        .btn-enter:hover {
-            background: var(--color-primary-dark);
-            box-shadow: 0 2px 8px rgba(59,109,17,0.45);
-        }
-
-        .btn-enter:active { transform: scale(0.99); }
-
-        .btn-enter.loading {
+        #btnEnter.loading {
             color: transparent;
             pointer-events: none;
             opacity: 0.75;
         }
 
-        .btn-enter.loading::after {
+        #btnEnter.loading::after {
             content: '';
             position: absolute;
             width: 15px;
@@ -338,29 +318,6 @@
             font-size: 11px;
             color: var(--color-ink-disabled);
             letter-spacing: 0.06em;
-        }
-
-        /* Register link */
-        .btn-register {
-            display: block;
-            width: 100%;
-            padding: 13px 16px;
-            background: transparent;
-            border: 0.5px solid var(--color-border-strong);
-            border-radius: var(--radius-md);
-            font-family: var(--font-body);
-            font-size: var(--text-sm);
-            font-weight: 400;
-            color: var(--color-ink-secondary);
-            text-align: center;
-            text-decoration: none;
-            cursor: pointer;
-            transition: background 150ms, border-color 150ms, color 150ms;
-        }
-
-        .btn-register:hover {
-            background: var(--color-surface-raised);
-            color: var(--color-ink);
         }
 
         /* Flash / error messages */
@@ -540,7 +497,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-enter" id="btnEnter">
+                <button type="submit" class="btn btn-primary btn-block" id="btnEnter">
                     Entrar no Sistema
                 </button>
             </form>
@@ -551,7 +508,7 @@
                 <div class="sep-line"></div>
             </div>
 
-            <a href="{{ url_for('auth.novo_usuario') }}" class="btn-register">
+            <a href="{{ url_for('auth.novo_usuario') }}" class="btn btn-secondary btn-block">
                 Criar nova conta
             </a>
 
