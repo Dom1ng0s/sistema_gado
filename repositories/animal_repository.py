@@ -39,6 +39,35 @@ def _origem_cond(origem, alias='a.'):
     return ""
 
 
+# Prefixo comum de TODAS as consultas de GMD: a CTE `po` numera as pesagens de
+# cada animal (primeira/última) e a CTE `pu` colapsa em data/peso inicial e final.
+# Só o JOIN (ou WHERE) sobre `pesagens p` varia entre os chamadores — cada um
+# passa essa cláusula e acrescenta seu próprio SELECT final (a fórmula do GMD,
+# com ELSE 0 ou ELSE NULL, fica no chamador de propósito).
+#
+# ATENÇÃO: `join_clause` deve conter APENAS literais hardcoded (mesma regra de
+# _build_animais_where). Os %s dentro dela são preenchidos por `params` na ordem
+# em que aparecem — NUNCA interpolar dado externo (usuário/request) aqui.
+def _gmd_ctes(join_clause: str) -> str:
+    return (
+        "WITH po AS ("
+        "  SELECT p.animal_id, p.data_pesagem, p.peso,"
+        "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
+        "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
+        "  FROM pesagens p"
+        "  " + join_clause +
+        "),"
+        " pu AS ("
+        "  SELECT animal_id,"
+        "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
+        "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
+        "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
+        "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
+        "  FROM po GROUP BY animal_id"
+        " )"
+    )
+
+
 # ---- LISTAGENS E CONTAGENS ----
 
 def count_animais(user_id, termo=None, status='todos', raca=None, origem=None, sexo=None):
@@ -71,23 +100,10 @@ def get_gmd_lote(animal_ids: list, user_id: int) -> dict:
     if not animal_ids:
         return {}
     placeholders = '(' + ','.join(['%s'] * len(animal_ids)) + ')'
-    sql = (
-        "WITH po AS ("
-        "  SELECT p.animal_id, p.data_pesagem, p.peso,"
-        "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
-        "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
-        "  FROM pesagens p"
-        "  JOIN animais a ON a.id = p.animal_id AND a.user_id = %s AND a.deleted_at IS NULL"
+    sql = _gmd_ctes(
+        "JOIN animais a ON a.id = p.animal_id AND a.user_id = %s AND a.deleted_at IS NULL"
         "  WHERE p.animal_id IN " + placeholders + " AND p.deleted_at IS NULL"
-        "),"
-        " pu AS ("
-        "  SELECT animal_id,"
-        "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
-        "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
-        "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
-        "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
-        "  FROM po GROUP BY animal_id"
-        " )"
+    ) + (
         " SELECT animal_id, peso_fim,"
         "  CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
         "    THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
@@ -275,27 +291,15 @@ def get_gmd_by_animal(animal_id):
     """GMD de um animal calculado diretamente sobre pesagens — sem view CTE global."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "WITH po AS ("
-            "  SELECT data_pesagem, peso,"
-            "    ROW_NUMBER() OVER (ORDER BY data_pesagem ASC)  AS rn_asc,"
-            "    ROW_NUMBER() OVER (ORDER BY data_pesagem DESC) AS rn_desc"
-            "  FROM pesagens WHERE animal_id = %s AND deleted_at IS NULL"
-            "),"
-            " pu AS ("
-            "  SELECT"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
-            "  FROM po"
-            " )"
-            " SELECT peso_fim AS peso_final,"
-            "  (peso_fim - peso_ini) AS ganho_total,"
-            "  DATEDIFF(data_fim, data_ini) AS dias,"
-            "  CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-            "    THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
-            "    ELSE 0 END AS gmd"
-            " FROM pu WHERE data_ini <> data_fim",
+            _gmd_ctes("WHERE p.animal_id = %s AND p.deleted_at IS NULL") + (
+                " SELECT peso_fim AS peso_final,"
+                "  (peso_fim - peso_ini) AS ganho_total,"
+                "  DATEDIFF(data_fim, data_ini) AS dias,"
+                "  CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
+                "    THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+                "    ELSE 0 END AS gmd"
+                " FROM pu WHERE data_ini <> data_fim"
+            ),
             (animal_id,)
         )
         return cursor.fetchone()
@@ -316,27 +320,16 @@ def get_gmd_medio_rebanho(user_id, sexo=None, origem=None):
     params = [user_id] + ([sexo] if sexo in ('M', 'F') else [])
     with get_db_cursor() as cursor:
         cursor.execute(
-            "WITH po AS ("
-            "  SELECT p.animal_id, p.data_pesagem, p.peso,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
-            "  FROM pesagens p"
-            "  JOIN animais a ON a.id = p.animal_id"
-            "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
-            "    AND p.deleted_at IS NULL"
-            f"    {sexo_cond}{origem_cond}"
-            "),"
-            " pu AS ("
-            "  SELECT animal_id,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
-            "  FROM po GROUP BY animal_id"
-            " )"
-            " SELECT AVG(CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-            "   THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini) END)"
-            " FROM pu WHERE data_ini <> data_fim",
+            _gmd_ctes(
+                "JOIN animais a ON a.id = p.animal_id"
+                "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
+                "    AND p.deleted_at IS NULL"
+                f"    {sexo_cond}{origem_cond}"
+            ) + (
+                " SELECT AVG(CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
+                "   THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini) END)"
+                " FROM pu WHERE data_ini <> data_fim"
+            ),
             tuple(params)
         )
         res = cursor.fetchone()
@@ -347,37 +340,27 @@ def get_animais_com_gmd(user_id):
     """Animais ativos com GMD — CTE inline, sem v_gmd_analitico."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "WITH po AS ("
-            "  SELECT p.animal_id, p.data_pesagem, p.peso,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
-            "  FROM pesagens p"
-            "  JOIN animais a ON a.id = p.animal_id"
-            "    AND a.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL"
-            "    AND p.deleted_at IS NULL"
-            "),"
-            " pu AS ("
-            "  SELECT animal_id,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
-            "  FROM po GROUP BY animal_id"
-            " ),"
-            " gmd_calc AS ("
-            "  SELECT animal_id, peso_fim AS peso_final,"
-            "    DATEDIFF(data_fim, data_ini) AS dias,"
-            "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-            "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
-            "      ELSE NULL END AS gmd"
-            "  FROM pu WHERE data_ini <> data_fim"
-            " )"
-            " SELECT a.id, a.brinco, a.sexo, a.raca, a.data_compra,"
-            "  g.gmd, g.dias, g.peso_final"
-            " FROM animais a"
-            " LEFT JOIN gmd_calc g ON g.animal_id = a.id"
-            " WHERE a.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL"
-            " ORDER BY LENGTH(a.brinco), a.brinco",
+            _gmd_ctes(
+                "JOIN animais a ON a.id = p.animal_id"
+                "    AND a.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL"
+                "    AND p.deleted_at IS NULL"
+            ) + (
+                ","
+                " gmd_calc AS ("
+                "  SELECT animal_id, peso_fim AS peso_final,"
+                "    DATEDIFF(data_fim, data_ini) AS dias,"
+                "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
+                "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+                "      ELSE NULL END AS gmd"
+                "  FROM pu WHERE data_ini <> data_fim"
+                " )"
+                " SELECT a.id, a.brinco, a.sexo, a.raca, a.data_compra,"
+                "  g.gmd, g.dias, g.peso_final"
+                " FROM animais a"
+                " LEFT JOIN gmd_calc g ON g.animal_id = a.id"
+                " WHERE a.user_id = %s AND a.data_venda IS NULL AND a.deleted_at IS NULL"
+                " ORDER BY LENGTH(a.brinco), a.brinco"
+            ),
             (user_id, user_id)
         )
         return cursor.fetchall()
@@ -396,42 +379,32 @@ def get_animais_abaixo_gmd_medio(user_id, sexo=None, origem=None):
     params = [user_id] + ([sexo] if sexo in ('M', 'F') else [])
     with get_db_cursor() as cursor:
         cursor.execute(
-            "WITH po AS ("
-            "  SELECT p.animal_id, p.data_pesagem, p.peso,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
-            "  FROM pesagens p"
-            "  JOIN animais a ON a.id = p.animal_id"
-            "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
-            "    AND p.deleted_at IS NULL"
-            f"    {sexo_cond}{origem_cond}"
-            "),"
-            " pu AS ("
-            "  SELECT animal_id,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
-            "  FROM po GROUP BY animal_id"
-            " ),"
-            " gmd_calc AS ("
-            "  SELECT animal_id,"
-            "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-            "      THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini)"
-            "      ELSE NULL END AS gmd"
-            "  FROM pu WHERE data_ini <> data_fim"
-            " ),"
-            " agg AS ("
-            "  SELECT AVG(gmd) AS gmd_media, STDDEV_POP(gmd) AS gmd_std"
-            "  FROM gmd_calc WHERE gmd IS NOT NULL"
-            " )"
-            " SELECT gc.animal_id, a.brinco, gc.gmd, agg.gmd_media,"
-            "  agg.gmd_std, (agg.gmd_media - 2 * agg.gmd_std) AS limite_inferior"
-            " FROM gmd_calc gc"
-            " CROSS JOIN agg"
-            " JOIN animais a ON a.id = gc.animal_id"
-            " WHERE gc.gmd IS NOT NULL AND gc.gmd < (agg.gmd_media - 2 * agg.gmd_std)"
-            " ORDER BY gc.gmd ASC",
+            _gmd_ctes(
+                "JOIN animais a ON a.id = p.animal_id"
+                "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
+                "    AND p.deleted_at IS NULL"
+                f"    {sexo_cond}{origem_cond}"
+            ) + (
+                ","
+                " gmd_calc AS ("
+                "  SELECT animal_id,"
+                "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
+                "      THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini)"
+                "      ELSE NULL END AS gmd"
+                "  FROM pu WHERE data_ini <> data_fim"
+                " ),"
+                " agg AS ("
+                "  SELECT AVG(gmd) AS gmd_media, STDDEV_POP(gmd) AS gmd_std"
+                "  FROM gmd_calc WHERE gmd IS NOT NULL"
+                " )"
+                " SELECT gc.animal_id, a.brinco, gc.gmd, agg.gmd_media,"
+                "  agg.gmd_std, (agg.gmd_media - 2 * agg.gmd_std) AS limite_inferior"
+                " FROM gmd_calc gc"
+                " CROSS JOIN agg"
+                " JOIN animais a ON a.id = gc.animal_id"
+                " WHERE gc.gmd IS NOT NULL AND gc.gmd < (agg.gmd_media - 2 * agg.gmd_std)"
+                " ORDER BY gc.gmd ASC"
+            ),
             tuple(params)
         )
         return cursor.fetchall()
@@ -442,35 +415,25 @@ def get_animais_abaixo_gmd_meta(user_id, gmd_meta):
     limite = float(gmd_meta) * 0.75
     with get_db_cursor() as cursor:
         cursor.execute(
-            "WITH po AS ("
-            "  SELECT p.animal_id, p.data_pesagem, p.peso,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
-            "  FROM pesagens p"
-            "  JOIN animais a ON a.id = p.animal_id"
-            "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
-            "    AND p.deleted_at IS NULL"
-            "),"
-            " pu AS ("
-            "  SELECT animal_id,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
-            "  FROM po GROUP BY animal_id"
-            " ),"
-            " gmd_calc AS ("
-            "  SELECT animal_id,"
-            "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-            "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
-            "      ELSE NULL END AS gmd"
-            "  FROM pu WHERE data_ini <> data_fim"
-            " )"
-            " SELECT g.animal_id, a.brinco, g.gmd"
-            " FROM gmd_calc g"
-            " JOIN animais a ON a.id = g.animal_id"
-            " WHERE g.gmd IS NOT NULL AND g.gmd < %s"
-            " ORDER BY g.gmd ASC",
+            _gmd_ctes(
+                "JOIN animais a ON a.id = p.animal_id"
+                "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
+                "    AND p.deleted_at IS NULL"
+            ) + (
+                ","
+                " gmd_calc AS ("
+                "  SELECT animal_id,"
+                "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
+                "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+                "      ELSE NULL END AS gmd"
+                "  FROM pu WHERE data_ini <> data_fim"
+                " )"
+                " SELECT g.animal_id, a.brinco, g.gmd"
+                " FROM gmd_calc g"
+                " JOIN animais a ON a.id = g.animal_id"
+                " WHERE g.gmd IS NOT NULL AND g.gmd < %s"
+                " ORDER BY g.gmd ASC"
+            ),
             (user_id, limite)
         )
         return cursor.fetchall()
@@ -493,37 +456,27 @@ def get_progenie_by_touro(animal_id, user_id):
     """Filhos onde animal é pai (pai_id) OU mãe (mae_id)."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "WITH po AS ("
-            "  SELECT p.animal_id, p.data_pesagem, p.peso,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
-            "  FROM pesagens p"
-            "  JOIN animais filho ON filho.id = p.animal_id"
-            "    AND (filho.pai_id = %s OR filho.mae_id = %s)"
-            "    AND filho.user_id = %s AND filho.deleted_at IS NULL AND p.deleted_at IS NULL"
-            "),"
-            " pu AS ("
-            "  SELECT animal_id,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
-            "  FROM po GROUP BY animal_id"
-            " ),"
-            " gmd_calc AS ("
-            "  SELECT animal_id,"
-            "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-            "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
-            "      ELSE NULL END AS gmd"
-            "  FROM pu WHERE data_ini <> data_fim"
-            " )"
-            " SELECT f.id, f.brinco, f.sexo, f.data_compra, g.gmd,"
-            "  CASE WHEN f.pai_id = %s THEN 'pai' ELSE 'mae' END AS papel"
-            " FROM animais f"
-            " LEFT JOIN gmd_calc g ON g.animal_id = f.id"
-            " WHERE (f.pai_id = %s OR f.mae_id = %s)"
-            "   AND f.user_id = %s AND f.deleted_at IS NULL"
-            " ORDER BY f.brinco",
+            _gmd_ctes(
+                "JOIN animais filho ON filho.id = p.animal_id"
+                "    AND (filho.pai_id = %s OR filho.mae_id = %s)"
+                "    AND filho.user_id = %s AND filho.deleted_at IS NULL AND p.deleted_at IS NULL"
+            ) + (
+                ","
+                " gmd_calc AS ("
+                "  SELECT animal_id,"
+                "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
+                "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+                "      ELSE NULL END AS gmd"
+                "  FROM pu WHERE data_ini <> data_fim"
+                " )"
+                " SELECT f.id, f.brinco, f.sexo, f.data_compra, g.gmd,"
+                "  CASE WHEN f.pai_id = %s THEN 'pai' ELSE 'mae' END AS papel"
+                " FROM animais f"
+                " LEFT JOIN gmd_calc g ON g.animal_id = f.id"
+                " WHERE (f.pai_id = %s OR f.mae_id = %s)"
+                "   AND f.user_id = %s AND f.deleted_at IS NULL"
+                " ORDER BY f.brinco"
+            ),
             (animal_id, animal_id, user_id,   # CTE
              animal_id,                        # CASE WHEN papel
              animal_id, animal_id, user_id)    # WHERE
@@ -548,39 +501,29 @@ def get_ranking_touros(user_id):
     """Ranking de touros por GMD médio dos filhos — inline, sem view."""
     with get_db_cursor() as cursor:
         cursor.execute(
-            "WITH po AS ("
-            "  SELECT p.animal_id, p.data_pesagem, p.peso,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,"
-            "    ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc"
-            "  FROM pesagens p"
-            "  JOIN animais filho ON filho.id = p.animal_id"
-            "    AND filho.user_id = %s AND filho.pai_id IS NOT NULL"
-            "    AND filho.deleted_at IS NULL AND p.deleted_at IS NULL"
-            "),"
-            " pu AS ("
-            "  SELECT animal_id,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,"
-            "    MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,"
-            "    MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim"
-            "  FROM po GROUP BY animal_id"
-            " ),"
-            " gmd_filhos AS ("
-            "  SELECT animal_id,"
-            "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-            "      THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini)"
-            "      ELSE NULL END AS gmd"
-            "  FROM pu WHERE data_ini <> data_fim"
-            " )"
-            " SELECT t.id AS touro_id, t.brinco AS touro_brinco, t.raca AS touro_raca,"
-            "  COUNT(f.id) AS qtd_filhos,"
-            "  ROUND(AVG(gf.gmd), 3) AS gmd_medio_filhos"
-            " FROM animais f"
-            " JOIN animais t ON t.id = f.pai_id AND t.deleted_at IS NULL"
-            " LEFT JOIN gmd_filhos gf ON gf.animal_id = f.id AND gf.gmd IS NOT NULL"
-            " WHERE f.user_id = %s AND f.pai_id IS NOT NULL AND f.deleted_at IS NULL"
-            " GROUP BY t.id, t.brinco, t.raca"
-            " ORDER BY gmd_medio_filhos DESC",
+            _gmd_ctes(
+                "JOIN animais filho ON filho.id = p.animal_id"
+                "    AND filho.user_id = %s AND filho.pai_id IS NOT NULL"
+                "    AND filho.deleted_at IS NULL AND p.deleted_at IS NULL"
+            ) + (
+                ","
+                " gmd_filhos AS ("
+                "  SELECT animal_id,"
+                "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
+                "      THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini)"
+                "      ELSE NULL END AS gmd"
+                "  FROM pu WHERE data_ini <> data_fim"
+                " )"
+                " SELECT t.id AS touro_id, t.brinco AS touro_brinco, t.raca AS touro_raca,"
+                "  COUNT(f.id) AS qtd_filhos,"
+                "  ROUND(AVG(gf.gmd), 3) AS gmd_medio_filhos"
+                " FROM animais f"
+                " JOIN animais t ON t.id = f.pai_id AND t.deleted_at IS NULL"
+                " LEFT JOIN gmd_filhos gf ON gf.animal_id = f.id AND gf.gmd IS NOT NULL"
+                " WHERE f.user_id = %s AND f.pai_id IS NOT NULL AND f.deleted_at IS NULL"
+                " GROUP BY t.id, t.brinco, t.raca"
+                " ORDER BY gmd_medio_filhos DESC"
+            ),
             (user_id, user_id)
         )
         return cursor.fetchall()
