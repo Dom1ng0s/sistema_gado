@@ -94,12 +94,11 @@ def financeiro():
     total_custos = 0
     total_paginas = 1
     try:
-        all_custos = financeiro_repository.get_custos_por_ano(current_user.id, ano_sel)
-        total_custos = len(all_custos)
+        total_custos = financeiro_repository.count_custos_por_ano(current_user.id, ano_sel)
         total_paginas = max(1, math.ceil(total_custos / PER_PAGE))
         page = max(1, min(page, total_paginas))
-        inicio = (page - 1) * PER_PAGE
-        custos = all_custos[inicio:inicio + PER_PAGE]
+        offset = (page - 1) * PER_PAGE
+        custos = financeiro_repository.get_custos_por_ano_paginado(current_user.id, ano_sel, PER_PAGE, offset)
     except Exception as e:
         logger.error(f"Erro ao carregar custos: {e}", exc_info=True)
 

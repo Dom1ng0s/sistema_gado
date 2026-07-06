@@ -43,6 +43,22 @@ def get_custos_por_tipo_trimestre(user_id, data_limite):
         return cursor.fetchall()
 
 
+_CUSTOS_POR_ANO_UNION = (
+    "(SELECT data_custo, categoria, tipo_custo, "
+    " SUM(valor) AS valor_total, COUNT(*) AS n, MAX(descricao) AS descricao "
+    " FROM custos_operacionais "
+    " WHERE user_id = %s AND data_custo >= %s AND data_custo <= %s AND deleted_at IS NULL "
+    " GROUP BY data_custo, categoria, tipo_custo) "
+    "UNION ALL "
+    "(SELECT m.data_aplicacao, 'Sanitário', m.nome_medicamento, "
+    " SUM(m.custo), COUNT(*), MAX(m.observacoes) "
+    " FROM medicacoes m JOIN animais a ON m.animal_id = a.id "
+    " WHERE a.user_id = %s AND m.data_aplicacao >= %s AND m.data_aplicacao <= %s "
+    "   AND m.deleted_at IS NULL AND a.deleted_at IS NULL "
+    " GROUP BY m.data_aplicacao, m.nome_medicamento)"
+)
+
+
 def get_custos_por_ano(user_id, ano):
     """Custos operacionais + medicações agrupados por (data, categoria, tipo).
 
@@ -53,22 +69,34 @@ def get_custos_por_ano(user_id, ano):
     fim    = date(ano, 12, 31)
     with get_db_cursor() as cursor:
         cursor.execute(
-            "(SELECT data_custo, categoria, tipo_custo, "
-            " SUM(valor) AS valor_total, COUNT(*) AS n, MAX(descricao) AS descricao "
-            " FROM custos_operacionais "
-            " WHERE user_id = %s AND data_custo >= %s AND data_custo <= %s AND deleted_at IS NULL "
-            " GROUP BY data_custo, categoria, tipo_custo) "
-            "UNION ALL "
-            "(SELECT m.data_aplicacao, 'Sanitário', m.nome_medicamento, "
-            " SUM(m.custo), COUNT(*), MAX(m.observacoes) "
-            " FROM medicacoes m JOIN animais a ON m.animal_id = a.id "
-            " WHERE a.user_id = %s AND m.data_aplicacao >= %s AND m.data_aplicacao <= %s "
-            "   AND m.deleted_at IS NULL AND a.deleted_at IS NULL "
-            " GROUP BY m.data_aplicacao, m.nome_medicamento) "
-            "ORDER BY 1 DESC",
+            _CUSTOS_POR_ANO_UNION + " ORDER BY 1 DESC",
             (user_id, inicio, fim, user_id, inicio, fim)
         )
         return cursor.fetchall()
+
+
+def get_custos_por_ano_paginado(user_id, ano, limit, offset):
+    """Mesma consulta de get_custos_por_ano, paginada via SQL LIMIT/OFFSET."""
+    inicio = date(ano, 1, 1)
+    fim    = date(ano, 12, 31)
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            _CUSTOS_POR_ANO_UNION + " ORDER BY 1 DESC LIMIT %s OFFSET %s",
+            (user_id, inicio, fim, user_id, inicio, fim, limit, offset)
+        )
+        return cursor.fetchall()
+
+
+def count_custos_por_ano(user_id, ano):
+    """Total de linhas (já agrupadas por data/categoria/tipo) que get_custos_por_ano_paginado pagina."""
+    inicio = date(ano, 1, 1)
+    fim    = date(ano, 12, 31)
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT COUNT(*) FROM (" + _CUSTOS_POR_ANO_UNION + ") t",
+            (user_id, inicio, fim, user_id, inicio, fim)
+        )
+        return cursor.fetchone()[0]
 
 
 def insert_custo_operacional(user_id, categoria, tipo_custo, valor, data_custo, descricao):
