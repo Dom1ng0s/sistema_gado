@@ -209,6 +209,20 @@ def test_cadastrar_animal_cria_pesagem_inicial(um):
     assert float(pesagens[0][3]) == pytest.approx(280.0)  # índice 3 = peso
 
 
+def test_get_gmd_medio_rebanho_filtra_por_sexo(um):
+    """sexo='M'/'F' restringe o cálculo ao grupo — segregação de matrizes do GMD geral."""
+    macho = _make_animal(um, sexo="M")
+    femea = _make_animal(um, sexo="F")
+    _make_pesagem(macho, peso=400.0)  # +100kg
+    _make_pesagem(femea, peso=310.0)  # +10kg
+
+    gmd_m = animal_repository.get_gmd_medio_rebanho(um, sexo="M")
+    gmd_f = animal_repository.get_gmd_medio_rebanho(um, sexo="F")
+    gmd_todos = animal_repository.get_gmd_medio_rebanho(um)
+
+    assert gmd_f < gmd_todos < gmd_m
+
+
 def test_count_animais_status_todos_igual_ativos_mais_vendidos(um):
     aid_v = _make_animal(um)
     _make_animal(um)  # ativo

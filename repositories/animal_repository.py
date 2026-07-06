@@ -6,7 +6,7 @@ from datetime import datetime
 # Dados externos (usuário, banco, request) nunca devem ser interpolados em `conds` —
 # sempre vão para `params` e chegam ao banco via placeholder %s.
 # Adicionar um valor externo diretamente em `conds` introduz risco de SQL injection.
-def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, raca=None, origem=None, alias=''):
+def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, raca=None, origem=None, sexo=None, alias=''):
     conds = [f"{alias}user_id = %s"]
     params = [user_id]
     if na_lixeira:
@@ -23,6 +23,9 @@ def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, 
     if raca:
         conds.append(f"{alias}raca = %s")
         params.append(raca)
+    if sexo in ('M', 'F'):
+        conds.append(f"{alias}sexo = %s")
+        params.append(sexo)
     if origem == 'fazenda':
         conds.append(f"{alias}data_compra IS NULL AND {alias}data_nascimento IS NOT NULL")
     return "WHERE " + " AND ".join(conds), params
@@ -30,15 +33,15 @@ def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, 
 
 # ---- LISTAGENS E CONTAGENS ----
 
-def count_animais(user_id, termo=None, status='todos', raca=None, origem=None):
-    where, params = _build_animais_where(user_id, termo, status, raca=raca, origem=origem)
+def count_animais(user_id, termo=None, status='todos', raca=None, origem=None, sexo=None):
+    where, params = _build_animais_where(user_id, termo, status, raca=raca, origem=origem, sexo=sexo)
     with get_db_cursor() as cursor:
         cursor.execute("SELECT COUNT(*) FROM animais " + where, tuple(params))
         return cursor.fetchone()[0]
 
 
-def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', raca=None, origem=None):
-    where, params = _build_animais_where(user_id, termo, status, raca=raca, origem=origem, alias='a.')
+def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', raca=None, origem=None, sexo=None):
+    where, params = _build_animais_where(user_id, termo, status, raca=raca, origem=origem, sexo=sexo, alias='a.')
     sql = (
         "SELECT a.id, a.brinco, a.sexo, a.raca, a.data_compra, a.preco_compra, "
         "       a.data_venda, a.preco_venda "
@@ -290,12 +293,16 @@ def get_gmd_by_animal(animal_id):
         return cursor.fetchone()
 
 
-def get_gmd_medio_rebanho(user_id):
+def get_gmd_medio_rebanho(user_id, sexo=None):
     """AVG do GMD calculado diretamente sobre pesagens — sem materializar v_gmd_analitico.
 
     Filtra user_id no JOIN com animais antes das window functions, evitando
     que o MySQL varra pesagens de todos os usuários antes de restringir ao tenant.
+    `sexo` ('M'/'F') restringe o rebanho considerado no cálculo — usado para
+    segregar matrizes (GMD baixo por natureza) do restante do plantel.
     """
+    sexo_cond = " AND a.sexo = %s" if sexo in ('M', 'F') else ""
+    params = [user_id] + ([sexo] if sexo in ('M', 'F') else [])
     with get_db_cursor() as cursor:
         cursor.execute(
             "WITH po AS ("
@@ -306,6 +313,7 @@ def get_gmd_medio_rebanho(user_id):
             "  JOIN animais a ON a.id = p.animal_id"
             "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
             "    AND p.deleted_at IS NULL"
+            f"    {sexo_cond}"
             "),"
             " pu AS ("
             "  SELECT animal_id,"
@@ -318,7 +326,7 @@ def get_gmd_medio_rebanho(user_id):
             " SELECT AVG(CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
             "   THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini) END)"
             " FROM pu WHERE data_ini <> data_fim",
-            (user_id,)
+            tuple(params)
         )
         res = cursor.fetchone()
         return float(res[0]) if res and res[0] else 0.0
@@ -364,8 +372,15 @@ def get_animais_com_gmd(user_id):
         return cursor.fetchall()
 
 
-def get_animais_abaixo_gmd_medio(user_id):
-    """Animais ativos com GMD abaixo de (média - 2σ): outliers estatísticos do rebanho."""
+def get_animais_abaixo_gmd_medio(user_id, sexo=None):
+    """Animais ativos com GMD abaixo de (média - 2σ): outliers estatísticos do rebanho.
+
+    `sexo` ('M'/'F') restringe o grupo usado para calcular média/desvio — mesma
+    segregação de get_gmd_medio_rebanho, necessária para o dashboard não misturar
+    as duas fontes de gmd_medio conforme existam ou não outliers.
+    """
+    sexo_cond = " AND a.sexo = %s" if sexo in ('M', 'F') else ""
+    params = [user_id] + ([sexo] if sexo in ('M', 'F') else [])
     with get_db_cursor() as cursor:
         cursor.execute(
             "WITH po AS ("
@@ -376,6 +391,7 @@ def get_animais_abaixo_gmd_medio(user_id):
             "  JOIN animais a ON a.id = p.animal_id"
             "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
             "    AND p.deleted_at IS NULL"
+            f"    {sexo_cond}"
             "),"
             " pu AS ("
             "  SELECT animal_id,"
@@ -404,7 +420,7 @@ def get_animais_abaixo_gmd_medio(user_id):
             " JOIN animais a ON a.id = s.animal_id"
             " WHERE s.gmd < (s.gmd_media - 2 * s.gmd_std)"
             " ORDER BY s.gmd ASC",
-            (user_id,)
+            tuple(params)
         )
         return cursor.fetchall()
 

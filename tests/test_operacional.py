@@ -247,6 +247,25 @@ def test_painel_filtro_raca(client):
     assert 'FILT-A01' not in text
 
 
+def test_painel_filtro_sexo(client):
+    """Filtro por sexo retorna somente animais do sexo solicitado."""
+    login(client)
+    client.post('/cadastro', data={
+        'brinco': 'FILT-SM01', 'sexo': 'M',
+        'data_compra': '2024-03-01', 'peso_compra': '300', 'valor_arroba': '240',
+    })
+    client.post('/cadastro', data={
+        'brinco': 'FILT-SF01', 'sexo': 'F',
+        'data_compra': '2024-03-01', 'peso_compra': '300', 'valor_arroba': '240',
+    }, follow_redirects=True)
+
+    response = client.get('/painel?sexo=F')
+    assert response.status_code == 200
+    text = response.data.decode('utf-8')
+    assert 'FILT-SF01' in text
+    assert 'FILT-SM01' not in text
+
+
 def test_export_csv_inclui_raca(client):
     """CSV exportado inclui coluna Raça quando animal tem raça definida."""
     login(client)

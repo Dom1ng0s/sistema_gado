@@ -169,7 +169,8 @@ def graficos_peso():
 @login_required
 @limiter.limit("60 per minute")
 def graficos_gmd():
-    gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id)
+    sexo = request.args.get('sexo') if request.args.get('sexo') in ('M', 'F') else None
+    gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id, sexo=sexo)
     return _with_cache(jsonify({'gmd_medio': gmd_medio}))
 
 
@@ -197,17 +198,18 @@ def gmd_lote():
 def dashboard_summary():
     """Retorna sexo + GMD + alertas em uma única request — 2 queries vs 3 antes."""
     uid = current_user.id
+    sexo_filtro = request.args.get('sexo') if request.args.get('sexo') in ('M', 'F') else None
     rows_sexo = animal_repository.get_contagem_por_sexo(uid)
     sexo = {s: q for s, q in rows_sexo}
 
-    rows_alertas = animal_repository.get_animais_abaixo_gmd_medio(uid)
+    rows_alertas = animal_repository.get_animais_abaixo_gmd_medio(uid, sexo=sexo_filtro)
 
     if rows_alertas:
         gmd_medio  = round(float(rows_alertas[0][3]), 3)
         limite     = round(float(rows_alertas[0][5]), 3)
         alertas    = [{'id': r[0], 'brinco': r[1], 'gmd_atual': round(float(r[2]), 3)} for r in rows_alertas]
     else:
-        gmd_medio = round(animal_repository.get_gmd_medio_rebanho(uid), 3)
+        gmd_medio = round(animal_repository.get_gmd_medio_rebanho(uid, sexo=sexo_filtro), 3)
         limite    = None
         alertas   = []
 

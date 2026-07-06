@@ -21,6 +21,9 @@ def painel():
     animais, termo, status = [], request.args.get('busca', ''), request.args.get('status', 'todos')
     raca = request.args.get('raca', '') or None
     origem = request.args.get('origem', '') or None
+    sexo = request.args.get('sexo', '') or None
+    if sexo not in ('M', 'F'):
+        sexo = None
     pg = request.args.get('page', 1, type=int)
     limit, offset = 20, (pg - 1) * 20
     total_pg = 1
@@ -30,9 +33,9 @@ def painel():
     alertas_sanitarios = []
     try:
         racas_disponiveis = animal_repository.get_racas_distintas(current_user.id)
-        total = animal_repository.count_animais(current_user.id, termo, status, raca=raca, origem=origem)
+        total = animal_repository.count_animais(current_user.id, termo, status, raca=raca, origem=origem, sexo=sexo)
         animais = animal_repository.get_animais_paginados(current_user.id, limit, offset, termo, status,
-                                                           raca=raca, origem=origem)
+                                                           raca=raca, origem=origem, sexo=sexo)
         if total > 0:
             total_pg = math.ceil(total / limit)
         alertas_sanitarios = sanitario_repository.get_vencendo_em_dias(current_user.id, dias=7)
@@ -42,7 +45,7 @@ def painel():
     return render_template("index.html", lista_animais=animais, pagina_atual=pg,
                            total_paginas=total_pg, total_animais=total, busca=termo, status=status,
                            raca_filtro=raca or '', racas_disponiveis=racas_disponiveis,
-                           origem_filtro=origem or '',
+                           origem_filtro=origem or '', sexo_filtro=sexo or '',
                            alertas_sanitarios=alertas_sanitarios)
 
 @operacional_bp.route('/lixeira')

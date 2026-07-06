@@ -95,7 +95,7 @@
 
   <div class="metric-card">
     <span class="label skeleton skeleton-label" aria-hidden="true" id="sk-lbl-gmd"></span>
-    <span class="label" id="lbl-gmd" style="display:none;" title="Ganho Médio Diário — quanto o animal engordou por dia, em kg">GMD médio</span>
+    <span class="label" id="lbl-gmd" style="display:none;" title="Ganho Médio Diário — quanto o animal engordou por dia, em kg">GMD médio{% if sexo_filtro == 'M' %} (Machos){% elif sexo_filtro == 'F' %} (Fêmeas){% endif %}</span>
     <div aria-live="polite" aria-atomic="true">
       <span class="skeleton skeleton-value" aria-hidden="true" id="sk-gmd"></span>
       <span class="metric-value" id="val-gmd" style="display:none;"></span>
@@ -154,6 +154,7 @@
   <input type="hidden" name="status" value="{{ status }}">
   <input type="hidden" name="raca" value="{{ raca_filtro }}">
   <input type="hidden" name="origem" value="{{ origem_filtro }}">
+  <input type="hidden" name="sexo" value="{{ sexo_filtro }}">
   <input type="text" name="busca" class="form-input"
          placeholder="Buscar pelo número do brinco..."
          value="{{ busca }}"
@@ -162,7 +163,7 @@
     <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     Buscar
   </button>
-  {% if busca or status != 'todos' or raca_filtro or origem_filtro %}
+  {% if busca or status != 'todos' or raca_filtro or origem_filtro or sexo_filtro %}
     <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">Limpar</a>
   {% endif %}
 </form>
@@ -171,26 +172,40 @@
 <div class="flex flex-wrap items-center gap-2" style="margin-bottom:var(--space-5);">
   <span class="label" id="status-tabs-label">Exibir:</span>
   <div role="tablist" aria-labelledby="status-tabs-label" style="display:contents;">
-    <a href="{{ url_for('operacional.painel', status='todos',    busca=busca, raca=raca_filtro, origem=origem_filtro) }}"
+    <a href="{{ url_for('operacional.painel', status='todos',    busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
        role="tab" aria-selected="{{ 'true' if status == 'todos'    else 'false' }}"
        class="btn btn-sm btn-secondary{% if status == 'todos'    %} is-active{% endif %}">Todos</a>
-    <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca, raca=raca_filtro, origem=origem_filtro) }}"
+    <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
        role="tab" aria-selected="{{ 'true' if status == 'ativos'   else 'false' }}"
        class="btn btn-sm btn-secondary{% if status == 'ativos'   %} is-active{% endif %}">Ativos</a>
-    <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca, raca=raca_filtro, origem=origem_filtro) }}"
+    <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
        role="tab" aria-selected="{{ 'true' if status == 'vendidos' else 'false' }}"
        class="btn btn-sm btn-secondary{% if status == 'vendidos' %} is-active{% endif %}">Vendidos</a>
-    <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem='' if origem_filtro == 'fazenda' else 'fazenda') }}"
+    <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem='' if origem_filtro == 'fazenda' else 'fazenda', sexo=sexo_filtro) }}"
        role="tab" aria-selected="{{ 'true' if origem_filtro == 'fazenda' else 'false' }}"
        title="Animais nascidos na própria fazenda (sem data de compra)"
        class="btn btn-sm btn-secondary{% if origem_filtro == 'fazenda' %} is-active{% endif %}">Nascidos na Fazenda</a>
   </div>
+  <span class="label" style="margin-left:var(--space-4);" id="sexo-tabs-label">Sexo:</span>
+  <div role="tablist" aria-labelledby="sexo-tabs-label" style="display:contents;">
+    <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro) }}"
+       role="tab" aria-selected="{{ 'true' if not sexo_filtro else 'false' }}"
+       class="btn btn-sm btn-secondary{% if not sexo_filtro %} is-active{% endif %}">Todos</a>
+    <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro, sexo='M') }}"
+       role="tab" aria-selected="{{ 'true' if sexo_filtro == 'M' else 'false' }}"
+       title="Recalcula o GMD médio considerando só machos"
+       class="btn btn-sm btn-secondary{% if sexo_filtro == 'M' %} is-active{% endif %}">Machos</a>
+    <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro, sexo='F') }}"
+       role="tab" aria-selected="{{ 'true' if sexo_filtro == 'F' else 'false' }}"
+       title="Recalcula o GMD médio considerando só fêmeas"
+       class="btn btn-sm btn-secondary{% if sexo_filtro == 'F' %} is-active{% endif %}">Fêmeas</a>
+  </div>
   {% if racas_disponiveis | length > 1 %}
   <span class="label" style="margin-left:var(--space-4);">Raça:</span>
-  <a href="{{ url_for('operacional.painel', status=status, busca=busca, origem=origem_filtro) }}"
+  <a href="{{ url_for('operacional.painel', status=status, busca=busca, origem=origem_filtro, sexo=sexo_filtro) }}"
      class="btn btn-sm btn-secondary{% if not raca_filtro %} is-active{% endif %}">Todas</a>
   {% for r in racas_disponiveis %}
-  <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=r, origem=origem_filtro) }}"
+  <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=r, origem=origem_filtro, sexo=sexo_filtro) }}"
      class="btn btn-sm btn-secondary{% if raca_filtro == r %} is-active{% endif %}">{{ r }}</a>
   {% endfor %}
   {% endif %}
@@ -268,7 +283,7 @@
     {% endif %}
   </span>
 {{ m.paginacao('operacional.painel', pagina_atual, total_paginas,
-               busca=busca, status=status, raca=raca_filtro, origem=origem_filtro) }}
+               busca=busca, status=status, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}
 </div>
 
 <!-- ── Modal Cotações Brasil ───────────────────────────── -->
@@ -304,7 +319,7 @@ document.querySelectorAll('[role="tab"]').forEach(function(tab) {
 </script>
 <script>
 const API = {
-  summary: "{{ url_for('api.dashboard_summary') }}",
+  summary: "{{ url_for('api.dashboard_summary', sexo=sexo_filtro) }}",
   cotacao: "{{ url_for('api.cotacoes_regionais') }}",
   brasil:  "{{ url_for('api.cotacoes_brasil') }}",
   pdf:     "{{ url_for('api.relatorio_pdf') }}",
