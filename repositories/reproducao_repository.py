@@ -1,8 +1,9 @@
 from db_config import get_db_cursor
 from datetime import timedelta, date, datetime
+from repositories.animal_repository import _inserir_animal
 
 
-def insert_reproducao(user_id, vaca_id, touro_id, touro_externo, data_cobertura, data_parto, resultado):
+def _inserir_reproducao(cursor, user_id, vaca_id, touro_id, touro_externo, data_cobertura, data_parto, resultado):
     if isinstance(data_cobertura, str):
         data_cobertura_obj = datetime.strptime(data_cobertura, '%Y-%m-%d').date()
     else:
@@ -10,17 +11,44 @@ def insert_reproducao(user_id, vaca_id, touro_id, touro_externo, data_cobertura,
 
     data_parto_prevista = data_cobertura_obj + timedelta(days=285)
 
+    cursor.execute(
+        "INSERT INTO reproducao "
+        "(user_id, vaca_id, touro_id, touro_externo, data_cobertura, "
+        " data_parto, resultado, data_parto_prevista) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+        (user_id, vaca_id, touro_id or None, touro_externo or None,
+         data_cobertura, data_parto or None, resultado,
+         data_parto_prevista)
+    )
+    return cursor.lastrowid
+
+
+def insert_reproducao(user_id, vaca_id, touro_id, touro_externo, data_cobertura, data_parto, resultado):
     with get_db_cursor() as cursor:
-        cursor.execute(
-            "INSERT INTO reproducao "
-            "(user_id, vaca_id, touro_id, touro_externo, data_cobertura, "
-            " data_parto, resultado, data_parto_prevista) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-            (user_id, vaca_id, touro_id or None, touro_externo or None,
-             data_cobertura, data_parto or None, resultado,
-             data_parto_prevista)
-        )
-        return cursor.lastrowid
+        return _inserir_reproducao(cursor, user_id, vaca_id, touro_id, touro_externo,
+                                   data_cobertura, data_parto, resultado)
+
+
+def registrar_parto_com_bezerro(user_id, vaca_id, touro_id, touro_externo, data_cobertura,
+                                data_parto, resultado, brinco_bezerro=None, sexo_bezerro=None):
+    """Registra o evento reprodutivo e, se houver parto vivo com dados do bezerro,
+    cadastra o bezerro na MESMA transação — insert_reproducao() e cadastrar_animal()
+    rodavam em transações separadas, então uma falha no segundo insert deixava um
+    registro de parto vivo sem o animal correspondente.
+
+    Retorna (reproducao_id, bezerro_id ou None).
+    """
+    with get_db_cursor() as cursor:
+        reproducao_id = _inserir_reproducao(cursor, user_id, vaca_id, touro_id, touro_externo,
+                                            data_cobertura, data_parto, resultado)
+        bezerro_id = None
+        if resultado == 'vivo' and data_parto and brinco_bezerro and sexo_bezerro:
+            bezerro_id = _inserir_animal(
+                cursor, brinco_bezerro, sexo_bezerro,
+                data_compra=None, preco_compra=None, peso_entrada=None,
+                user_id=user_id, data_nascimento=data_parto, mae_id=vaca_id,
+            )
+        return reproducao_id, bezerro_id
 
 
 def get_reproducao_by_vaca(vaca_id, user_id):

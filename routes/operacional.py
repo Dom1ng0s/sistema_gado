@@ -564,7 +564,10 @@ def registrar_reproducao():
             flash(e, 'error')
         return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))
 
-    reproducao_repository.insert_reproducao(
+    criar_bezerro = (resultado == 'vivo' and data_parto and brinco_bezerro and sexo_bezerro
+                     and not animal_repository.check_brinco_exists(brinco_bezerro, current_user.id))
+
+    _, bezerro_id = reproducao_repository.registrar_parto_com_bezerro(
         current_user.id,
         id_animal,
         int(touro_id_raw) if touro_id_raw else None,
@@ -572,18 +575,13 @@ def registrar_reproducao():
         request.form.get('data_cobertura'),
         data_parto,
         resultado,
+        brinco_bezerro=brinco_bezerro if criar_bezerro else None,
+        sexo_bezerro=sexo_bezerro if criar_bezerro else None,
     )
 
     bezerro_msg = ''
     if resultado == 'vivo' and data_parto and brinco_bezerro and sexo_bezerro:
-        if not animal_repository.check_brinco_exists(brinco_bezerro, current_user.id):
-            bezerro_id = animal_repository.cadastrar_animal(
-                brinco_bezerro, sexo_bezerro,
-                data_compra=None, preco_compra=None, peso_entrada=None,
-                user_id=current_user.id,
-                data_nascimento=data_parto,
-                mae_id=id_animal,
-            )
+        if bezerro_id:
             bezerro_msg = f' Bezerro criado automaticamente: brinco {brinco_bezerro} (ID #{bezerro_id}).'
         else:
             bezerro_msg = f' Brinco {brinco_bezerro} já existia — bezerro não duplicado.'
