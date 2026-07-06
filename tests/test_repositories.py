@@ -355,6 +355,24 @@ def test_insert_e_get_custos_por_ano(um):
     assert any(row[2] == "Salário" for row in custos)  # índice 2 = tipo_custo
 
 
+def test_get_custos_por_ano_paginado_e_count(um):
+    ano = date.today().year
+    for i in range(3):
+        financeiro_repository.insert_custo_operacional(
+            um, "Fixo", f"Item{i}", 100.0, date.today().isoformat(), ""
+        )
+
+    total = financeiro_repository.count_custos_por_ano(um, ano)
+    assert total >= 3
+
+    pagina1 = financeiro_repository.get_custos_por_ano_paginado(um, ano, limit=2, offset=0)
+    pagina2 = financeiro_repository.get_custos_por_ano_paginado(um, ano, limit=2, offset=2)
+    assert len(pagina1) == 2
+    assert len(pagina1) + len(pagina2) <= total
+    # paginação não deve repetir linhas entre páginas
+    assert not (set(map(tuple, pagina1)) & set(map(tuple, pagina2)))
+
+
 def test_get_custos_por_tipo_trimestre_agrupa_e_filtra_data(um):
     dt_recente = (date.today() - timedelta(days=30)).isoformat()
     dt_antiga = (date.today() - timedelta(days=120)).isoformat()
