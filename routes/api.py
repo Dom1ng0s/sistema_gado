@@ -200,7 +200,7 @@ def dashboard_summary():
     uid = current_user.id
     sexo_filtro = request.args.get('sexo') if request.args.get('sexo') in ('M', 'F') else None
     origem_filtro = request.args.get('origem') if request.args.get('origem') == 'fazenda' else None
-    rows_sexo = animal_repository.get_contagem_por_sexo(uid)
+    rows_sexo = animal_repository.get_contagem_por_sexo(uid, origem=origem_filtro)
     sexo = {s: q for s, q in rows_sexo}
 
     rows_alertas = animal_repository.get_animais_abaixo_gmd_medio(uid, sexo=sexo_filtro, origem=origem_filtro)

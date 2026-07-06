@@ -601,11 +601,13 @@ def get_medicacoes_by_animal(animal_id):
 
 # ---- GRAFICOS ----
 
-def get_contagem_por_sexo(user_id):
+def get_contagem_por_sexo(user_id, origem=None):
+    origem_cond = _origem_cond(origem, alias='')
     with get_db_cursor() as cursor:
         cursor.execute(
             "SELECT sexo, COUNT(*) FROM animais "
             "WHERE user_id = %s AND data_venda IS NULL AND deleted_at IS NULL "
+            f"{origem_cond} "
             "GROUP BY sexo",
             (user_id,)
         )

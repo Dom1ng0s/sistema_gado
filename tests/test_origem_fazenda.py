@@ -160,6 +160,14 @@ def test_get_gmd_medio_rebanho_origem_fazenda_filtra(um):
     assert gmd_geral == pytest.approx(0.75)
 
 
+def test_get_contagem_por_sexo_origem_fazenda_filtra(um):
+    _make_animal_comprado(um)  # sexo M
+    _make_animal_nascido_fazenda(um)  # sexo F
+
+    contagem = dict(animal_repository.get_contagem_por_sexo(um, origem='fazenda'))
+    assert contagem == {'F': 1}
+
+
 # ── rota ─────────────────────────────────────────────────────────────────────
 
 def test_rota_painel_origem_fazenda(app):
@@ -173,5 +181,25 @@ def test_rota_painel_origem_fazenda(app):
             assert r.status_code == 200
             assert b"ROTANASC" in r.data
             assert b"ROTACOMP" not in r.data
+    finally:
+        _purge(uid)
+
+
+def test_dashboard_summary_origem_fazenda(app):
+    uid = _make_user()
+    comprado = _make_animal_comprado(uid)
+    nascido = _make_animal_nascido_fazenda(uid)
+    _add_pesagem(comprado, '2024-01-01', 200)
+    _add_pesagem(comprado, '2024-01-11', 210)  # gmd 1.0
+    _add_pesagem(nascido, '2024-02-01', 100)
+    _add_pesagem(nascido, '2024-02-11', 105)   # gmd 0.5
+    try:
+        with app.test_client() as client:
+            _login(client, uid)
+            r = client.get("/api/dashboard-summary?origem=fazenda")
+            assert r.status_code == 200
+            data = r.get_json()
+            assert data['sexo'] == {'F': 1}
+            assert data['gmd']['gmd_medio'] == pytest.approx(0.5)
     finally:
         _purge(uid)
