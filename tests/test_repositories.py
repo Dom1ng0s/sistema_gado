@@ -195,6 +195,20 @@ def test_get_animal_id_by_pesagem_usuario_errado_retorna_none(dois):
 # CORRECTNESS — animal_repository
 # ════════════════════════════════════════════════════════════════════════════
 
+def test_registrar_pesagens_lote_ignora_animal_soft_deletado(um):
+    """Issue #34 — a validação de propriedade do batch deve descartar animais
+    na lixeira, igual à versão de animal único."""
+    aid = _make_animal(um)
+    animal_repository.soft_delete_animal(aid, um)
+    n_antes = _count("SELECT COUNT(*) FROM pesagens WHERE animal_id = %s", (aid,))
+    inseridos, invalidos = animal_repository.registrar_pesagens_lote(
+        [(aid, 400.0)], um, "2024-06-01"
+    )
+    assert inseridos == 0
+    assert invalidos == [aid]
+    assert _count("SELECT COUNT(*) FROM pesagens WHERE animal_id = %s", (aid,)) == n_antes
+
+
 def test_check_brinco_exists_false_depois_true(um):
     brinco = f"BX{_n()}"
     assert animal_repository.check_brinco_exists(brinco, um) is False

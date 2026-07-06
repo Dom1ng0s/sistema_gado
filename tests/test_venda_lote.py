@@ -130,6 +130,17 @@ def test_registrar_venda_lote_ignora_animal_ja_vendido(um):
     assert invalidos == [a1]
 
 
+def test_registrar_venda_lote_conta_linhas_processadas_com_id_duplicado(um):
+    """Issue #38 — o mesmo id postado duas vezes deve contar como as linhas
+    efetivamente processadas (len(vendas_validas)), não os ids distintos."""
+    a1 = _make_animal(um, peso=400)
+    vendidos, invalidos = animal_repository.registrar_venda_lote(
+        [(a1, 450.0, 4200.0), (a1, 450.0, 4200.0)], um, '2024-06-01'
+    )
+    assert vendidos == 2
+    assert invalidos == []
+
+
 def test_get_animais_ativos_com_ultimo_peso(um):
     a1 = _make_animal(um, peso=400, data_pesagem='2024-01-01')
     conn = dbc.get_db_connection()

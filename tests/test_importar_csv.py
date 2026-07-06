@@ -73,6 +73,38 @@ def test_importar_csv_insere_linhas_validas_em_lote(app):
         _purge(uid)
 
 
+def test_importar_csv_grava_pesagem_inicial(app):
+    """Issue #31 — peso_kg do CSV vira pesagem de baseline (data_pesagem =
+    data_compra), senão o GMD nunca é calculável."""
+    uid = _make_user()
+    try:
+        with app.test_client() as client:
+            _login(client, uid)
+            brinco = f"CSVPES{_n()}"
+            csv_text = (
+                "brinco,sexo,data_compra,peso_kg,valor_arroba\n"
+                f"{brinco},M,2024-03-10,275,150\n"
+            )
+            r = _upload(client, csv_text)
+            assert r.status_code == 200
+
+            conn = dbc.get_db_connection()
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT p.peso, p.data_pesagem FROM pesagens p "
+                "JOIN animais a ON p.animal_id = a.id "
+                "WHERE a.user_id = %s AND a.brinco = %s",
+                (uid, brinco),
+            )
+            rows = cur.fetchall()
+            cur.close(); conn.close()
+            assert len(rows) == 1
+            assert float(rows[0][0]) == 275.0
+            assert str(rows[0][1]) == "2024-03-10"
+    finally:
+        _purge(uid)
+
+
 def test_importar_csv_brinco_duplicado_no_proprio_arquivo_reporta_conflito(app):
     """Duas linhas do mesmo arquivo com o mesmo brinco: o chunk inteiro falha no
     executemany (unique constraint), o fallback linha a linha insere a primeira

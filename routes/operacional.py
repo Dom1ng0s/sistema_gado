@@ -183,7 +183,10 @@ def vender(id_animal):
             dt = request.form['data_venda']
             peso = float(request.form['peso_venda'])
             val = float(request.form['valor_arroba'])
-            animal_repository.registrar_venda(id_animal, current_user.id, dt, preco_por_arroba(peso, val), peso)
+            ok = animal_repository.registrar_venda(id_animal, current_user.id, dt, preco_por_arroba(peso, val), peso)
+            if not ok:
+                return render_template('vender.html', id_animal=id_animal,
+                                       mensagem="Animal não encontrado."), 404
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro vender: {e}", exc_info=True)
@@ -262,11 +265,14 @@ def medicar(id_animal):
         if errors:
             return render_template('medicar.html', id_animal=id_animal, mensagem=errors[0]), 400
         try:
-            animal_repository.registrar_medicacao(
+            ok = animal_repository.registrar_medicacao(
                 id_animal, current_user.id,
                 request.form['data_aplicacao'], request.form['nome'],
                 request.form['custo'], request.form['obs']
             )
+            if not ok:
+                return render_template('medicar.html', id_animal=id_animal,
+                                       mensagem="Animal não encontrado."), 404
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro medicar: {e}", exc_info=True)
@@ -285,10 +291,13 @@ def nova_pesagem(id_animal):
         if errors:
             return render_template('nova_pesagem.html', id_animal=id_animal, mensagem=errors[0]), 400
         try:
-            animal_repository.registrar_pesagem(
+            ok = animal_repository.registrar_pesagem(
                 id_animal, current_user.id,
                 request.form['data_pesagem'], request.form['peso']
             )
+            if not ok:
+                return render_template('nova_pesagem.html', id_animal=id_animal,
+                                       mensagem="Animal não encontrado."), 404
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro pesar: {e}", exc_info=True)
@@ -725,7 +734,13 @@ def importar_csv():
 
                 brincos_existentes.add(brinco)
                 linhas_validas.append((i, brinco, sexo, raca, data_compra or None,
-                                        data_nasc or None, preco_compra))
+                                        data_nasc or None, preco_compra, peso))
+
+            # brincos efetivamente inseridos, com a data e o peso da pesagem de
+            # baseline (mesma transação): sem essa pesagem inicial o GMD nunca
+            # é calculável, mesmo após novas pesagens. data_pesagem usa
+            # data_compra ou, para nascidos na fazenda, data_nascimento.
+            inseridos_pesagem = []
 
             # Insere em chunks via executemany — muito mais rápido que 1 INSERT
             # por linha. Se um chunk falhar (ex.: duas linhas do próprio CSV com
@@ -739,11 +754,13 @@ def importar_csv():
                         "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
                         "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
                         [(brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.id)
-                         for _, brinco, sexo, raca, data_compra, data_nasc, preco_compra in chunk]
+                         for _, brinco, sexo, raca, data_compra, data_nasc, preco_compra, peso in chunk]
                     )
                     inseridos += len(chunk)
+                    inseridos_pesagem += [(brinco, data_compra or data_nasc, peso)
+                                          for _, brinco, sexo, raca, data_compra, data_nasc, preco_compra, peso in chunk]
                 except _mysql_errors.IntegrityError:
-                    for linha, brinco, sexo, raca, data_compra, data_nasc, preco_compra in chunk:
+                    for linha, brinco, sexo, raca, data_compra, data_nasc, preco_compra, peso in chunk:
                         try:
                             cursor.execute(
                                 "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
@@ -751,8 +768,27 @@ def importar_csv():
                                 (brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.id)
                             )
                             inseridos += 1
+                            inseridos_pesagem.append((brinco, data_compra or data_nasc, peso))
                         except _mysql_errors.IntegrityError:
                             erros.append({'linha': linha, 'msg': f"brinco '{brinco}' já existe (conflito)"})
+
+            # Reconsulta os ids recém-criados por brinco (executemany não dá
+            # lastrowid por linha) e grava as pesagens iniciais — mesmo padrão
+            # de cadastrar_lote.
+            if inseridos_pesagem:
+                brincos = [brinco for brinco, _, _ in inseridos_pesagem]
+                ph = ','.join(['%s'] * len(brincos))
+                cursor.execute(
+                    f"SELECT id, brinco FROM animais WHERE user_id = %s "
+                    f"AND deleted_at IS NULL AND brinco IN ({ph})",
+                    [current_user.id] + brincos
+                )
+                id_por_brinco = {brinco: aid for aid, brinco in cursor.fetchall()}
+                cursor.executemany(
+                    "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
+                    [(id_por_brinco[brinco], data_pesagem, peso)
+                     for brinco, data_pesagem, peso in inseridos_pesagem if brinco in id_por_brinco]
+                )
 
     except Exception as e:
         logger.error(f"Erro importação CSV: {e}", exc_info=True)
