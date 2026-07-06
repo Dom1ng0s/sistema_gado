@@ -85,7 +85,6 @@
         <th scope="col" style="text-align:right;">Receita (R$)</th>
         <th scope="col" style="text-align:right;">Custo sanitário (R$)</th>
         <th scope="col" style="text-align:right;">Margem bruta (R$)</th>
-        <th scope="col"></th>
       </tr>
     </thead>
     <tbody>
@@ -110,11 +109,6 @@
         <td style="text-align:right; font-weight:var(--weight-bold);
                    color:{% if l[9] >= 0 %}var(--color-primary){% else %}var(--color-danger){% endif %};">
           {% if l[9] >= 0 %}+{% endif %}{{ l[9] | brl }}
-        </td>
-        <td style="white-space:nowrap;">
-          <a href="{{ url_for('financeiro.detalhe_lote', lote_id=l[0]) }}"
-             class="btn btn-ghost btn-sm"
-             onclick="event.stopPropagation()">Detalhes →</a>
         </td>
       </tr>
       {% endfor %}

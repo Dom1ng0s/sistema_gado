@@ -58,8 +58,8 @@
             background: var(--color-primary-bg);
         }
 
-        .btn-submit { margin-top: 12px; }
-        .btn-submit:disabled { opacity: 0.5; }
+        #btnVerificar { margin-top: 12px; }
+        #btnVerificar:disabled { opacity: 0.5; }
 
         /* Footer com dois itens (link + reenviar), diferente do padrão centralizado de auth.css */
         .auth-footer {
@@ -69,13 +69,6 @@
         }
 
         .auth-stepper { margin-bottom: 20px; }
-
-        .btn-reenviar {
-            background:none; border:none; padding:0; cursor:pointer;
-            font-size:var(--text-sm); color:var(--color-ink-tertiary);
-            font-family:var(--font-body); text-decoration:none; transition:color 150ms;
-        }
-        .btn-reenviar:hover { color:var(--color-primary); }
 
         .flash { margin-bottom: 16px; }
     </style>
@@ -128,14 +121,14 @@
                 <input type="text" inputmode="numeric" maxlength="1" class="otp-digit">
             </div>
 
-            <button type="submit" class="btn-submit" id="btnVerificar" disabled>Verificar Código</button>
+            <button type="submit" class="btn btn-primary btn-block" id="btnVerificar" disabled>Verificar Código</button>
         </form>
 
         <div class="auth-footer">
             <a href="{{ url_for('auth.login') }}" class="auth-link">← Voltar ao login</a>
             <form method="POST" action="{{ url_for('auth.reenviar_codigo') }}" style="display:inline;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-reenviar">Reenviar código</button>
+                <button type="submit" class="btn btn-ghost btn-sm">Reenviar código</button>
             </form>
         </div>
     </div>
