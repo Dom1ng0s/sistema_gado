@@ -134,6 +134,44 @@ def test_multiplos_eventos_ordenados(um):
 
 # ── Isolamento multi-tenant ───────────────────────────────────────────────────
 
+def test_registrar_parto_com_bezerro_cria_ambos(um):
+    vaca_id = _make_animal(um, sexo="F")
+    brinco_bezerro = f"BEZ{_n()}"
+    rep_id, bezerro_id = reproducao_repository.registrar_parto_com_bezerro(
+        um, vaca_id, None, None, "2024-01-01", "2024-10-15", "vivo",
+        brinco_bezerro=brinco_bezerro, sexo_bezerro="F",
+    )
+    assert rep_id is not None
+    assert bezerro_id is not None
+
+    bezerro = animal_repository.get_animal_by_id(bezerro_id, um)
+    assert bezerro is not None
+    assert bezerro[1] == brinco_bezerro  # índice 1 = brinco
+
+    eventos = reproducao_repository.get_reproducao_by_vaca(vaca_id, um)
+    assert any(e[0] == rep_id for e in eventos)
+
+
+def test_registrar_parto_com_bezerro_brinco_duplicado_faz_rollback_da_reproducao(um):
+    """Cenário de falha do #18: se o insert do bezerro falha (brinco duplicado),
+    o insert da reprodução tem que ser desfeito junto — não pode sobrar um
+    registro de 'parto vivo' sem o bezerro correspondente."""
+    vaca_id = _make_animal(um, sexo="F")
+    brinco_dup = f"DUP{_n()}"
+    _make_animal(um, sexo="M", brinco=brinco_dup)  # já ocupa o brinco
+
+    eventos_antes = reproducao_repository.get_reproducao_by_vaca(vaca_id, um)
+
+    with pytest.raises(Exception):
+        reproducao_repository.registrar_parto_com_bezerro(
+            um, vaca_id, None, None, "2024-01-01", "2024-10-15", "vivo",
+            brinco_bezerro=brinco_dup, sexo_bezerro="F",
+        )
+
+    eventos_depois = reproducao_repository.get_reproducao_by_vaca(vaca_id, um)
+    assert len(eventos_depois) == len(eventos_antes)  # nada foi commitado
+
+
 def test_isolamento_reproducao_por_user(dois):
     uid_a, uid_b = dois
     vaca_a = _make_animal(uid_a, sexo="F")
@@ -259,6 +297,27 @@ def test_registrar_reproducao_post(app):
         assert r.status_code == 200
         eventos = reproducao_repository.get_reproducao_by_vaca(vaca_id, uid)
         assert len(eventos) == 1
+        _purge(uid)
+
+
+def test_registrar_reproducao_post_parto_vivo_cria_bezerro(app):
+    with app.test_client() as client:
+        uid = _make_user()
+        vaca_id = _make_animal(uid, sexo="F")
+        brinco_bezerro = f"BEZHTTP{_n()}"
+        _login(client, uid)
+        r = client.post("/reproducao", data={
+            "vaca_id": vaca_id,
+            "touro_id": "",
+            "touro_externo": "Touro Externo Teste",
+            "data_cobertura": "2024-01-01",
+            "data_parto": "2024-10-15",
+            "resultado": "vivo",
+            "brinco_bezerro": brinco_bezerro,
+            "sexo_bezerro": "F",
+        }, follow_redirects=True)
+        assert r.status_code == 200
+        assert animal_repository.check_brinco_exists(brinco_bezerro, uid) is True
         _purge(uid)
 
 

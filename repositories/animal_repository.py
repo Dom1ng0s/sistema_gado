@@ -634,6 +634,32 @@ def get_pesos_atuais_rebanho(user_id):
 
 # ---- ESCRITAS ATÔMICAS ----
 
+def _inserir_animal(cursor, brinco, sexo, data_compra, preco_compra, peso_entrada, user_id,
+                    data_nascimento=None, mae_id=None, pai_id=None, raca=None):
+    """Insere animal e pesagem inicial (quando disponível) usando um cursor já aberto.
+
+    Extraído de cadastrar_animal para ser reaproveitado por transações que
+    precisam inserir o animal junto com outra escrita (ex.: bezerro do parto
+    em reproducao_repository.registrar_parto_com_bezerro), sem abrir uma
+    segunda transação/commit separado.
+    """
+    cursor.execute(
+        "INSERT INTO animais "
+        "(brinco, sexo, raca, data_compra, data_nascimento, preco_compra, user_id, mae_id, pai_id) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        (brinco, sexo, raca or None, data_compra or None, data_nascimento or None,
+         preco_compra or None, user_id, mae_id or None, pai_id or None)
+    )
+    animal_id = cursor.lastrowid
+    data_ref = data_compra or data_nascimento
+    if peso_entrada and data_ref:
+        cursor.execute(
+            "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
+            (animal_id, data_ref, peso_entrada)
+        )
+    return animal_id
+
+
 def cadastrar_animal(brinco, sexo, data_compra, preco_compra, peso_entrada, user_id,
                      data_nascimento=None, mae_id=None, pai_id=None, raca=None):
     """Insere animal e pesagem inicial (quando disponível) na mesma transação. Retorna animal_id.
@@ -642,21 +668,8 @@ def cadastrar_animal(brinco, sexo, data_compra, preco_compra, peso_entrada, user
     Pesagem inicial só é inserida se peso_entrada for fornecido (> 0).
     """
     with get_db_cursor() as cursor:
-        cursor.execute(
-            "INSERT INTO animais "
-            "(brinco, sexo, raca, data_compra, data_nascimento, preco_compra, user_id, mae_id, pai_id) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
-            (brinco, sexo, raca or None, data_compra or None, data_nascimento or None,
-             preco_compra or None, user_id, mae_id or None, pai_id or None)
-        )
-        animal_id = cursor.lastrowid
-        data_ref = data_compra or data_nascimento
-        if peso_entrada and data_ref:
-            cursor.execute(
-                "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
-                (animal_id, data_ref, peso_entrada)
-            )
-        return animal_id
+        return _inserir_animal(cursor, brinco, sexo, data_compra, preco_compra, peso_entrada,
+                               user_id, data_nascimento, mae_id, pai_id, raca)
 
 
 def registrar_venda(animal_id, user_id, data_venda, preco_venda, peso_venda):
