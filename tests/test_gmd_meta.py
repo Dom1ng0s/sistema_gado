@@ -129,6 +129,23 @@ def test_rota_configuracoes_post_salva_gmd_meta(app):
         _purge(uid)
 
 
+def test_rota_detalhes_reflete_gmd_meta_customizada(app):
+    """GMD 0.9 é 'Ótimo' com meta padrão (0.8) mas 'Baixo' com meta customizada (1.5)."""
+    uid = _make_user()
+    try:
+        configuracao_repository.upsert_configuracao(uid, "Fazenda", "Cidade/UF", 10, gmd_meta=1.500)
+        animal_id = _make_animal_com_gmd(uid, gmd_alvo=0.9, brinco='DET-GM')
+
+        with app.test_client() as client:
+            _login(client, uid)
+            r = client.get(f"/animal/{animal_id}")
+            assert r.status_code == 200
+            assert b"Ganho abaixo do ideal" in r.data
+            assert b"Desempenho elevado" not in r.data
+    finally:
+        _purge(uid)
+
+
 def test_rota_progenie_exibe_gmd_meta_customizada(app):
     uid = _make_user()
     try:

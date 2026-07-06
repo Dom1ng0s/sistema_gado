@@ -248,7 +248,7 @@ function renderizarTudo() {
   document.getElementById('txtGMD').textContent = gmd > 0 ? gmd.toFixed(3) : '—';
 
   const deltaGMD = document.getElementById('deltaGMD');
-  if (gmd >= 0.8) {
+  if (gmd >= {{ gmd_meta }}) {
     deltaGMD.textContent = '↑ Desempenho elevado';
     deltaGMD.className = 'metric-delta up';
   } else if (gmd > 0) {

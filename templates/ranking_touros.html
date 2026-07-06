@@ -80,7 +80,7 @@
           <td class="td-primary">{{ r[1] }}</td>
           <td style="text-align:center;">{{ r[3] }}</td>
           <td style="text-align:right; font-weight:var(--weight-semibold);
-                     color:{% if gmd_r >= 0.8 %}var(--color-primary){% elif gmd_r >= 0.6 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
+                     color:{% if gmd_r >= gmd_meta %}var(--color-primary){% elif gmd_r >= gmd_meta * 0.75 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
             {% if r[4] is not none %}{{ "%.3f"|format(r[4]) }} kg/dia{% else %}—{% endif %}
           </td>
           <td style="text-align:center;">
@@ -127,7 +127,7 @@ const nomes   = touros.map(t => t.brinco).reverse();
 const valores = touros.map(t => ({
   value: t.gmd,
   itemStyle: {
-    color: t.gmd >= 0.8 ? '#3B6D11' : t.gmd >= 0.6 ? '#EF9F27' : '#E24B4A'
+    color: t.gmd >= {{ gmd_meta }} ? '#3B6D11' : t.gmd >= {{ gmd_meta }} * 0.75 ? '#EF9F27' : '#E24B4A'
   }
 })).reverse();
 

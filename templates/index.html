@@ -416,7 +416,7 @@ async function carregarMetricas() {
     document.getElementById('unit-gmd').style.display = '';
     const deltaGmd = document.getElementById('delta-gmd');
     deltaGmd.style.display = '';
-    if (gmd >= 0.8) {
+    if (gmd >= {{ gmd_meta }}) {
       deltaGmd.textContent = '↑ Desempenho elevado';
       deltaGmd.className = 'metric-delta up';
     } else if (gmd > 0) {
@@ -477,7 +477,7 @@ async function carregarGMDTabela() {
         pesoTd.innerHTML = peso ? parseFloat(peso).toFixed(1) + ' kg' : dash;
         if (gmd !== null && gmd !== undefined) {
           const g   = parseFloat(gmd);
-          const cor = g >= 0.8 ? 'var(--color-success)' : g >= 0.4 ? 'var(--color-accent-dark)' : 'var(--color-danger)';
+          const cor = g >= {{ gmd_meta }} ? 'var(--color-success)' : g >= {{ gmd_meta }} * 0.75 ? 'var(--color-accent-dark)' : 'var(--color-danger)';
           gmdTd.innerHTML = '<span style="color:' + cor + ';font-weight:var(--weight-semibold);">' + g.toFixed(3) + '</span>';
         } else {
           gmdTd.innerHTML = dash;

@@ -118,7 +118,7 @@
         <td style="text-align:right;">
           {% if a[8] > 0 %}
             <span style="font-weight:var(--weight-semibold);
-              color:{% if a[8] >= 0.6 %}var(--color-primary){% elif a[8] >= 0.4 %}var(--color-accent){% else %}var(--color-danger){% endif %};">
+              color:{% if a[8] >= gmd_meta %}var(--color-primary){% elif a[8] >= gmd_meta * 0.75 %}var(--color-accent){% else %}var(--color-danger){% endif %};">
               {{ '%.3f'|format(a[8]) }}
             </span>
           {% else %}—{% endif %}

@@ -42,7 +42,7 @@
         <td style="text-align:right; font-weight:var(--weight-semibold);">
           {% if r[4] is not none %}
             {% set gmd = r[4] | float %}
-            <span style="color:{% if gmd >= 0.8 %}var(--color-primary){% elif gmd >= 0.6 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
+            <span style="color:{% if gmd >= gmd_meta %}var(--color-primary){% elif gmd >= gmd_meta * 0.75 %}var(--color-accent-dark){% else %}var(--color-danger){% endif %};">
               {{ "%.3f"|format(r[4]) }}
             </span>
           {% else %}—{% endif %}
@@ -83,7 +83,7 @@ const nomes  = ranking.map(r => r.modulo).reverse();
 const valores = ranking.map(r => ({
   value: r.gmd,
   itemStyle: {
-    color: r.gmd >= 0.8 ? '#3B6D11' : r.gmd >= 0.6 ? '#EF9F27' : '#E24B4A'
+    color: r.gmd >= {{ gmd_meta }} ? '#3B6D11' : r.gmd >= {{ gmd_meta }} * 0.75 ? '#EF9F27' : '#E24B4A'
   }
 })).reverse();
 
