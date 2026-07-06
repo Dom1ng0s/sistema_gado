@@ -421,18 +421,17 @@ def get_animais_abaixo_gmd_medio(user_id, sexo=None, origem=None):
             "      ELSE NULL END AS gmd"
             "  FROM pu WHERE data_ini <> data_fim"
             " ),"
-            " stats AS ("
-            "  SELECT animal_id, gmd,"
-            "    AVG(gmd) OVER () AS gmd_media,"
-            "    STDDEV_POP(gmd) OVER () AS gmd_std"
+            " agg AS ("
+            "  SELECT AVG(gmd) AS gmd_media, STDDEV_POP(gmd) AS gmd_std"
             "  FROM gmd_calc WHERE gmd IS NOT NULL"
             " )"
-            " SELECT s.animal_id, a.brinco, s.gmd, s.gmd_media,"
-            "  s.gmd_std, (s.gmd_media - 2 * s.gmd_std) AS limite_inferior"
-            " FROM stats s"
-            " JOIN animais a ON a.id = s.animal_id"
-            " WHERE s.gmd < (s.gmd_media - 2 * s.gmd_std)"
-            " ORDER BY s.gmd ASC",
+            " SELECT gc.animal_id, a.brinco, gc.gmd, agg.gmd_media,"
+            "  agg.gmd_std, (agg.gmd_media - 2 * agg.gmd_std) AS limite_inferior"
+            " FROM gmd_calc gc"
+            " CROSS JOIN agg"
+            " JOIN animais a ON a.id = gc.animal_id"
+            " WHERE gc.gmd IS NOT NULL AND gc.gmd < (agg.gmd_media - 2 * agg.gmd_std)"
+            " ORDER BY gc.gmd ASC",
             tuple(params)
         )
         return cursor.fetchall()
