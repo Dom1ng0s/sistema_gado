@@ -220,7 +220,8 @@ def custos_operacionais():
     except Exception as e:
         logger.error(f"Erro ao carregar categorias: {e}", exc_info=True)
 
-    return render_template('custos_operacionais.html', mensagem=msg, fixos=cats_fixo, variaveis=cats_variavel)
+    return render_template('custos_operacionais.html', mensagem=msg, fixos=cats_fixo, variaveis=cats_variavel,
+                           form_data=request.form)
 
 
 @financeiro_bp.route('/financeiro/agendamentos', methods=['GET', 'POST'])
@@ -262,7 +263,8 @@ def agendamentos():
     except Exception as e:
         logger.error(f"Erro lista agendamentos: {e}", exc_info=True)
 
-    return render_template('agendamentos.html', agendamentos=contas, mensagem=msg, hoje=hoje, editando=editando)
+    return render_template('agendamentos.html', agendamentos=contas, mensagem=msg, hoje=hoje, editando=editando,
+                           form_data=request.form)
 
 
 @financeiro_bp.route('/financeiro/lotes')

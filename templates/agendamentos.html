@@ -49,8 +49,8 @@
     </div>
 
     <div style="display:flex; gap:var(--space-3);">
-      <button type="submit" class="btn btn-primary">Salvar Alterações</button>
       <a href="{{ url_for('financeiro.agendamentos') }}" class="btn btn-ghost">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Salvar Alterações</button>
     </div>
   </form>
   {% else %}
@@ -62,20 +62,23 @@
       <label for="descricao">Descrição</label>
       <input id="descricao" type="text" name="descricao" class="form-input"
              required maxlength="500"
-             placeholder="Ex: Parcela do trator, Ração...">
+             placeholder="Ex: Parcela do trator, Ração..."
+             value="{{ form_data.get('descricao', '') if form_data else '' }}">
     </div>
 
     <div class="grid-2col">
       <div class="form-group">
         <label for="valor">Valor (R$)</label>
         <input id="valor" type="number" name="valor" step="0.01" min="0.01"
-               class="form-input" required placeholder="0.00">
+               class="form-input" required placeholder="0.00"
+               value="{{ form_data.get('valor', '') if form_data else '' }}">
         <span class="form-hint">Ex: 1500.00 (separador: ponto)</span>
       </div>
       <div class="form-group">
         <label for="vencimento">Vencimento</label>
         <input id="vencimento" type="date" name="vencimento"
-               class="form-input" required>
+               class="form-input" required
+               value="{{ form_data.get('vencimento', '') if form_data else '' }}">
       </div>
     </div>
 

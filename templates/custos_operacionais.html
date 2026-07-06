@@ -25,39 +25,44 @@
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4);">
       <div class="form-group">
         <label for="data">Data do Custo</label>
-        <input id="data" type="date" name="data" class="form-input" required>
+        <input id="data" type="date" name="data" class="form-input" required
+               value="{{ form_data.get('data', '') if form_data else '' }}">
       </div>
 
       <div class="form-group">
         <label for="valor">Valor Total (R$)</label>
         <input id="valor" type="number" step="0.01" name="valor"
-               class="form-input" required placeholder="0.00">
+               class="form-input" required placeholder="0.00"
+               value="{{ form_data.get('valor', '') if form_data else '' }}">
         <span class="form-hint">Ex: 1500.00 (separador: ponto)</span>
       </div>
     </div>
 
     <div class="form-group">
       <label for="categoria">Categoria</label>
+      {% set _categoria_val = form_data.get('categoria', '') if form_data else '' %}
       <select id="categoria" name="categoria" class="form-input" onchange="toggleTipo()">
-        <option value="Fixo">Custo Fixo (Mensal)</option>
-        <option value="Variavel">Custo Variável (Por Uso)</option>
+        <option value="Fixo" {% if _categoria_val == 'Fixo' %}selected{% endif %}>Custo Fixo (Mensal)</option>
+        <option value="Variavel" {% if _categoria_val == 'Variavel' %}selected{% endif %}>Custo Variável (Por Uso)</option>
       </select>
     </div>
 
-    <div class="form-group" id="div_fixo">
+    <div class="form-group" id="div_fixo" {% if _categoria_val == 'Variavel' %}style="display:none;"{% endif %}>
       <label for="tipo_fixo">Tipo de Custo Fixo</label>
+      {% set _tipo_fixo_val = form_data.get('tipo_fixo', '') if form_data else '' %}
       <select id="tipo_fixo" name="tipo_fixo" class="form-input">
         {% for item in fixos %}
-          <option value="{{ item }}">{{ item }}</option>
+          <option value="{{ item }}" {% if _tipo_fixo_val == item %}selected{% endif %}>{{ item }}</option>
         {% endfor %}
       </select>
     </div>
 
-    <div class="form-group" id="div_variavel" style="display:none;">
+    <div class="form-group" id="div_variavel" {% if _categoria_val != 'Variavel' %}style="display:none;"{% endif %}>
       <label for="tipo_variavel">Tipo de Custo Variável</label>
+      {% set _tipo_variavel_val = form_data.get('tipo_variavel', '') if form_data else '' %}
       <select id="tipo_variavel" name="tipo_variavel" class="form-input">
         {% for item in variaveis %}
-          <option value="{{ item }}">{{ item }}</option>
+          <option value="{{ item }}" {% if _tipo_variavel_val == item %}selected{% endif %}>{{ item }}</option>
         {% endfor %}
       </select>
     </div>
@@ -65,12 +70,13 @@
     <div class="form-group">
       <label for="descricao">Descrição Opcional</label>
       <input id="descricao" type="text" name="descricao" class="form-input"
-             placeholder="Ex: Compra de 5 sacos de sal">
+             placeholder="Ex: Compra de 5 sacos de sal"
+             value="{{ form_data.get('descricao', '') if form_data else '' }}">
     </div>
 
     <div style="display:flex; gap:var(--space-3);">
-      <button type="submit" class="btn btn-primary">Registrar Custo</button>
       <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-ghost">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Registrar Custo</button>
     </div>
   </form>
 </div>
