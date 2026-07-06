@@ -1,8 +1,20 @@
 import pytest
 
+import db_config as dbc
+
 # Helper para logar antes de cada teste
 def login(client):
     return client.post('/login', data={'username': 'testuser', 'password': '123'}, follow_redirects=True)
+
+
+def _fetch_one(sql, params=()):
+    conn = dbc.get_db_connection()
+    cur = conn.cursor()
+    cur.execute(sql, params)
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    return row
 
 def test_cadastro_animal(client):
     """Testa se é possível cadastrar um animal corretamente."""
@@ -55,10 +67,16 @@ def test_venda_animal(client):
         'brinco': 'VENDIDO-01', 'sexo': 'M', 'data_compra': '2024-02-01',
         'peso_compra': '500', 'valor_arroba': '300'
     })
-    
-    # 2. Vende o animal (ID 3, pois é o terceiro animal criado na sessão de teste)
-    # TEST-01 (ID 1), DUPLICADO (ID 2), VENDIDO-01 (ID 3)
-    response = client.post('/vender/3', data={ 
+
+    # 2. Descobre o ID do animal recém-criado (o banco de teste é compartilhado
+    # entre todo o módulo pytest, então o ID não é previsível/hardcodável)
+    row = _fetch_one(
+        "SELECT id FROM animais WHERE brinco='VENDIDO-01' AND deleted_at IS NULL"
+    )
+    assert row is not None
+    animal_id = row[0]
+
+    response = client.post(f'/vender/{animal_id}', data={
         'data_venda': '2024-05-01',
         'peso_venda': '550',
         'valor_arroba': '310'
@@ -220,7 +238,7 @@ def test_painel_filtro_raca(client):
     client.post('/cadastro', data={
         'brinco': 'FILT-A01', 'sexo': 'M', 'raca': 'Angus',
         'data_compra': '2024-03-01', 'peso_compra': '300', 'valor_arroba': '240',
-    })
+    }, follow_redirects=True)  # consome a flash de sucesso antes de checar o painel
 
     response = client.get('/painel?raca=Nelore')
     assert response.status_code == 200

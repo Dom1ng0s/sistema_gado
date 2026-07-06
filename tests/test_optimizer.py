@@ -118,7 +118,7 @@ class TestBatchInserts:
         aids = [_make_animal(uid)[0] for _ in range(5)]
 
         animal_repository.insert_medicacao_lote(
-            aids, "2024-06-01", "Ivermectina", 45.00, "Dose preventiva"
+            aids, "2024-06-01", "Ivermectina", 45.00, "Dose preventiva", uid
         )
 
         for aid in aids:
@@ -130,13 +130,14 @@ class TestBatchInserts:
         uid = _make_user()
         aid, _ = _make_animal(uid)
 
-        animal_repository.insert_medicacao_lote([aid], "2024-07-01", "Vermífugo", 30.0, "")
+        animal_repository.insert_medicacao_lote([aid], "2024-07-01", "Vermífugo", 30.0, "", uid)
 
         assert _count_medicacoes(aid) == 1
 
     def test_insert_medicacao_lote_vazio_nao_explode(self, app):
         """Lista vazia não deve lançar exceção."""
-        animal_repository.insert_medicacao_lote([], "2024-07-01", "Teste", 10.0, "")
+        uid = _make_user()
+        animal_repository.insert_medicacao_lote([], "2024-07-01", "Teste", 10.0, "", uid)
 
     def test_registrar_pesagens_lote_insere_todos_os_pares_validos(self, app):
         uid = _make_user()

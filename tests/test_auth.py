@@ -5,7 +5,7 @@ def test_login_page_loads(client):
     """Verifica se a página de login carrega (GET)."""
     response = client.get('/login')
     assert response.status_code == 200
-    assert b"Acesso ao Rebanho" in response.data
+    assert b"Bem-vindo de volta" in response.data
 
 def test_login_sucesso(client):
     """Verifica login com credenciais corretas."""
@@ -35,5 +35,5 @@ def test_acesso_protegido(client):
     
     response = client.get('/painel', follow_redirects=True)
     # Deve redirecionar para login
-    assert b"Acesso ao Rebanho" in response.data
+    assert b"Bem-vindo de volta" in response.data
     assert b"Meu Rebanho" not in response.data

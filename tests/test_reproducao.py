@@ -349,14 +349,19 @@ def test_rota_diagnostico_post(app):
 
 
 def test_pagina_reproducao_mostra_data_prevista(app):
-    """Página de reprodução exibe data_parto_prevista calculada."""
+    """Página de reprodução exibe data_parto_prevista calculada quando DG é positivo.
+
+    A data prevista só é exibida com diagnóstico positivo (ver animal_reproducao.html) —
+    sem DG, o parto ainda pode não ocorrer, então a UI não mostra uma previsão.
+    """
     from datetime import date, timedelta
     with app.test_client() as client:
         uid = _make_user()
         vaca_id = _make_animal(uid, sexo="F")
-        reproducao_repository.insert_reproducao(
+        rep_id = reproducao_repository.insert_reproducao(
             uid, vaca_id, None, "T", "2026-06-01", None, "aborto"
         )
+        reproducao_repository.update_diagnostico(rep_id, uid, "positivo", "2026-07-01")
         _login(client, uid)
         r = client.get(f"/animais/{vaca_id}/reproducao")
         assert r.status_code == 200
