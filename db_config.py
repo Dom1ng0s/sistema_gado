@@ -25,7 +25,7 @@ connection_pool = None
 
 try:
     connection_pool = mysql.connector.pooling.MySQLConnectionPool(
-        pool_name="gado_pool", pool_size=5, **db_settings
+        pool_name="gado_pool", pool_size=int(os.getenv('DB_POOL_SIZE', 5)), **db_settings
     )
     logger.info(" Modo Rápido (Pool) ativado!")
 except Error as e:
