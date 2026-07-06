@@ -234,6 +234,9 @@ def criar_schema(cursor):
         ("idx_animais_lote",        "CREATE INDEX idx_animais_lote ON animais (lote_id, deleted_at)"),
         # inclui deleted_at para cobrir v_fluxo_caixa após condition pushdown do MySQL 8.0.22+
         ("idx_custos_user_del_data", "CREATE INDEX idx_custos_user_del_data ON custos_operacionais (user_id, deleted_at, data_custo)"),
+        # animais.pai_id/mae_id sem índice — cobre full scan em queries de pedigree/reprodução
+        ("idx_animais_pai",          "CREATE INDEX idx_animais_pai ON animais (pai_id)"),
+        ("idx_animais_mae",          "CREATE INDEX idx_animais_mae ON animais (mae_id)"),
     ]
 
     for nome_idx, sql in indices_sql:
