@@ -199,17 +199,18 @@ def dashboard_summary():
     """Retorna sexo + GMD + alertas em uma única request — 2 queries vs 3 antes."""
     uid = current_user.id
     sexo_filtro = request.args.get('sexo') if request.args.get('sexo') in ('M', 'F') else None
+    origem_filtro = request.args.get('origem') if request.args.get('origem') == 'fazenda' else None
     rows_sexo = animal_repository.get_contagem_por_sexo(uid)
     sexo = {s: q for s, q in rows_sexo}
 
-    rows_alertas = animal_repository.get_animais_abaixo_gmd_medio(uid, sexo=sexo_filtro)
+    rows_alertas = animal_repository.get_animais_abaixo_gmd_medio(uid, sexo=sexo_filtro, origem=origem_filtro)
 
     if rows_alertas:
         gmd_medio  = round(float(rows_alertas[0][3]), 3)
         limite     = round(float(rows_alertas[0][5]), 3)
         alertas    = [{'id': r[0], 'brinco': r[1], 'gmd_atual': round(float(r[2]), 3)} for r in rows_alertas]
     else:
-        gmd_medio = round(animal_repository.get_gmd_medio_rebanho(uid, sexo=sexo_filtro), 3)
+        gmd_medio = round(animal_repository.get_gmd_medio_rebanho(uid, sexo=sexo_filtro, origem=origem_filtro), 3)
         limite    = None
         alertas   = []
 

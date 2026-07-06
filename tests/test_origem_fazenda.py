@@ -63,6 +63,16 @@ def _make_animal_nascido_fazenda(user_id, brinco=None, vendido=False):
     return aid
 
 
+def _add_pesagem(animal_id, data, peso):
+    conn = dbc.get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
+        (animal_id, data, peso),
+    )
+    conn.commit(); cur.close(); conn.close()
+
+
 def _purge(user_id):
     conn = dbc.get_db_connection()
     cur = conn.cursor()
@@ -133,6 +143,21 @@ def test_origem_sem_filtro_retorna_todos(um):
     animais = animal_repository.get_animais_paginados(um, 20, 0)
     ids = {a[0] for a in animais}
     assert {comprado, nascido}.issubset(ids)
+
+
+def test_get_gmd_medio_rebanho_origem_fazenda_filtra(um):
+    comprado = _make_animal_comprado(um)
+    nascido = _make_animal_nascido_fazenda(um)
+    _add_pesagem(comprado, '2024-01-01', 200)
+    _add_pesagem(comprado, '2024-01-11', 210)  # gmd 1.0
+    _add_pesagem(nascido, '2024-02-01', 100)
+    _add_pesagem(nascido, '2024-02-11', 105)   # gmd 0.5
+
+    gmd_fazenda = animal_repository.get_gmd_medio_rebanho(um, origem='fazenda')
+    gmd_geral = animal_repository.get_gmd_medio_rebanho(um)
+
+    assert gmd_fazenda == pytest.approx(0.5)
+    assert gmd_geral == pytest.approx(0.75)
 
 
 # ── rota ─────────────────────────────────────────────────────────────────────

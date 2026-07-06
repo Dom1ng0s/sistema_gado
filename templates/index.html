@@ -319,7 +319,7 @@ document.querySelectorAll('[role="tab"]').forEach(function(tab) {
 </script>
 <script>
 const API = {
-  summary: "{{ url_for('api.dashboard_summary', sexo=sexo_filtro) }}",
+  summary: "{{ url_for('api.dashboard_summary', sexo=sexo_filtro, origem=origem_filtro) }}",
   cotacao: "{{ url_for('api.cotacoes_regionais') }}",
   brasil:  "{{ url_for('api.cotacoes_brasil') }}",
   pdf:     "{{ url_for('api.relatorio_pdf') }}",

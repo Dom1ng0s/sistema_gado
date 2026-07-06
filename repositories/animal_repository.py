@@ -31,6 +31,14 @@ def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, 
     return "WHERE " + " AND ".join(conds), params
 
 
+def _origem_cond(origem, alias='a.'):
+    """Mesma condição de 'nascido na fazenda' usada em _build_animais_where, para
+    as CTEs de GMD que montam o JOIN com animais manualmente."""
+    if origem == 'fazenda':
+        return f" AND {alias}data_compra IS NULL AND {alias}data_nascimento IS NOT NULL"
+    return ""
+
+
 # ---- LISTAGENS E CONTAGENS ----
 
 def count_animais(user_id, termo=None, status='todos', raca=None, origem=None, sexo=None):
@@ -293,15 +301,18 @@ def get_gmd_by_animal(animal_id):
         return cursor.fetchone()
 
 
-def get_gmd_medio_rebanho(user_id, sexo=None):
+def get_gmd_medio_rebanho(user_id, sexo=None, origem=None):
     """AVG do GMD calculado diretamente sobre pesagens — sem materializar v_gmd_analitico.
 
     Filtra user_id no JOIN com animais antes das window functions, evitando
     que o MySQL varra pesagens de todos os usuários antes de restringir ao tenant.
     `sexo` ('M'/'F') restringe o rebanho considerado no cálculo — usado para
     segregar matrizes (GMD baixo por natureza) do restante do plantel.
+    `origem='fazenda'` restringe aos animais nascidos na própria fazenda,
+    mesmo filtro de origem aplicado à listagem via _build_animais_where.
     """
     sexo_cond = " AND a.sexo = %s" if sexo in ('M', 'F') else ""
+    origem_cond = _origem_cond(origem)
     params = [user_id] + ([sexo] if sexo in ('M', 'F') else [])
     with get_db_cursor() as cursor:
         cursor.execute(
@@ -313,7 +324,7 @@ def get_gmd_medio_rebanho(user_id, sexo=None):
             "  JOIN animais a ON a.id = p.animal_id"
             "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
             "    AND p.deleted_at IS NULL"
-            f"    {sexo_cond}"
+            f"    {sexo_cond}{origem_cond}"
             "),"
             " pu AS ("
             "  SELECT animal_id,"
@@ -372,14 +383,16 @@ def get_animais_com_gmd(user_id):
         return cursor.fetchall()
 
 
-def get_animais_abaixo_gmd_medio(user_id, sexo=None):
+def get_animais_abaixo_gmd_medio(user_id, sexo=None, origem=None):
     """Animais ativos com GMD abaixo de (média - 2σ): outliers estatísticos do rebanho.
 
     `sexo` ('M'/'F') restringe o grupo usado para calcular média/desvio — mesma
     segregação de get_gmd_medio_rebanho, necessária para o dashboard não misturar
     as duas fontes de gmd_medio conforme existam ou não outliers.
+    `origem='fazenda'` aplica o mesmo filtro de origem de get_gmd_medio_rebanho.
     """
     sexo_cond = " AND a.sexo = %s" if sexo in ('M', 'F') else ""
+    origem_cond = _origem_cond(origem)
     params = [user_id] + ([sexo] if sexo in ('M', 'F') else [])
     with get_db_cursor() as cursor:
         cursor.execute(
@@ -391,7 +404,7 @@ def get_animais_abaixo_gmd_medio(user_id, sexo=None):
             "  JOIN animais a ON a.id = p.animal_id"
             "    AND a.user_id = %s AND a.deleted_at IS NULL AND a.data_venda IS NULL"
             "    AND p.deleted_at IS NULL"
-            f"    {sexo_cond}"
+            f"    {sexo_cond}{origem_cond}"
             "),"
             " pu AS ("
             "  SELECT animal_id,"
