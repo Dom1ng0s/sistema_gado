@@ -45,9 +45,17 @@
        class="nav-link{% if request.endpoint and request.endpoint.startswith('operacional') %} active{% endif %}">
       Rebanho
     </a>
+    <a href="{{ url_for('operacional.ranking_touros') }}"
+       class="nav-link{% if request.endpoint == 'operacional.ranking_touros' %} active{% endif %}">
+      Ranking de Touros
+    </a>
     <a href="{{ url_for('financeiro.financeiro') }}"
        class="nav-link{% if request.endpoint and request.endpoint.startswith('financeiro') %} active{% endif %}">
       Financeiro
+    </a>
+    <a href="{{ url_for('financeiro.resultado_lotes') }}"
+       class="nav-link{% if request.endpoint in ('financeiro.resultado_lotes', 'financeiro.detalhe_lote') %} active{% endif %}">
+      Financeiro/Lotes
     </a>
     <a href="{{ url_for('pastos.listar_pastos') }}"
        class="nav-link{% if request.endpoint and request.endpoint.startswith('pastos') %} active{% endif %}">
