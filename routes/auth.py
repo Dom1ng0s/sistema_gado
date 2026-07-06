@@ -275,16 +275,16 @@ def apagar_conta():
 
     user_id = current_user.id
     try:
-        logout_user()
-        session.clear()
         with get_db_cursor() as cursor:
             cursor.execute("DELETE FROM usuarios WHERE id = %s", (user_id,))
+        logout_user()
+        session.clear()
         flash('Conta excluída com sucesso.', 'success')
+        return redirect(url_for('auth.login'))
     except Exception as e:
         logger.error(f"Erro ao apagar conta user_id={user_id}: {e}", exc_info=True)
         flash('Erro ao excluir a conta. Tente novamente.', 'error')
-
-    return redirect(url_for('auth.login'))
+        return redirect(url_for('configuracoes.settings'))
 
 
 def _mascara_email(email: str) -> str:
