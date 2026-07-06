@@ -3,8 +3,13 @@ from db_config import get_db_cursor
 
 # ---- PASTOS ----
 
-def get_pastos(user_id):
+def get_pastos(user_id, termo=None):
     """Lista pastos do usuário com contagem de módulos e alertas de lotação."""
+    where = "WHERE p.user_id = %s"
+    params = [user_id]
+    if termo:
+        where += " AND p.nome LIKE %s"
+        params.append(termo + "%")
     with get_db_cursor() as cursor:
         cursor.execute(
             "SELECT p.id, p.nome, p.area_hectares, p.forrageira, p.capacidade_ua, "
@@ -13,8 +18,8 @@ def get_pastos(user_id):
             "     WHERE va.pasto_id = p.id AND va.pct_lotacao > 100) AS superlotados, "
             "    (SELECT COUNT(*) FROM vw_ocupacao_atual va "
             "     WHERE va.pasto_id = p.id AND va.pct_lotacao BETWEEN 80 AND 100) AS em_alerta "
-            "FROM pastos p WHERE p.user_id = %s ORDER BY p.nome",
-            (user_id,)
+            "FROM pastos p " + where + " ORDER BY p.nome",
+            tuple(params)
         )
         return cursor.fetchall()
 

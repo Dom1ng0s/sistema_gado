@@ -34,10 +34,7 @@ def lista_estoque():
 
     busca = request.args.get('busca', '').strip()
     try:
-        produtos = estoque_repository.get_produtos(current_user.id)
-        if busca:
-            bl = busca.lower()
-            produtos = [p for p in produtos if bl in (p[2] or '').lower()]
+        produtos = estoque_repository.get_produtos(current_user.id, termo=busca or None)
     except Exception as e:
         logger.error(f"Erro ao listar estoque: {e}", exc_info=True)
         flash("Erro ao carregar estoque. Execute init_db.py para criar as views necessárias.", 'error')

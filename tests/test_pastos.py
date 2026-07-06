@@ -218,6 +218,14 @@ def test_modulo_encerrado_aparece_em_dias_descanso(um):
     assert any(row[0] == mid for row in descanso)
 
 
+def test_get_pastos_termo_filtra_por_nome(um):
+    pasto_repository.insert_pasto(um, "Norte", None, None, None)
+    pasto_repository.insert_pasto(um, "Sul", None, None, None)
+
+    resultado = pasto_repository.get_pastos(um, termo="Nor")
+    assert [p[1] for p in resultado] == ["Norte"]
+
+
 # ── rotas HTTP ────────────────────────────────────────────────────────────────
 
 def test_get_pastos_redireciona_sem_login(client):

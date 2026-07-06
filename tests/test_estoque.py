@@ -88,6 +88,14 @@ def test_get_produto_by_id(um):
     assert produto[4] == "vacina"
 
 
+def test_get_produtos_termo_filtra_por_nome(um):
+    estoque_repository.insert_produto(um, "Ivermectina 1%", "ml", "medicamento", 100.0)
+    estoque_repository.insert_produto(um, "Vacina aftosa", "dose", "vacina", 10.0)
+
+    resultado = estoque_repository.get_produtos(um, termo="Iver")
+    assert [p[2] for p in resultado] == ["Ivermectina 1%"]
+
+
 def test_produto_saldo_inicial_zero(um):
     pid = estoque_repository.insert_produto(um, "Sal mineral", "kg", "mineral", 50.0)
     produto = estoque_repository.get_produto_by_id(pid, um)

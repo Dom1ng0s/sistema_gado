@@ -7,13 +7,18 @@ _COLUNAS_SALDO_ESTOQUE = (
 )
 
 
-def get_produtos(user_id):
-    """Retorna todos os produtos do usuário com saldo atual (via vw_saldo_estoque)."""
+def get_produtos(user_id, termo=None):
+    """Retorna os produtos do usuário com saldo atual (via vw_saldo_estoque)."""
+    where = "WHERE user_id = %s"
+    params = [user_id]
+    if termo:
+        where += " AND nome LIKE %s"
+        params.append(termo + "%")
     with get_db_cursor() as cursor:
         cursor.execute(
             f"SELECT {_COLUNAS_SALDO_ESTOQUE} "
-            "FROM vw_saldo_estoque WHERE user_id = %s ORDER BY nome ASC",
-            (user_id,)
+            "FROM vw_saldo_estoque " + where + " ORDER BY nome ASC",
+            tuple(params)
         )
         return cursor.fetchall()
 

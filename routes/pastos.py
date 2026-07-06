@@ -14,10 +14,7 @@ logger = logging.getLogger(__name__)
 def listar_pastos():
     busca = request.args.get('busca', '').strip()
     try:
-        pastos = pasto_repository.get_pastos(current_user.id)
-        if busca:
-            bl = busca.lower()
-            pastos = [p for p in pastos if bl in (p[1] or '').lower()]
+        pastos = pasto_repository.get_pastos(current_user.id, termo=busca or None)
     except Exception as e:
         logger.error(f"Erro ao listar pastos: {e}", exc_info=True)
         flash("Erro ao carregar pastos. Execute init_db.py para criar as views necessárias.", 'error')
