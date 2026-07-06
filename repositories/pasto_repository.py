@@ -4,7 +4,12 @@ from db_config import get_db_cursor
 # ---- PASTOS ----
 
 def get_pastos(user_id, termo=None):
-    """Lista pastos do usuário com contagem de módulos e alertas de lotação."""
+    """Lista pastos do usuário com contagem de módulos e alertas de lotação.
+
+    Um único LEFT JOIN agregado em vez de 3 subqueries correlacionadas por
+    linha — vw_ocupacao_atual já é uma view com GROUP BY por módulo, então
+    reprocessá-la 2x por pasto era redundante.
+    """
     where = "WHERE p.user_id = %s"
     params = [user_id]
     if termo:
@@ -13,12 +18,15 @@ def get_pastos(user_id, termo=None):
     with get_db_cursor() as cursor:
         cursor.execute(
             "SELECT p.id, p.nome, p.area_hectares, p.forrageira, p.capacidade_ua, "
-            "    (SELECT COUNT(*) FROM modulos m WHERE m.pasto_id = p.id) AS qtd_modulos, "
-            "    (SELECT COUNT(*) FROM vw_ocupacao_atual va "
-            "     WHERE va.pasto_id = p.id AND va.pct_lotacao > 100) AS superlotados, "
-            "    (SELECT COUNT(*) FROM vw_ocupacao_atual va "
-            "     WHERE va.pasto_id = p.id AND va.pct_lotacao BETWEEN 80 AND 100) AS em_alerta "
-            "FROM pastos p " + where + " ORDER BY p.nome",
+            "    COUNT(DISTINCT m.id) AS qtd_modulos, "
+            "    COUNT(DISTINCT CASE WHEN va.pct_lotacao > 100 THEN va.modulo_id END) AS superlotados, "
+            "    COUNT(DISTINCT CASE WHEN va.pct_lotacao BETWEEN 80 AND 100 THEN va.modulo_id END) AS em_alerta "
+            "FROM pastos p "
+            "LEFT JOIN modulos m ON m.pasto_id = p.id "
+            "LEFT JOIN vw_ocupacao_atual va ON va.modulo_id = m.id "
+            + where +
+            " GROUP BY p.id, p.nome, p.area_hectares, p.forrageira, p.capacidade_ua "
+            "ORDER BY p.nome",
             tuple(params)
         )
         return cursor.fetchall()

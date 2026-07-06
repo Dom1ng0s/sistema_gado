@@ -226,6 +226,45 @@ def test_get_pastos_termo_filtra_por_nome(um):
     assert [p[1] for p in resultado] == ["Norte"]
 
 
+def test_get_pastos_agrega_modulos_e_alertas_lotacao(um):
+    aid = _make_animal(um)
+    pid = pasto_repository.insert_pasto(um, "P Agregado", None, None, None)
+    m_livre = pasto_repository.insert_modulo(pid, um, "M Livre", None, 5.0)
+    m_super = pasto_repository.insert_modulo(pid, um, "M Super", None, 0.5)
+    pasto_repository.iniciar_ocupacao(m_super, um, "2024-03-01", [aid])
+
+    pastos = pasto_repository.get_pastos(um)
+    row = next(p for p in pastos if p[0] == pid)
+    # id, nome, area_hectares, forrageira, capacidade_ua, qtd_modulos, superlotados, em_alerta
+    assert row[5] == 2       # qtd_modulos: livre + super, sem duplicar por ocupação
+    assert row[6] == 1       # superlotados: 1 animal / capacidade 0.5 UA = 200%
+    assert row[7] == 0       # em_alerta: nenhum módulo entre 80% e 100%
+
+
+def test_get_gmd_por_modulo_calcula_gmd_do_animal_ocupante(um):
+    conn = dbc.get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "
+        "VALUES (%s, 'M', '2024-01-01', 1000, %s)",
+        (f"PGMD{_n()}", um),
+    )
+    aid = cur.lastrowid
+    cur.execute("INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, '2024-01-01', 300)", (aid,))
+    cur.execute("INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, '2024-01-11', 310)", (aid,))
+    conn.commit(); cur.close(); conn.close()
+
+    pid = pasto_repository.insert_pasto(um, "P GMD", None, None, 5.0)
+    mid = pasto_repository.insert_modulo(pid, um, "M GMD", None, 5.0)
+    pasto_repository.iniciar_ocupacao(mid, um, "2024-01-01", [aid])
+
+    ranking = pasto_repository.get_gmd_por_modulo(um)
+    row = next(r for r in ranking if r[0] == mid)
+    # modulo_id, modulo_nome, pasto_id, qtd_animais, gmd_medio
+    assert row[3] == 1
+    assert float(row[4]) == pytest.approx(1.0)
+
+
 # ── rotas HTTP ────────────────────────────────────────────────────────────────
 
 def test_get_pastos_redireciona_sem_login(client):

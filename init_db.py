@@ -234,6 +234,9 @@ def criar_schema(cursor):
         ("idx_animais_lote",        "CREATE INDEX idx_animais_lote ON animais (lote_id, deleted_at)"),
         # inclui deleted_at para cobrir v_fluxo_caixa após condition pushdown do MySQL 8.0.22+
         ("idx_custos_user_del_data", "CREATE INDEX idx_custos_user_del_data ON custos_operacionais (user_id, deleted_at, data_custo)"),
+        # animais.pai_id/mae_id sem índice — cobre full scan em queries de pedigree/reprodução
+        ("idx_animais_pai",          "CREATE INDEX idx_animais_pai ON animais (pai_id)"),
+        ("idx_animais_mae",          "CREATE INDEX idx_animais_mae ON animais (mae_id)"),
     ]
 
     for nome_idx, sql in indices_sql:
@@ -481,40 +484,52 @@ def criar_schema(cursor):
     GROUP BY m.id, m.pasto_id, m.user_id, m.nome;
     """)
 
+    # GMD calculado inline (CTE filtrando pelos animais do módulo antes da window
+    # function), em vez de LEFT JOIN em v_gmd_analitico — essa view roda a window
+    # function sobre pesagens de todos os tenants antes de qualquer filtro, então
+    # o join materializava o GMD da plataforma inteira a cada chamada.
     cursor.execute("""
     CREATE OR REPLACE VIEW vw_gmd_por_modulo AS
+    WITH oa_rel AS (
+        SELECT o.modulo_id, m.nome AS modulo_nome, m.pasto_id, m.user_id, oa.animal_id
+        FROM ocupacoes o
+        JOIN ocupacao_animais oa ON oa.ocupacao_id = o.id
+        JOIN modulos m ON m.id = o.modulo_id
+    ),
+    po AS (
+        SELECT p.animal_id, p.data_pesagem, p.peso,
+            ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem ASC)  AS rn_asc,
+            ROW_NUMBER() OVER (PARTITION BY p.animal_id ORDER BY p.data_pesagem DESC) AS rn_desc
+        FROM pesagens p
+        JOIN oa_rel r ON r.animal_id = p.animal_id
+        WHERE p.deleted_at IS NULL
+    ),
+    pu AS (
+        SELECT animal_id,
+            MAX(CASE WHEN rn_asc  = 1 THEN data_pesagem END) AS data_ini,
+            MAX(CASE WHEN rn_asc  = 1 THEN peso END)         AS peso_ini,
+            MAX(CASE WHEN rn_desc = 1 THEN data_pesagem END) AS data_fim,
+            MAX(CASE WHEN rn_desc = 1 THEN peso END)         AS peso_fim
+        FROM po GROUP BY animal_id
+    ),
+    gmd_calc AS (
+        SELECT animal_id,
+            CASE WHEN DATEDIFF(data_fim, data_ini) > 0
+                THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini)
+                ELSE NULL END AS gmd
+        FROM pu WHERE data_ini <> data_fim
+    )
     SELECT
-        o.modulo_id,
-        m.nome AS modulo_nome,
-        m.pasto_id,
-        m.user_id,
-        COUNT(DISTINCT oa.animal_id) AS qtd_animais,
+        r.modulo_id, r.modulo_nome, r.pasto_id, r.user_id,
+        COUNT(DISTINCT r.animal_id) AS qtd_animais,
         ROUND(AVG(g.gmd), 3) AS gmd_medio
-    FROM ocupacoes o
-    JOIN ocupacao_animais oa ON oa.ocupacao_id = o.id
-    JOIN modulos m ON m.id = o.modulo_id
-    LEFT JOIN v_gmd_analitico g ON g.animal_id = oa.animal_id
-    GROUP BY o.modulo_id, m.nome, m.pasto_id, m.user_id;
+    FROM oa_rel r
+    LEFT JOIN gmd_calc g ON g.animal_id = r.animal_id
+    GROUP BY r.modulo_id, r.modulo_nome, r.pasto_id, r.user_id;
     """)
 
-    # 2.1c Views de Hereditariedade
-    print(" Criando Views de Hereditariedade...")
-
-    cursor.execute("""
-    CREATE OR REPLACE VIEW vw_gmd_por_touro AS
-    SELECT
-        pai.id AS touro_id,
-        pai.brinco AS touro_brinco,
-        pai.raca AS touro_raca,
-        pai.user_id,
-        COUNT(DISTINCT filho.id) AS qtd_filhos,
-        ROUND(AVG(g.gmd), 3) AS gmd_medio_filhos
-    FROM animais pai
-    JOIN animais filho ON filho.pai_id = pai.id AND filho.deleted_at IS NULL
-    LEFT JOIN v_gmd_analitico g ON g.animal_id = filho.id
-    WHERE pai.deleted_at IS NULL
-    GROUP BY pai.id, pai.brinco, pai.raca, pai.user_id;
-    """)
+    # vw_gmd_por_touro removida — sem call site em routes/repositories, view morta.
+    cursor.execute("DROP VIEW IF EXISTS vw_gmd_por_touro;")
 
     cursor.execute("""
     CREATE OR REPLACE VIEW vw_historico_vaca AS
