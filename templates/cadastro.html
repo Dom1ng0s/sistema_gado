@@ -28,10 +28,15 @@
   <form action="{{ url_for('operacional.cadastro') }}" method="POST" class="form-container">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+    {% set _raca_val = form_data.get('raca', '') if form_data else '' %}
+    {% set _sexo_val = form_data.get('sexo', '') if form_data else '' %}
+    {% set _origem_val = form_data.get('origem', 'comprado') if form_data else 'comprado' %}
+
     <div class="form-group">
       <label for="brinco">Número do Brinco</label>
       <input id="brinco" type="text" name="brinco" class="form-input"
-             required autocomplete="off" placeholder="Ex: A-001">
+             required autocomplete="off" placeholder="Ex: A-001"
+             value="{{ form_data.get('brinco', '') if form_data else '' }}">
     </div>
 
     <!-- Raça -->
@@ -39,23 +44,24 @@
       <label for="raca">Raça <span style="color:var(--color-ink-tertiary); font-weight:normal;">(opcional)</span></label>
       <select id="raca" name="raca" class="form-select" onchange="toggleRacaOutra(this)">
         <option value="">— selecione ou deixe em branco —</option>
-        <option value="Nelore">Nelore</option>
-        <option value="Angus">Angus</option>
-        <option value="Brahman">Brahman</option>
-        <option value="Girolando">Girolando</option>
-        <option value="Senepol">Senepol</option>
-        <option value="Brangus">Brangus</option>
-        <option value="Simmental">Simmental</option>
-        <option value="Charolês">Charolês</option>
-        <option value="Hereford">Hereford</option>
-        <option value="Tabapuã">Tabapuã</option>
-        <option value="__outra__">Outra…</option>
+        <option value="Nelore"{% if _raca_val == 'Nelore' %} selected{% endif %}>Nelore</option>
+        <option value="Angus"{% if _raca_val == 'Angus' %} selected{% endif %}>Angus</option>
+        <option value="Brahman"{% if _raca_val == 'Brahman' %} selected{% endif %}>Brahman</option>
+        <option value="Girolando"{% if _raca_val == 'Girolando' %} selected{% endif %}>Girolando</option>
+        <option value="Senepol"{% if _raca_val == 'Senepol' %} selected{% endif %}>Senepol</option>
+        <option value="Brangus"{% if _raca_val == 'Brangus' %} selected{% endif %}>Brangus</option>
+        <option value="Simmental"{% if _raca_val == 'Simmental' %} selected{% endif %}>Simmental</option>
+        <option value="Charolês"{% if _raca_val == 'Charolês' %} selected{% endif %}>Charolês</option>
+        <option value="Hereford"{% if _raca_val == 'Hereford' %} selected{% endif %}>Hereford</option>
+        <option value="Tabapuã"{% if _raca_val == 'Tabapuã' %} selected{% endif %}>Tabapuã</option>
+        <option value="__outra__"{% if _raca_val == '__outra__' %} selected{% endif %}>Outra…</option>
       </select>
     </div>
-    <div class="form-group" id="bloco-raca-outra" style="display:none;">
+    <div class="form-group" id="bloco-raca-outra" style="display:{% if _raca_val == '__outra__' %}block{% else %}none{% endif %};">
       <label for="raca_outra">Especifique a raça</label>
       <input id="raca_outra" type="text" name="raca_outra" class="form-input"
-             maxlength="100" placeholder="Ex: Canchim, F1, Cruzado...">
+             maxlength="100" placeholder="Ex: Canchim, F1, Cruzado..."
+             value="{{ form_data.get('raca_outra', '') if form_data else '' }}">
     </div>
 
     <!-- Origem do animal -->
@@ -63,12 +69,14 @@
       <p class="label" style="margin-bottom:var(--space-2);">Origem do animal</p>
       <div style="display:flex; gap:var(--space-4);">
         <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer; font-size:var(--text-sm);">
-          <input type="radio" name="origem" value="comprado" id="origem-comprado" checked
+          <input type="radio" name="origem" value="comprado" id="origem-comprado"
+                 {% if _origem_val != 'nascido' %}checked{% endif %}
                  style="accent-color:var(--color-primary);">
           Comprado
         </label>
         <label style="display:flex; align-items:center; gap:var(--space-2); cursor:pointer; font-size:var(--text-sm);">
           <input type="radio" name="origem" value="nascido" id="origem-nascido"
+                 {% if _origem_val == 'nascido' %}checked{% endif %}
                  style="accent-color:var(--color-primary);">
           Nascido na fazenda
         </label>
@@ -79,19 +87,21 @@
       <div class="form-group">
         <label for="sexo">Sexo</label>
         <select id="sexo" name="sexo" class="form-select">
-          <option value="M">Macho</option>
-          <option value="F">Fêmea</option>
+          <option value="M"{% if _sexo_val == 'M' %} selected{% endif %}>Macho</option>
+          <option value="F"{% if _sexo_val == 'F' %} selected{% endif %}>Fêmea</option>
         </select>
       </div>
 
       <div class="form-group" id="bloco-data-compra">
         <label for="data_compra">Data da Compra</label>
-        <input id="data_compra" type="date" name="data_compra" class="form-input">
+        <input id="data_compra" type="date" name="data_compra" class="form-input"
+               value="{{ form_data.get('data_compra', '') if form_data else '' }}">
       </div>
 
       <div class="form-group" id="bloco-data-nascimento" style="display:none;">
         <label for="data_nascimento">Data de Nascimento</label>
-        <input id="data_nascimento" type="date" name="data_nascimento" class="form-input">
+        <input id="data_nascimento" type="date" name="data_nascimento" class="form-input"
+               value="{{ form_data.get('data_nascimento', '') if form_data else '' }}">
       </div>
     </div>
 
@@ -99,13 +109,15 @@
       <div class="form-group">
         <label for="peso_compra">Peso de Entrada (kg)</label>
         <input id="peso_compra" type="number" step="0.01" name="peso_compra"
-               class="form-input" placeholder="Ex: 300.0">
+               class="form-input" placeholder="Ex: 300.0"
+               value="{{ form_data.get('peso_compra', '') if form_data else '' }}">
       </div>
 
       <div class="form-group">
         <label for="valor_arroba">Valor da Arroba na Compra (R$)</label>
         <input id="valor_arroba" type="number" step="0.01" name="valor_arroba"
-               class="form-input" placeholder="Ex: 250.00">
+               class="form-input" placeholder="Ex: 250.00"
+               value="{{ form_data.get('valor_arroba', '') if form_data else '' }}">
         <span class="form-hint">Ex: 1500.00 (separador: ponto)</span>
       </div>
     </div>
@@ -115,13 +127,14 @@
       <div class="form-group">
         <label for="peso_nascimento">Peso ao Nascer (kg) <span style="color:var(--color-ink-tertiary); font-weight:normal;">(opcional)</span></label>
         <input id="peso_nascimento" type="number" step="0.01" name="peso_compra"
-               class="form-input" placeholder="Ex: 35.0">
+               class="form-input" placeholder="Ex: 35.0"
+               value="{{ form_data.get('peso_compra', '') if form_data else '' }}">
       </div>
     </div>
 
     <div style="display:flex; gap:var(--space-3); margin-top:var(--space-2);">
-      <button type="submit" class="btn btn-primary">Salvar Animal</button>
       <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Salvar Animal</button>
     </div>
   </form>
 </div>
@@ -155,7 +168,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   radios.forEach(r => r.addEventListener('change', () => aplicarOrigem(r.value)));
-  aplicarOrigem('comprado');
+  const radioChecado = document.querySelector('input[name="origem"]:checked');
+  aplicarOrigem(radioChecado ? radioChecado.value : 'comprado');
 
   document.querySelectorAll('form').forEach(form => {
     form.addEventListener('submit', function () {

@@ -66,6 +66,19 @@ def get_partos_previstos(user_id, dias=30):
         return cursor.fetchall()
 
 
+def get_vaca_id_by_reproducao(reproducao_id, user_id):
+    """Retorna o vaca_id da reprodução informada, validando dono via JOIN. None se não encontrado."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT r.vaca_id FROM reproducao r "
+            "JOIN animais v ON r.vaca_id = v.id "
+            "WHERE r.id = %s AND v.user_id = %s",
+            (reproducao_id, user_id)
+        )
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+
 def get_contagem_gestantes(user_id):
     """Retorna o número de vacas com DG positivo e parto ainda não registrado."""
     with get_db_cursor() as cursor:

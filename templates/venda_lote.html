@@ -295,6 +295,15 @@
 <script src="{{ url_for('static', filename='js/lote-selecao.js') }}"></script>
 <script>
 (function () {
+  {% if restore_data and restore_data.animal_ids %}
+  const _RESTORE = {
+    animal_ids:  {{ restore_data.animal_ids | tojson }},
+    pesos_venda: {{ restore_data.pesos_venda | tojson }},
+  };
+  {% else %}
+  const _RESTORE = null;
+  {% endif %}
+
   const inputArroba  = document.getElementById('valor-arroba');
   const resumoKg     = document.getElementById('resumo-kg');
   const resumoTotal  = document.getElementById('resumo-total');
@@ -326,10 +335,25 @@
     resumoTotal.textContent = fmtBRL(valorTotal);
   }
 
-  const { btnConfirmar } = initSelecaoLote({
+  const { btnConfirmar, toggleAnimal } = initSelecaoLote({
     onCheck: (id, inp) => { calcularValor(id); inp.focus(); inp.select(); atualizarResumo(); },
     onUncheck: (id) => { document.getElementById('valor-' + id).textContent = '—'; atualizarResumo(); },
   });
+
+  if (_RESTORE) {
+    _RESTORE.animal_ids.forEach(function (id, i) {
+      const chk = document.getElementById('chk-' + id);
+      if (!chk) return;
+      chk.checked = true;
+      toggleAnimal(chk);
+      const pesoInput = document.getElementById('peso-' + id);
+      if (pesoInput && _RESTORE.pesos_venda[i] !== undefined) {
+        pesoInput.value = _RESTORE.pesos_venda[i];
+        calcularValor(id);
+      }
+    });
+    atualizarResumo();
+  }
 
   document.querySelectorAll('.peso-input').forEach(inp => {
     inp.addEventListener('input', () => {

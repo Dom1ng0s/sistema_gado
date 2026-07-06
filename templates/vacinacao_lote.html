@@ -56,8 +56,8 @@
             </div>
 
             <br>
-            <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.2em; padding: 15px;">
-                💾 CONFIRMAR APLICAÇÃO EM MASSA
+            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">
+                Confirmar aplicação em massa
             </button>
         </form>
 
@@ -78,18 +78,22 @@
     }
 
     document.addEventListener("DOMContentLoaded", function() {
-        const formularios = document.querySelectorAll("form");
-        formularios.forEach(form => {
-            form.addEventListener("submit", function(event) {
-                const botaoSubmit = form.querySelector("button[type='submit']");
-                if (botaoSubmit) {
-                    if (botaoSubmit.classList.contains("btn-loading")) {
-                        event.preventDefault();
-                        return;
-                    }
+        const form = document.querySelector("form");
+        const botaoSubmit = form.querySelector("button[type='submit']");
+
+        form.addEventListener("submit", function(event) {
+            if (form.dataset.confirmado === "true") {
+                if (botaoSubmit && !botaoSubmit.classList.contains("btn-loading")) {
                     botaoSubmit.classList.add("btn-loading");
                     botaoSubmit.setAttribute("disabled", "true");
                 }
+                return;
+            }
+            event.preventDefault();
+            const n = document.querySelectorAll('input[name="animais_ids"]:checked').length;
+            sggConfirm('Confirmar aplicação', `Confirmar aplicação em ${n} animal(is)?`, function () {
+                form.dataset.confirmado = "true";
+                form.requestSubmit();
             });
         });
     });
