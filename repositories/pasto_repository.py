@@ -126,6 +126,19 @@ def encerrar_ocupacao(ocupacao_id, user_id, data_saida):
         return True
 
 
+def get_pasto_id_by_ocupacao(ocupacao_id, user_id):
+    """Retorna o pasto_id do módulo dono da ocupação, com checagem de ownership."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT m.pasto_id FROM ocupacoes o "
+            "JOIN modulos m ON o.modulo_id = m.id "
+            "WHERE o.id = %s AND m.user_id = %s",
+            (ocupacao_id, user_id)
+        )
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+
 def get_animais_ocupacoes_ativas(pasto_id, user_id):
     """Retorna (ocupacao_id, animal_id, brinco) para ocupações ativas do pasto."""
     with get_db_cursor() as cursor:

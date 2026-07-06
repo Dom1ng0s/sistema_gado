@@ -407,7 +407,6 @@ def _fetch_cidades_ibge() -> list:
 
 
 @api_bp.route('/proxy-cidades')
-@login_required
 @limiter.limit("10 per minute")
 def proxy_cidades():
     """Cidades brasileiras via IBGE — cache de 24h, evita chamada por request."""
