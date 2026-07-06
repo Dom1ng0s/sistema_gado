@@ -85,7 +85,7 @@
 
   <div class="metric-card">
     <span class="label skeleton skeleton-label" aria-hidden="true" id="sk-lbl-total"></span>
-    <span class="label" id="lbl-total" style="display:none;">Total no rebanho</span>
+    <span class="label" id="lbl-total" style="display:none;">Total no Rebanho{% if origem_filtro == 'fazenda' %} Filtrado{% endif %}</span>
     <div class="metric-value" id="val-total" aria-live="polite" aria-atomic="true">
       <span class="skeleton skeleton-value" aria-hidden="true" id="sk-total"></span>
     </div>
@@ -321,7 +321,7 @@ document.querySelectorAll('[role="tab"]').forEach(function(tab) {
 </script>
 <script>
 const API = {
-  summary: "{{ url_for('api.dashboard_summary', sexo=sexo_filtro) }}",
+  summary: "{{ url_for('api.dashboard_summary', sexo=sexo_filtro, origem=origem_filtro) }}",
   cotacao: "{{ url_for('api.cotacoes_regionais') }}",
   brasil:  "{{ url_for('api.cotacoes_brasil') }}",
   pdf:     "{{ url_for('api.relatorio_pdf') }}",
