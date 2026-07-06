@@ -218,6 +218,21 @@ def test_modulo_encerrado_aparece_em_dias_descanso(um):
     assert any(row[0] == mid for row in descanso)
 
 
+def test_get_pastos_agrega_modulos_e_alertas_lotacao(um):
+    aid = _make_animal(um)
+    pid = pasto_repository.insert_pasto(um, "P Agregado", None, None, None)
+    m_livre = pasto_repository.insert_modulo(pid, um, "M Livre", None, 5.0)
+    m_super = pasto_repository.insert_modulo(pid, um, "M Super", None, 0.5)
+    pasto_repository.iniciar_ocupacao(m_super, um, "2024-03-01", [aid])
+
+    pastos = pasto_repository.get_pastos(um)
+    row = next(p for p in pastos if p[0] == pid)
+    # id, nome, area_hectares, forrageira, capacidade_ua, qtd_modulos, superlotados, em_alerta
+    assert row[5] == 2       # qtd_modulos: livre + super, sem duplicar por ocupação
+    assert row[6] == 1       # superlotados: 1 animal / capacidade 0.5 UA = 200%
+    assert row[7] == 0       # em_alerta: nenhum módulo entre 80% e 100%
+
+
 def test_get_gmd_por_modulo_calcula_gmd_do_animal_ocupante(um):
     conn = dbc.get_db_connection()
     cur = conn.cursor()
