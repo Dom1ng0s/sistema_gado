@@ -100,11 +100,10 @@ def iniciar_ocupacao(modulo_id, user_id, data_entrada, animal_ids):
             (modulo_id, user_id, data_entrada)
         )
         ocupacao_id = cursor.lastrowid
-        for aid in animal_ids:
-            cursor.execute(
-                "INSERT INTO ocupacao_animais (ocupacao_id, animal_id) VALUES (%s, %s)",
-                (ocupacao_id, int(aid))
-            )
+        cursor.executemany(
+            "INSERT INTO ocupacao_animais (ocupacao_id, animal_id) VALUES (%s, %s)",
+            [(ocupacao_id, int(aid)) for aid in animal_ids]
+        )
         return ocupacao_id
 
 

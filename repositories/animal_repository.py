@@ -686,16 +686,15 @@ def registrar_venda_lote(vendas, user_id, data_venda):
         validos = {row[0] for row in cursor.fetchall()}
         invalidos = [aid for aid in animal_ids if aid not in validos]
 
-        for animal_id, peso_venda, preco_venda in vendas:
-            if animal_id not in validos:
-                continue
-            cursor.execute(
+        vendas_validas = [(aid, peso_venda, preco_venda) for aid, peso_venda, preco_venda in vendas if aid in validos]
+        if vendas_validas:
+            cursor.executemany(
                 "UPDATE animais SET data_venda = %s, preco_venda = %s WHERE id = %s",
-                (data_venda, preco_venda, animal_id)
+                [(data_venda, preco_venda, aid) for aid, peso_venda, preco_venda in vendas_validas]
             )
-            cursor.execute(
+            cursor.executemany(
                 "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
-                (animal_id, data_venda, peso_venda)
+                [(aid, data_venda, peso_venda) for aid, peso_venda, preco_venda in vendas_validas]
             )
 
     return len(validos), invalidos
@@ -814,15 +813,27 @@ def cadastrar_lote(user_id, codigo_lote, descricao, data_compra, animais_data, r
             (user_id, codigo_lote, descricao, data_compra)
         )
         lote_id = cursor.lastrowid
-        for brinco, sexo, peso, custo_animal in animais_data:
-            cursor.execute(
-                "INSERT INTO animais (brinco, sexo, raca, data_compra, preco_compra, user_id, lote_id) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                (brinco, sexo, raca or None, data_compra, custo_animal, user_id, lote_id)
-            )
-            animal_id = cursor.lastrowid
-            cursor.execute(
-                "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
-                (animal_id, data_compra, peso)
-            )
+
+        cursor.executemany(
+            "INSERT INTO animais (brinco, sexo, raca, data_compra, preco_compra, user_id, lote_id) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            [(brinco, sexo, raca or None, data_compra, custo_animal, user_id, lote_id)
+             for brinco, sexo, peso, custo_animal in animais_data]
+        )
+
+        # brinco é único por usuário — reconsulta os ids recém-criados para
+        # montar as pesagens iniciais sem depender de lastrowid por linha
+        # (que o executemany não fornece individualmente).
+        brincos = [brinco for brinco, sexo, peso, custo_animal in animais_data]
+        placeholders = ','.join(['%s'] * len(brincos))
+        cursor.execute(
+            f"SELECT id, brinco FROM animais WHERE lote_id = %s AND brinco IN ({placeholders})",
+            [lote_id] + brincos
+        )
+        id_por_brinco = {brinco: aid for aid, brinco in cursor.fetchall()}
+
+        cursor.executemany(
+            "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
+            [(id_por_brinco[brinco], data_compra, peso) for brinco, sexo, peso, custo_animal in animais_data]
+        )
         return lote_id
