@@ -42,8 +42,9 @@ def test_pesagem_lote_fluxo_completo(logged_in_page, live_server, e2e_db):
         peso_inputs.nth(i).fill("395.0")
 
     # O botão de confirmação deve estar habilitado após selecionar animais
+    # (click() já aguarda a actionability — visível, habilitado e estável —
+    # "enabled" não é um state válido para Locator.wait_for)
     btn = page.locator("#btn-confirmar")
-    btn.wait_for(state="enabled", timeout=3_000)
     btn.click()
 
     # Aguarda a mensagem de sucesso (classe alert-success renderizada pela rota)

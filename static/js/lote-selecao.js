@@ -44,8 +44,9 @@ function initSelecaoLote({ onCheck, onUncheck } = {}) {
   });
 
   marcarTodos.addEventListener('change', function () {
+    const marcarTudo = this.checked;
     checks.forEach(chk => {
-      chk.checked = this.checked;
+      chk.checked = marcarTudo;
       toggleAnimal(chk);
     });
   });
