@@ -349,6 +349,54 @@ def test_importar_csv_coluna_faltando(app):
         _purge(uid)
 
 
+# ── Isolamento multi-tenant — rotas HTTP ─────────────────────────────────────
+
+def test_registrar_entrada_produto_alheio_via_http_nao_registra(app):
+    """POST /estoque/<id_de_A>/entrada como B não deve criar movimentação em produto de A."""
+    with app.test_client() as client:
+        uid_a, uid_b = _make_user(), _make_user()
+        pid_a = estoque_repository.insert_produto(uid_a, "Produto de A", "ml", "medicamento", 0)
+        _login(client, uid_b)
+
+        client.post(f"/estoque/{pid_a}/entrada", data={
+            "quantidade": "100", "data_mov": "2024-06-01",
+        }, follow_redirects=True)
+
+        assert estoque_repository.get_saldo_atual(pid_a, uid_a) == pytest.approx(0.0)
+        _purge(uid_a)
+        _purge(uid_b)
+
+
+def test_registrar_saida_produto_alheio_via_http_nao_registra(app):
+    """POST /estoque/<id_de_A>/saida como B não deve criar movimentação em produto de A."""
+    with app.test_client() as client:
+        uid_a, uid_b = _make_user(), _make_user()
+        pid_a = estoque_repository.insert_produto(uid_a, "Produto de A2", "ml", "medicamento", 0)
+        estoque_repository.insert_movimentacao(uid_a, pid_a, 'entrada', 100.0, None, None, "2024-01-01")
+        _login(client, uid_b)
+
+        client.post(f"/estoque/{pid_a}/saida", data={
+            "quantidade": "50", "data_mov": "2024-06-01",
+        }, follow_redirects=True)
+
+        assert estoque_repository.get_saldo_atual(pid_a, uid_a) == pytest.approx(100.0)
+        _purge(uid_a)
+        _purge(uid_b)
+
+
+def test_detalhe_estoque_produto_alheio_nao_exibe_dados(app):
+    """GET /estoque/<id_de_A> como B não deve expor o nome do produto de A."""
+    with app.test_client() as client:
+        uid_a, uid_b = _make_user(), _make_user()
+        pid_a = estoque_repository.insert_produto(uid_a, "Produto Sigiloso A", "ml", "medicamento", 0)
+        _login(client, uid_b)
+
+        r = client.get(f"/estoque/{pid_a}", follow_redirects=True)
+        assert b"Produto Sigiloso A" not in r.data
+        _purge(uid_a)
+        _purge(uid_b)
+
+
 def test_importar_csv_brinco_duplicado(app):
     """Brinco já existente vai para coluna de erros sem travar a importação."""
     with app.test_client() as client:

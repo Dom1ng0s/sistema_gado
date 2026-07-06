@@ -348,6 +348,46 @@ def test_rota_diagnostico_post(app):
         _purge(uid)
 
 
+def test_rota_diagnostico_post_vaca_alheia_nao_altera(app):
+    """POST /reproducao/<id>/diagnostico como B não deve alterar DG de vaca de A."""
+    with app.test_client() as client:
+        uid_a, uid_b = _make_user(), _make_user()
+        vaca_id = _make_animal(uid_a, sexo="F")
+        rid = reproducao_repository.insert_reproducao(
+            uid_a, vaca_id, None, "T", "2026-05-01", None, "aborto"
+        )
+        _login(client, uid_b)
+        r = client.post(f"/reproducao/{rid}/diagnostico", data={
+            "vaca_id": vaca_id,
+            "diagnostico": "positivo",
+            "data_diagnostico": "2026-05-28",
+        }, follow_redirects=True)
+        assert r.status_code == 200
+        eventos = reproducao_repository.get_reproducao_by_vaca(vaca_id, uid_a)
+        assert eventos[0][6] == "pendente"
+        _purge(uid_a)
+        _purge(uid_b)
+
+
+def test_registrar_reproducao_post_vaca_alheia_nao_cria(app):
+    """POST /reproducao com vaca_id de outro usuário não deve criar o evento reprodutivo."""
+    with app.test_client() as client:
+        uid_a, uid_b = _make_user(), _make_user()
+        vaca_id = _make_animal(uid_a, sexo="F")
+        _login(client, uid_b)
+        r = client.post("/reproducao", data={
+            "vaca_id": vaca_id,
+            "data_cobertura": "2026-05-01",
+            "resultado": "aborto",
+            "touro_externo": "Touro X",
+        }, follow_redirects=True)
+        assert r.status_code == 200
+        eventos = reproducao_repository.get_reproducao_by_vaca(vaca_id, uid_a)
+        assert eventos == []
+        _purge(uid_a)
+        _purge(uid_b)
+
+
 def test_pagina_reproducao_mostra_data_prevista(app):
     """Página de reprodução exibe data_parto_prevista calculada quando DG é positivo.
 

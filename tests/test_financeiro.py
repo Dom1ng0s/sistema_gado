@@ -1,5 +1,6 @@
 import pytest
 import mysql.connector
+from werkzeug.security import generate_password_hash
 
 DB_CONFIG = {
     "host": "localhost", "user": "gado_test",
@@ -8,6 +9,35 @@ DB_CONFIG = {
 
 def login(client):
     return client.post('/login', data={'username': 'testuser', 'password': '123'}, follow_redirects=True)
+
+
+def _make_user(username):
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
+        (username, generate_password_hash("x")),
+    )
+    uid = cur.lastrowid
+    conn.commit(); cur.close(); conn.close()
+    return uid
+
+
+def _login_as(client, username):
+    client.post('/login', data={'username': username, 'password': 'x'}, follow_redirects=True)
+
+
+def _insert_agendamento(user_id, descricao="Conta teste", valor=100.0, vencimento="2024-12-01"):
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO financial_schedule (user_id, descricao, valor, vencimento, status) "
+        "VALUES (%s, %s, %s, %s, 'pendente')",
+        (user_id, descricao, valor, vencimento),
+    )
+    agend_id = cur.lastrowid
+    conn.commit(); cur.close(); conn.close()
+    return agend_id
 
 
 def _criar_lote_com_animais(user_id, codigo="LOTE-PL", com_venda=False):
@@ -259,3 +289,142 @@ def test_export_csv_tem_coluna_qtd(client):
     assert response.status_code == 200
     text = response.data.decode('utf-8-sig')
     assert 'Qtd' in text
+
+
+# ── Agendamentos (contas a pagar) ────────────────────────────────────────────
+
+def test_agendamentos_lista_vazia(client):
+    """Página de agendamentos carrega mesmo sem contas cadastradas."""
+    login(client)
+    response = client.get('/financeiro/agendamentos')
+    assert response.status_code == 200
+
+
+def test_agendamentos_post_cria_conta(client):
+    """POST cria agendamento e ele aparece na listagem."""
+    login(client)
+    response = client.post('/financeiro/agendamentos', data={
+        'descricao': 'Conta de luz',
+        'valor': '350.50',
+        'vencimento': '2026-08-10',
+    }, follow_redirects=True)
+    assert response.status_code == 200
+    assert b'Conta de luz' in response.data
+    assert 'salvo'.encode('utf-8') in response.data.lower() or b'sucesso' in response.data
+
+
+def test_agendamentos_post_sem_valor_retorna_erro(client):
+    """Validação rejeita agendamento sem valor — nada é persistido no banco."""
+    login(client)
+    uid = _get_user_id()
+    response = client.post('/financeiro/agendamentos', data={
+        'descricao': 'Conta sem valor único XYZ',
+        'valor': '',
+        'vencimento': '2026-08-10',
+    }, follow_redirects=True)
+    assert response.status_code == 200
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT COUNT(*) FROM financial_schedule WHERE user_id=%s AND descricao='Conta sem valor único XYZ'",
+        (uid,),
+    )
+    count = cur.fetchone()[0]
+    cur.close(); conn.close()
+    assert count == 0
+
+
+def test_agendamentos_editar_atualiza_valor(client):
+    """POST /financeiro/agendamentos/<id>/editar atualiza a conta pendente."""
+    login(client)
+    uid = _get_user_id()
+    agend_id = _insert_agendamento(uid, descricao="Conta a editar", valor=100.0)
+
+    response = client.post(f'/financeiro/agendamentos/{agend_id}/editar', data={
+        'descricao': 'Conta editada',
+        'valor': '222.00',
+        'vencimento': '2026-09-01',
+    }, follow_redirects=True)
+    assert response.status_code == 200
+    assert b'Conta editada' in response.data
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT descricao, valor FROM financial_schedule WHERE id=%s", (agend_id,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    assert row[0] == 'Conta editada'
+    assert float(row[1]) == 222.00
+
+
+def test_agendamentos_excluir_soft_deleta(client):
+    """POST /financeiro/agendamentos/<id>/excluir marca deleted_at e some da listagem."""
+    login(client)
+    uid = _get_user_id()
+    agend_id = _insert_agendamento(uid, descricao="Conta a excluir")
+
+    response = client.post(f'/financeiro/agendamentos/{agend_id}/excluir', follow_redirects=True)
+    assert response.status_code == 200
+    assert b'Conta a excluir' not in response.data
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT deleted_at FROM financial_schedule WHERE id=%s", (agend_id,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    assert row[0] is not None
+
+
+def test_agendamentos_editar_de_outro_usuario_nao_altera(client):
+    """POST editar de um agendamento alheio não deve alterá-lo (isolamento multi-tenant)."""
+    login(client)
+    outro_id = _make_user('fin_outro_editar')
+    agend_id = _insert_agendamento(outro_id, descricao="Conta Alheia Editar", valor=50.0)
+
+    response = client.post(f'/financeiro/agendamentos/{agend_id}/editar', data={
+        'descricao': 'Hackeado',
+        'valor': '999.00',
+        'vencimento': '2026-10-01',
+    }, follow_redirects=True)
+    assert response.status_code == 200
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT descricao, valor FROM financial_schedule WHERE id=%s", (agend_id,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    assert row[0] == 'Conta Alheia Editar'
+    assert float(row[1]) == 50.0
+
+
+def test_agendamentos_excluir_de_outro_usuario_nao_altera(client):
+    """POST excluir de um agendamento alheio não deve marcá-lo como deletado."""
+    login(client)
+    outro_id = _make_user('fin_outro_excluir')
+    agend_id = _insert_agendamento(outro_id, descricao="Conta Alheia Excluir")
+
+    client.post(f'/financeiro/agendamentos/{agend_id}/excluir', follow_redirects=True)
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT deleted_at FROM financial_schedule WHERE id=%s", (agend_id,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    assert row[0] is None
+
+
+def test_agendamentos_baixar_de_outro_usuario_nao_altera(client):
+    """POST /financeiro/baixar/<id> de outro usuário não deve marcar a conta alheia como paga."""
+    login(client)
+    outro_id = _make_user('fin_outro_baixar')
+    agend_id = _insert_agendamento(outro_id, descricao="Conta Alheia Baixar")
+
+    client.post(f'/financeiro/baixar/{agend_id}', follow_redirects=True)
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT status FROM financial_schedule WHERE id=%s", (agend_id,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    assert row[0] == 'pendente'

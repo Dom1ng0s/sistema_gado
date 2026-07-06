@@ -160,3 +160,33 @@ def test_aplicar_protocolo_outro_usuario_ignorado(client):
 
     from datetime import date as _date
     assert data_nao_alterada == _date(2026, 7, 1)
+
+
+def test_desativar_protocolo_outro_usuario_ignorado(client):
+    """Desativar protocolo de outro usuário não deve marcá-lo como inativo."""
+    login(client)
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO usuarios (username, password_hash) VALUES ('san_outro2','x')")
+    outro_id = cur.lastrowid
+    cur.execute(
+        "INSERT INTO protocolos_sanitarios (user_id, nome, intervalo_dias, proxima_aplicacao) "
+        "VALUES (%s, 'Protocolo Alheio Desativar', 30, '2026-07-01')",
+        (outro_id,)
+    )
+    pid = cur.lastrowid
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    response = client.post(f'/sanitario/{pid}/desativar', follow_redirects=True)
+    assert response.status_code == 200
+
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SELECT ativo FROM protocolos_sanitarios WHERE id=%s", (pid,))
+    ativo = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    assert ativo == 1

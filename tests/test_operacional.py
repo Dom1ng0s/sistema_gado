@@ -258,3 +258,96 @@ def test_export_csv_inclui_raca(client):
     assert response.status_code == 200
     text = response.data.decode('utf-8-sig')
     assert 'Raça' in text or 'Raca' in text
+
+
+# ── Vacinação em lote (/vacinacao-coletiva) ─────────────────────────────────
+
+def _make_user(username):
+    from werkzeug.security import generate_password_hash
+    conn = dbc.get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
+        (username, generate_password_hash("x")),
+    )
+    uid = cur.lastrowid
+    conn.commit()
+    cur.close()
+    conn.close()
+    return uid
+
+
+def test_vacinacao_coletiva_get_carrega(client):
+    """GET /vacinacao-coletiva carrega a página com a lista de animais ativos."""
+    login(client)
+    response = client.get('/vacinacao-coletiva')
+    assert response.status_code == 200
+
+
+def test_vacinacao_coletiva_post_vacina_varios_animais(client):
+    """POST com múltiplos animais registra medicação para cada um."""
+    login(client)
+    for brinco in ('VAC-LOTE-01', 'VAC-LOTE-02'):
+        client.post('/cadastro', data={
+            'brinco': brinco, 'sexo': 'M', 'data_compra': '2024-01-01',
+            'peso_compra': '300', 'valor_arroba': '250',
+        })
+    rows = [_fetch_one("SELECT id FROM animais WHERE brinco=%s", (b,))
+            for b in ('VAC-LOTE-01', 'VAC-LOTE-02')]
+    ids = [str(r[0]) for r in rows]
+
+    response = client.post('/vacinacao-coletiva', data={
+        'animais_ids': ids,
+        'data_aplicacao': '2024-06-01',
+        'nome': 'Vacina Aftosa',
+        'custo': '15.00',
+        'obs': '',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b'vacinado' in response.data
+    for r in rows:
+        count = _fetch_one("SELECT COUNT(*) FROM medicacoes WHERE animal_id=%s AND nome_medicamento='Vacina Aftosa'", (r[0],))
+        assert count[0] == 1
+
+
+def test_vacinacao_coletiva_post_sem_animais_retorna_erro(client):
+    """POST sem nenhum animal selecionado retorna 400 e não grava medicação."""
+    login(client)
+    response = client.post('/vacinacao-coletiva', data={
+        'data_aplicacao': '2024-06-01',
+        'nome': 'Vacina Sem Animal',
+        'custo': '10.00',
+        'obs': '',
+    })
+    assert response.status_code == 400
+    count = _fetch_one("SELECT COUNT(*) FROM medicacoes WHERE nome_medicamento='Vacina Sem Animal'")
+    assert count[0] == 0
+
+
+def test_vacinacao_coletiva_ignora_animal_de_outro_usuario(client):
+    """Animal_id de outro usuário incluído no POST não recebe a medicação (multi-tenant)."""
+    login(client)
+    outro_id = _make_user('vac_outro_user')
+    conn = dbc.get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "
+        "VALUES ('VAC-ALHEIO-01','M','2024-01-01',1000,%s)", (outro_id,)
+    )
+    alheio_id = cur.lastrowid
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    response = client.post('/vacinacao-coletiva', data={
+        'animais_ids': [str(alheio_id)],
+        'data_aplicacao': '2024-06-01',
+        'nome': 'Vacina Invasora',
+        'custo': '10.00',
+        'obs': '',
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    count = _fetch_one("SELECT COUNT(*) FROM medicacoes WHERE animal_id=%s", (alheio_id,))
+    assert count[0] == 0
