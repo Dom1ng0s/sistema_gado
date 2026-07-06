@@ -109,7 +109,7 @@
                   data-confirm-title="Aplicar protocolo"
                   data-confirm-msg="Registrar aplicação de '{{ p[1] | e }}' e avançar a próxima data?">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-primary btn-sm">Aplicar agora</button>
+              <button type="submit" class="btn btn-primary btn-sm">Aplicar em lote →</button>
             </form>
             <form method="POST" action="{{ url_for('sanitario.desativar_protocolo', protocolo_id=p[0]) }}"
                   style="display:inline;"

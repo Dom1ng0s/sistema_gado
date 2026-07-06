@@ -235,6 +235,54 @@ h3 { font-size: var(--text-lg); font-weight: var(--weight-medium); }
   background: var(--color-primary-bg);
 }
 
+.nav-dropdown {
+  position: relative;
+}
+
+.nav-dropdown-toggle {
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-ink-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.nav-dropdown-toggle:hover,
+.nav-dropdown-toggle[aria-expanded="true"] {
+  color: var(--color-ink);
+  background: var(--color-surface-raised);
+}
+
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  min-width: 200px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-1);
+  z-index: var(--z-nav);
+  flex-direction: column;
+  gap: 0;
+}
+
+.nav-dropdown-menu.open {
+  display: flex;
+}
+
+.nav-dropdown-item {
+  display: block;
+  white-space: nowrap;
+}
+
 /* ── Layout ──────────────────────────────────────────────── */
 .page-container {
   max-width: 1200px;
@@ -491,6 +539,14 @@ tbody td {
 }
 
 .btn-secondary:hover { background: var(--color-surface-raised); }
+
+.btn-secondary.is-active {
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary-bg);
+}
+
+.btn-secondary.is-active:hover { background: var(--color-primary-bg); }
 
 .btn-accent {
   background: var(--color-accent-bg);
@@ -1200,6 +1256,25 @@ textarea:not(.form-textarea):focus {
     display: flex;
     align-items: center;
     font-size: var(--text-base);
+  }
+
+  .nav-dropdown-toggle {
+    width: 100%;
+    text-align: left;
+    padding: var(--space-3) var(--space-3);
+    min-height: 44px;
+    font-size: var(--text-base);
+  }
+
+  .nav-dropdown-menu {
+    position: static;
+    box-shadow: none;
+    border: none;
+    padding: 0 0 0 var(--space-4);
+  }
+
+  .nav-dropdown-menu.open {
+    display: flex;
   }
 
   /* Page layout */
