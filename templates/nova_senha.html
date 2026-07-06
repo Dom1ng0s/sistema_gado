@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
     <style>
-        .btn-submit:disabled { opacity: 0.5; }
+        #btnSalvar:disabled { opacity: 0.5; }
 
         .strength-bar {
             height: 3px;
@@ -80,7 +80,7 @@
                 <span class="match-msg" id="matchMsg"></span>
             </div>
 
-            <button type="submit" class="btn-submit" id="btnSalvar" disabled>Salvar Nova Senha</button>
+            <button type="submit" class="btn btn-primary btn-block" id="btnSalvar" disabled>Salvar Nova Senha</button>
         </form>
     </div>
 

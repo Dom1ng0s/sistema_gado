@@ -173,25 +173,25 @@
   <div role="tablist" aria-labelledby="status-tabs-label" style="display:contents;">
     <a href="{{ url_for('operacional.painel', status='todos',    busca=busca, raca=raca_filtro, origem=origem_filtro) }}"
        role="tab" aria-selected="{{ 'true' if status == 'todos'    else 'false' }}"
-       class="btn btn-sm {% if status == 'todos'    %}btn-primary{% else %}btn-secondary{% endif %}">Todos</a>
+       class="btn btn-sm btn-secondary{% if status == 'todos'    %} is-active{% endif %}">Todos</a>
     <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca, raca=raca_filtro, origem=origem_filtro) }}"
        role="tab" aria-selected="{{ 'true' if status == 'ativos'   else 'false' }}"
-       class="btn btn-sm {% if status == 'ativos'   %}btn-primary{% else %}btn-secondary{% endif %}">Ativos</a>
+       class="btn btn-sm btn-secondary{% if status == 'ativos'   %} is-active{% endif %}">Ativos</a>
     <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca, raca=raca_filtro, origem=origem_filtro) }}"
        role="tab" aria-selected="{{ 'true' if status == 'vendidos' else 'false' }}"
-       class="btn btn-sm {% if status == 'vendidos' %}btn-primary{% else %}btn-secondary{% endif %}">Vendidos</a>
+       class="btn btn-sm btn-secondary{% if status == 'vendidos' %} is-active{% endif %}">Vendidos</a>
     <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem='' if origem_filtro == 'fazenda' else 'fazenda') }}"
        role="tab" aria-selected="{{ 'true' if origem_filtro == 'fazenda' else 'false' }}"
        title="Animais nascidos na própria fazenda (sem data de compra)"
-       class="btn btn-sm {% if origem_filtro == 'fazenda' %}btn-primary{% else %}btn-secondary{% endif %}">Nascidos na Fazenda</a>
+       class="btn btn-sm btn-secondary{% if origem_filtro == 'fazenda' %} is-active{% endif %}">Nascidos na Fazenda</a>
   </div>
   {% if racas_disponiveis | length > 1 %}
   <span class="label" style="margin-left:var(--space-4);">Raça:</span>
   <a href="{{ url_for('operacional.painel', status=status, busca=busca, origem=origem_filtro) }}"
-     class="btn btn-sm {% if not raca_filtro %}btn-primary{% else %}btn-secondary{% endif %}">Todas</a>
+     class="btn btn-sm btn-secondary{% if not raca_filtro %} is-active{% endif %}">Todas</a>
   {% for r in racas_disponiveis %}
   <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=r, origem=origem_filtro) }}"
-     class="btn btn-sm {% if raca_filtro == r %}btn-primary{% else %}btn-secondary{% endif %}">{{ r }}</a>
+     class="btn btn-sm btn-secondary{% if raca_filtro == r %} is-active{% endif %}">{{ r }}</a>
   {% endfor %}
   {% endif %}
   <a href="{{ url_for('operacional.lixeira') }}"

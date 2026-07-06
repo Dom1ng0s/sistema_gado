@@ -245,7 +245,7 @@
       </div>
     {% else %}
       <a href="{{ url_for('operacional.vender', id_animal=animal[0]) }}"
-         class="btn btn-danger" style="text-align:center;">
+         class="btn btn-accent" style="text-align:center;">
         <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         Registrar Venda
       </a>
@@ -279,10 +279,6 @@
 <div style="margin-bottom:var(--space-8);">
   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4);">
     <h2 style="margin:0;">Histórico Sanitário</h2>
-    {% if not animal[6] %}
-      <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}"
-         class="btn btn-primary btn-sm">+ Medicação</a>
-    {% endif %}
   </div>
   <div class="table-wrapper">
     <table>

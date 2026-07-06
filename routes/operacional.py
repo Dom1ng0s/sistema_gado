@@ -100,7 +100,7 @@ def cadastro():
             errors.append('Informe a data de compra (animal comprado) ou a data de nascimento (nascido na fazenda).')
 
         if errors:
-            return render_template("cadastro.html", mensagem=errors[0]), 400
+            return render_template("cadastro.html", mensagem=errors[0], form_data=request.form), 400
 
         try:
             brinco = request.form["brinco"].strip()
@@ -184,6 +184,8 @@ def vender(id_animal):
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro vender: {e}", exc_info=True)
+            return render_template('vender.html', id_animal=id_animal,
+                                   mensagem="Não foi possível registrar. Tente novamente."), 400
     return render_template('vender.html', id_animal=id_animal)
 
 @operacional_bp.route('/venda-lote', methods=['GET', 'POST'])
@@ -196,7 +198,12 @@ def venda_lote():
         ])
         if errors:
             animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
-            return render_template('venda_lote.html', animais=animais, erro=errors[0]), 400
+            restore_data = {
+                'animal_ids': request.form.getlist('animal_ids[]'),
+                'pesos_venda': request.form.getlist('pesos_venda[]'),
+            }
+            return render_template('venda_lote.html', animais=animais, erro=errors[0],
+                                   form_data=request.form, restore_data=restore_data), 400
 
         animal_ids = request.form.getlist('animal_ids[]')
         pesos = request.form.getlist('pesos_venda[]')
@@ -260,6 +267,8 @@ def medicar(id_animal):
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro medicar: {e}", exc_info=True)
+            return render_template('medicar.html', id_animal=id_animal,
+                                   mensagem="Não foi possível registrar. Tente novamente."), 400
     return render_template('medicar.html', id_animal=id_animal)
 
 @operacional_bp.route('/pesar/<int:id_animal>', methods=['GET', 'POST'])
@@ -280,6 +289,8 @@ def nova_pesagem(id_animal):
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro pesar: {e}", exc_info=True)
+            return render_template('nova_pesagem.html', id_animal=id_animal,
+                                   mensagem="Não foi possível registrar. Tente novamente."), 400
     return render_template('nova_pesagem.html', id_animal=id_animal)
 
 @operacional_bp.route('/excluir_animal/<int:id_animal>', methods=['POST'])
@@ -332,7 +343,7 @@ def vacinacao_coletiva():
                 user_id=current_user.id,
             )
             flash(f"{len(animais_ids)} animal(is) vacinado(s) com sucesso.", 'success')
-            return redirect(url_for('operacional.painel'))
+            return redirect(url_for('operacional.vacinacao_coletiva'))
         except Exception as e:
             logger.error(f"Erro vacinacao lote: {e}", exc_info=True)
             lista_animais = animal_repository.get_animais_ativos(current_user.id)
@@ -396,7 +407,11 @@ def cadastro_lote():
             animal_repository.cadastrar_lote(
                 current_user.id, codigo_lote, descricao, data_compra, animais_data, raca=raca
             )
-            msg = f"Lote '{codigo_lote}' salvo com {len(brincos)} animais e pesos individuais!"
+            flash(f"Lote '{codigo_lote}' salvo com {len(brincos)} animais e pesos individuais!", 'success')
+            # ponytail: painel/get_animais_paginados não têm filtro por lote_id (fora do escopo
+            # deste arquivo alterar animal_repository.py) — reaproveita o filtro `busca` existente,
+            # já que os brincos do lote seguem a convenção "{codigo_lote}-NN".
+            return redirect(url_for('operacional.painel', busca=codigo_lote))
         except Exception as e:
             logger.error(f"Erro cadastro lote: {e}", exc_info=True)
             msg = f"Erro ao processar lote: {e}"
@@ -411,6 +426,7 @@ def pesagem_lote():
     lotes = []
     animais = []
     msg = None
+    erro_geral = None
 
     try:
         lotes = animal_repository.get_lotes(current_user.id)
@@ -459,9 +475,10 @@ def pesagem_lote():
         animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
     except Exception as e:
         logger.error(f"Erro pesagem lote: {e}", exc_info=True)
+        erro_geral = "Erro ao registrar pesagens. Tente novamente."
 
     return render_template('pesagem_lote.html', lotes=lotes, animais=animais,
-                           lote_id_selecionado=lote_id)
+                           lote_id_selecionado=lote_id, erro=erro_geral)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -579,7 +596,6 @@ def registrar_diagnostico(rep_id):
         ('diagnostico',      {'required': True,  'choices': ['positivo', 'negativo'], 'label': 'Diagnóstico'}),
         ('data_diagnostico', {'required': True,  'type': 'date',                      'label': 'Data do DG'}),
     ])
-    id_animal = request.form.get('vaca_id', type=int)
 
     if erros:
         for e in erros:
@@ -597,6 +613,7 @@ def registrar_diagnostico(rep_id):
             logger.error(f"Erro DG {rep_id}: {e}", exc_info=True)
             flash('Erro ao registrar diagnóstico.', 'error')
 
+    id_animal = reproducao_repository.get_vaca_id_by_reproducao(rep_id, current_user.id)
     if id_animal:
         return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))
     return redirect(url_for('operacional.painel'))

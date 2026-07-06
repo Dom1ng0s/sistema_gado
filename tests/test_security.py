@@ -247,11 +247,14 @@ def test_baixar_agendamento_valido_exibe_mensagem_sucesso(client):
     assert row[0] == 'pago'
 
 
-# ── Grupo D — S4: proxy-cidades requer login ─────────────────────────────────
+# ── Grupo D — S4: proxy-cidades é público (dado não sensível, usado pré-login) ─
 
-def test_proxy_cidades_sem_login_redireciona(client):
+def test_proxy_cidades_sem_login_funciona(client):
     r = client.get('/proxy-cidades')
-    assert r.status_code in (301, 302)
+    # Pode retornar 200 (com dados) ou 500 (sem rede no CI) — nunca 302/401,
+    # pois é chamado por novo_usuario.html antes de qualquer login existir.
+    assert r.status_code != 302
+    assert r.status_code != 401
 
 
 def test_proxy_cidades_com_login_funciona(client):

@@ -142,14 +142,14 @@ def ocupar_modulo(modulo_id):
 @pastos_bp.route('/ocupacoes/<int:ocupacao_id>/encerrar', methods=['POST'])
 @login_required
 def encerrar_ocupacao(ocupacao_id):
-    pasto_id = request.form.get('pasto_id')
+    pasto_id = pasto_repository.get_pasto_id_by_ocupacao(ocupacao_id, current_user.id)
 
     erros = validate(request.form, [
         ('data_saida', {'label': 'Data de saída', 'required': True, 'type': 'date'}),
     ])
     if erros:
         flash(' | '.join(erros), 'error')
-        dest = url_for('pastos.detalhe_pasto', pasto_id=int(pasto_id)) if pasto_id else url_for('pastos.listar_pastos')
+        dest = url_for('pastos.detalhe_pasto', pasto_id=pasto_id) if pasto_id else url_for('pastos.listar_pastos')
         return redirect(dest)
 
     data_saida = request.form.get('data_saida')
@@ -160,7 +160,7 @@ def encerrar_ocupacao(ocupacao_id):
         flash('Ocupação encerrada com sucesso.', 'success')
 
     if pasto_id:
-        return redirect(url_for('pastos.detalhe_pasto', pasto_id=int(pasto_id)))
+        return redirect(url_for('pastos.detalhe_pasto', pasto_id=pasto_id))
     return redirect(url_for('pastos.listar_pastos'))
 
 

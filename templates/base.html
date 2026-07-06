@@ -29,6 +29,18 @@
     SGG
   </a>
   <div class="nav-links" id="nav-links">
+    <div class="nav-dropdown" id="nav-dropdown">
+      <button type="button" class="nav-dropdown-toggle" id="nav-dropdown-toggle"
+              aria-haspopup="true" aria-expanded="false">
+        + Novo
+      </button>
+      <div class="nav-dropdown-menu" id="nav-dropdown-menu">
+        <a href="{{ url_for('operacional.cadastro') }}" class="nav-link nav-dropdown-item">Cadastro individual</a>
+        <a href="{{ url_for('operacional.cadastro_lote') }}" class="nav-link nav-dropdown-item">Cadastro em lote</a>
+        <a href="{{ url_for('operacional.venda_lote') }}" class="nav-link nav-dropdown-item">Venda em lote</a>
+        <a href="{{ url_for('operacional.importar_csv') }}" class="nav-link nav-dropdown-item">Importar CSV</a>
+      </div>
+    </div>
     <a href="{{ url_for('operacional.painel') }}"
        class="nav-link{% if request.endpoint and request.endpoint.startswith('operacional') %} active{% endif %}">
       Rebanho
@@ -114,6 +126,33 @@
       links.classList.remove('open');
       toggle.setAttribute('aria-expanded', 'false');
     });
+  });
+})();
+
+/* ── nav-dropdown ("+ Novo") ────────────────────────────── */
+(function () {
+  var trigger = document.getElementById('nav-dropdown-toggle');
+  var menu    = document.getElementById('nav-dropdown-menu');
+  if (!trigger || !menu) return;
+
+  trigger.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var open = menu.classList.toggle('open');
+    trigger.setAttribute('aria-expanded', open);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!menu.contains(e.target) && e.target !== trigger) {
+      menu.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      menu.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
   });
 })();
 

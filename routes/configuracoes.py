@@ -21,7 +21,21 @@ def settings():
             ('gmd_meta',      {'required': False, 'type': 'float', 'min_val': 0.1, 'max_val': 5.0, 'label': 'GMD Meta (kg/dia)'}),
         ])
         if errors:
-            return render_template('configuracoes.html', config={}, mensagem=errors[0]), 400
+            dados_atuais = {}
+            try:
+                res = configuracao_repository.get_configuracao(current_user.id)
+                if res:
+                    dados_atuais = {'nome_fazenda': res[0], 'cidade_estado': res[1], 'area_total': res[2],
+                                    'gmd_meta': res[3] if res[3] is not None else 0.800}
+            except Exception as e:
+                logger.error(f"Erro ao carregar configurações: {e}", exc_info=True)
+            dados_atuais.update({
+                'nome_fazenda': request.form.get('nome_fazenda', dados_atuais.get('nome_fazenda', '')),
+                'cidade_estado': request.form.get('cidade_estado', dados_atuais.get('cidade_estado', '')),
+                'area_total': request.form.get('area_total', dados_atuais.get('area_total', '')),
+                'gmd_meta': request.form.get('gmd_meta', dados_atuais.get('gmd_meta', 0.800)),
+            })
+            return render_template('configuracoes.html', config=dados_atuais, mensagem=errors[0]), 400
         try:
             nome = request.form.get('nome_fazenda', '').strip()
             cidade = request.form.get('cidade_estado', '').strip()
@@ -42,7 +56,7 @@ def settings():
     try:
         res = configuracao_repository.get_configuracao(current_user.id)
         if res:
-            dados_atuais = {'nome': res[0], 'cidade': res[1], 'area': res[2],
+            dados_atuais = {'nome_fazenda': res[0], 'cidade_estado': res[1], 'area_total': res[2],
                             'gmd_meta': res[3] if res[3] is not None else 0.800}
     except Exception as e:
         logger.error(f"Erro ao carregar configurações: {e}", exc_info=True)
