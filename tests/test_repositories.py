@@ -246,6 +246,23 @@ def test_get_gmd_medio_rebanho_filtra_por_sexo(um):
     assert gmd_f < gmd_todos < gmd_m
 
 
+def test_get_animais_abaixo_gmd_medio_identifica_outlier(um):
+    """Animal com GMD muito abaixo da média - 2σ do rebanho deve aparecer como
+    outlier; animais dentro da faixa normal não devem aparecer."""
+    normais = [_make_animal(um) for _ in range(5)]
+    for aid, peso in zip(normais, [452.0, 450.0, 455.0, 448.0, 453.0]):
+        _make_pesagem(aid, peso=peso)  # GMD ~1.0 kg/dia
+
+    outlier = _make_animal(um)
+    _make_pesagem(outlier, peso=305.0)  # GMD ~0.03 kg/dia — crescimento estagnado
+
+    resultado = animal_repository.get_animais_abaixo_gmd_medio(um)
+    ids_outliers = {row[0] for row in resultado}
+
+    assert outlier in ids_outliers
+    assert not (set(normais) & ids_outliers)
+
+
 def test_count_animais_status_todos_igual_ativos_mais_vendidos(um):
     aid_v = _make_animal(um)
     _make_animal(um)  # ativo
