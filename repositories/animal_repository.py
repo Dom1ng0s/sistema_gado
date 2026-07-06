@@ -164,7 +164,7 @@ def get_lotes(user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
             "SELECT id, codigo_lote FROM lotes "
-            "WHERE user_id = %s AND deleted_at IS NULL "
+            "WHERE user_id = %s "
             "ORDER BY data_aquisicao DESC",
             (user_id,)
         )
