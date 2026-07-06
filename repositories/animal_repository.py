@@ -205,7 +205,7 @@ def registrar_pesagens_lote(pairs, user_id, data_pesagem):
 
     with get_db_cursor() as cursor:
         cursor.execute(
-            f"SELECT id FROM animais WHERE id IN ({placeholders}) AND user_id = %s",
+            f"SELECT id FROM animais WHERE id IN ({placeholders}) AND user_id = %s AND deleted_at IS NULL",
             animal_ids + [user_id]
         )
         validos = {row[0] for row in cursor.fetchall()}
@@ -724,7 +724,7 @@ def registrar_venda_lote(vendas, user_id, data_venda):
                 [(aid, data_venda, peso_venda) for aid, peso_venda, preco_venda in vendas_validas]
             )
 
-    return len(validos), invalidos
+    return len(vendas_validas), invalidos
 
 
 def registrar_pesagem(animal_id, user_id, data_pesagem, peso):
