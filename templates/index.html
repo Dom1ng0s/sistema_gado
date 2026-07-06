@@ -169,7 +169,8 @@
 </form>
 
 <!-- ── Filtros de status ───────────────────────────────── -->
-<div class="flex flex-wrap items-center gap-2" style="margin-bottom:var(--space-5);">
+<div class="flex items-start gap-2" style="margin-bottom:var(--space-5);">
+<div class="flex flex-wrap items-center gap-2" style="row-gap:var(--space-2);">
   <span class="label" id="status-tabs-label">Exibir:</span>
   <div role="tablist" aria-labelledby="status-tabs-label" style="display:contents;">
     <a href="{{ url_for('operacional.painel', status='todos',    busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
@@ -209,8 +210,9 @@
      class="btn btn-sm btn-secondary{% if raca_filtro == r %} is-active{% endif %}">{{ r }}</a>
   {% endfor %}
   {% endif %}
+</div>
   <a href="{{ url_for('operacional.lixeira') }}"
-     class="btn btn-sm btn-ghost" style="margin-left:auto;">
+     class="btn btn-sm btn-ghost" style="margin-left:auto; flex-shrink:0;">
     <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
     Lixeira
   </a>
