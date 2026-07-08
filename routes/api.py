@@ -97,7 +97,10 @@ def _fetch_cotacoes_github() -> tuple[list, list]:
     def _get(endpoint: str) -> list:
         try:
             r = requests.get(f"{base}/{endpoint}", timeout=5)
-            return r.json() if r.status_code == 200 else []
+            if r.status_code != 200:
+                return []
+            dados = r.json()
+            return dados if isinstance(dados, list) else []
         except Exception:
             return []
 

@@ -242,3 +242,19 @@ def test_cotacoes_brasil_retorna_estrutura(app, um):
         assert r.status_code == 200
         data = r.get_json()
         assert 'boi' in data and 'novilha' in data
+
+
+def test_fetch_cotacoes_descarta_json_nao_lista(app, monkeypatch):
+    """Issue #48 — feed externo que retorne JSON válido mas não-lista
+    (ex.: {}) não pode vazar para o front; _get devolve [] nesse caso."""
+    from routes import api as api_mod
+
+    class _FakeResp:
+        status_code = 200
+        def json(self):
+            return {"erro": "<script>alert(1)</script>"}
+
+    monkeypatch.setattr(api_mod.requests, "get", lambda *a, **k: _FakeResp())
+    api_mod._cotacoes_cache['ts'] = 0  # invalida cache p/ forçar fetch
+    boi, novilha = api_mod._fetch_cotacoes_github()
+    assert boi == [] and novilha == []
