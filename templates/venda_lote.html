@@ -295,6 +295,7 @@
 <script src="{{ url_for('static', filename='js/lote-selecao.js') }}"></script>
 <script>
 (function () {
+  const KG_POR_ARROBA = {{ kg_por_arroba }};  // fonte única: utils/calculo.py
   {% if restore_data and restore_data.animal_ids %}
   const _RESTORE = {
     animal_ids:  {{ restore_data.animal_ids | tojson }},
