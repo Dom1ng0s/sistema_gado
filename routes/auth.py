@@ -62,6 +62,7 @@ def logout():
 
 
 @auth_bp.route('/novo_usuario', methods=['GET', 'POST'])
+@limiter.limit("10 per hour", methods=["POST"])
 def novo_usuario():
     mensagem = None
     if request.method == 'POST':
@@ -89,14 +90,17 @@ def novo_usuario():
                 return render_template('novo_usuario.html', mensagem="Email inválido."), 400
 
             with get_db_cursor() as cursor:
-                cursor.execute("SELECT id FROM usuarios WHERE username = %s", (novo_user,))
+                # Mensagem genérica (não revela QUAL campo colide) para não dar
+                # oráculo de enumeração de usuário/email — ver issue #50.
+                cursor.execute(
+                    "SELECT id FROM usuarios WHERE username = %s OR email = %s",
+                    (novo_user, email)
+                )
                 if cursor.fetchone():
-                    mensagem = f"Usuário '{novo_user}' já existe."
-                    return render_template('novo_usuario.html', mensagem=mensagem), 400
-
-                cursor.execute("SELECT id FROM usuarios WHERE email = %s", (email,))
-                if cursor.fetchone():
-                    return render_template('novo_usuario.html', mensagem="Este email já está cadastrado."), 400
+                    return render_template(
+                        'novo_usuario.html',
+                        mensagem="Não foi possível criar a conta com esse usuário ou email."
+                    ), 400
 
                 hash_s = generate_password_hash(nova_senha)
                 cursor.execute(

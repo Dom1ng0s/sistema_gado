@@ -140,6 +140,28 @@ def test_verificar_codigo_retorna_429_apos_10_tentativas(app_com_limite, client)
     assert r.status_code == 429
 
 
+# ── Issue #50 — Enumeração de usuário/email no cadastro ──────────────────────
+
+def test_novo_usuario_retorna_429_apos_10_tentativas(app_com_limite, client):
+    for _ in range(10):
+        client.post('/novo_usuario', data={
+            'username': 'x', 'password': 'senha123', 'email': 'x@y.com'})
+    r = client.post('/novo_usuario', data={
+        'username': 'x', 'password': 'senha123', 'email': 'x@y.com'})
+    assert r.status_code == 429
+
+
+def test_novo_usuario_duplicado_mensagem_generica_nao_vaza_campo(client):
+    """testuser já existe (conftest). A resposta não pode revelar QUAL campo
+    colidiu — sem 'já existe' do username nem 'email já cadastrado'."""
+    r = client.post('/novo_usuario', data={
+        'username': 'testuser', 'password': 'senha123', 'email': 'novo@exemplo.com'})
+    assert r.status_code == 400
+    corpo = r.data.decode('utf-8')
+    assert 'já existe' not in corpo
+    assert 'já está cadastrado' not in corpo
+
+
 # ── Grupo C — S2: Mutating GET → POST ────────────────────────────────────────
 
 def test_excluir_animal_get_retorna_405(client):
