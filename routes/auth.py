@@ -275,8 +275,7 @@ def apagar_conta():
 
     user_id = current_user.id
     try:
-        with get_db_cursor() as cursor:
-            cursor.execute("DELETE FROM usuarios WHERE id = %s", (user_id,))
+        auth_repository.delete_user_and_data(user_id)
         logout_user()
         session.clear()
         flash('Conta excluída com sucesso.', 'success')

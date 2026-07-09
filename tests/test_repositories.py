@@ -7,7 +7,7 @@ import itertools
 from datetime import date, timedelta
 from werkzeug.security import generate_password_hash
 import db_config as dbc
-from repositories import animal_repository, financeiro_repository, configuracao_repository
+from repositories import animal_repository, financeiro_repository, configuracao_repository, auth_repository
 
 _seq = itertools.count(1000)
 
@@ -239,6 +239,25 @@ def test_get_racas_distintas_agrupa_variacoes(um):
     racas = animal_repository.get_racas_distintas(um)
     assert racas.count("Nelore") == 1
     assert "nelore " not in racas and "NELORE" not in racas
+
+
+def test_delete_user_and_data_remove_tudo_com_fk_restrict(app):
+    """Issue #45 — DELETE direto em usuarios falha por FK RESTRICT quando há
+    dados. delete_user_and_data apaga na ordem certa (pesagens→animais→lotes)
+    e o usuário some junto com seus animais."""
+    uid = _make_user()
+    # cadastrar_lote cria lote + animais + pesagens: exercita o caminho RESTRICT
+    animal_repository.cadastrar_lote(uid, f"DL{_n()}", "Lote", "2024-01-01", [
+        (f"DL{_n()}A", "M", 250.0, 900.0),
+        (f"DL{_n()}B", "F", 300.0, 1100.0),
+    ])
+    assert _count("SELECT COUNT(*) FROM animais WHERE user_id = %s", (uid,)) == 2
+
+    auth_repository.delete_user_and_data(uid)
+
+    assert _count("SELECT COUNT(*) FROM usuarios WHERE id = %s", (uid,)) == 0
+    assert _count("SELECT COUNT(*) FROM animais WHERE user_id = %s", (uid,)) == 0
+    assert _count("SELECT COUNT(*) FROM lotes WHERE user_id = %s", (uid,)) == 0
 
 
 def test_cadastrar_lote_associa_pesagem_ao_animal_correto(um):

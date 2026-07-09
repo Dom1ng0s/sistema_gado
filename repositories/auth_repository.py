@@ -58,3 +58,43 @@ def update_password(user_id, new_hash):
             "UPDATE usuarios SET password_hash = %s WHERE id = %s",
             (new_hash, user_id)
         )
+
+
+def delete_user_and_data(user_id):
+    """Apaga o tenant inteiro em uma única transação, na ordem de dependência.
+
+    A maioria das FKs para usuarios(id) é RESTRICT (sem ON DELETE CASCADE),
+    então um DELETE direto em usuarios falha (errno 1451) se houver qualquer
+    dado. Removemos os filhos primeiro. Tabelas com CASCADE a partir de
+    usuarios (pastos, estoque_produtos, protocolos_sanitarios,
+    password_reset_tokens) e a partir de animais (ocupacao_animais) somem
+    junto — mas as intermediárias com user_id RESTRICT (modulos, ocupacoes,
+    estoque_movimentacoes, reproducao) precisam ser apagadas explicitamente.
+    """
+    # Ordem: netos → filhos → tabelas diretas de usuarios → usuarios.
+    comandos = [
+        # filhos de animais que bloqueiam o DELETE de animais (RESTRICT)
+        "DELETE p FROM pesagens p JOIN animais a ON p.animal_id = a.id WHERE a.user_id = %s",
+        "DELETE m FROM medicacoes m JOIN animais a ON m.animal_id = a.id WHERE a.user_id = %s",
+        "DELETE FROM reproducao WHERE user_id = %s",
+        # cadeia de pastos (ocupacao_animais cascateia de ocupacoes)
+        "DELETE FROM ocupacoes WHERE user_id = %s",
+        "DELETE FROM modulos WHERE user_id = %s",
+        "DELETE FROM pastos WHERE user_id = %s",
+        # animais antes de lotes (animais.lote_id é RESTRICT)
+        "DELETE FROM animais WHERE user_id = %s",
+        "DELETE FROM lotes WHERE user_id = %s",
+        # estoque
+        "DELETE FROM estoque_movimentacoes WHERE user_id = %s",
+        "DELETE FROM estoque_produtos WHERE user_id = %s",
+        # tabelas diretas de usuarios
+        "DELETE FROM custos_operacionais WHERE user_id = %s",
+        "DELETE FROM configuracoes WHERE user_id = %s",
+        "DELETE FROM financial_schedule WHERE user_id = %s",
+        "DELETE FROM protocolos_sanitarios WHERE user_id = %s",
+        "DELETE FROM password_reset_tokens WHERE user_id = %s",
+        "DELETE FROM usuarios WHERE id = %s",
+    ]
+    with get_db_cursor() as cursor:
+        for sql in comandos:
+            cursor.execute(sql, (user_id,))
