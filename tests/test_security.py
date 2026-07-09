@@ -119,6 +119,21 @@ def test_security_headers_em_rota_publica(client):
     assert r.headers.get('X-Frame-Options') == 'SAMEORIGIN'
 
 
+def test_csp_presente_e_restringe_default_src(client):
+    """Issue #46 — CSP como defesa em profundidade."""
+    r = client.get('/login')
+    csp = r.headers.get('Content-Security-Policy')
+    assert csp is not None
+    assert "default-src 'self'" in csp
+    assert "frame-ancestors 'self'" in csp
+
+
+def test_session_cookie_flags_configurados(app):
+    """Issue #46 — HttpOnly + SameSite=Lax na config da sessão."""
+    assert app.config['SESSION_COOKIE_HTTPONLY'] is True
+    assert app.config['SESSION_COOKIE_SAMESITE'] == 'Lax'
+
+
 # ── Grupo B — S1: Rate limit no login ────────────────────────────────────────
 
 def test_login_retorna_429_apos_10_tentativas(app_com_limite, client):
