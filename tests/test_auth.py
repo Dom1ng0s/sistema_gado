@@ -146,7 +146,9 @@ def test_novo_usuario_username_duplicado_retorna_erro(client, mock_smtp):
         'username': username, 'password': 'outrasenha', 'email': 'outro@example.com',
     })
     assert response.status_code == 400
-    assert b'j\xc3\xa1 existe' in response.data
+    # Mensagem genérica (issue #50): não revela QUAL campo colidiu.
+    assert 'Não foi possível criar a conta'.encode('utf-8') in response.data
+    assert b'j\xc3\xa1 existe' not in response.data
     _purge_user(row[0])
 
 
@@ -163,7 +165,9 @@ def test_novo_usuario_email_duplicado_retorna_erro(client, mock_smtp):
         'username': username2, 'password': 'senha123', 'email': email,
     })
     assert response.status_code == 400
-    assert 'já está cadastrado'.encode('utf-8') in response.data
+    # Mensagem genérica (issue #50): não revela QUAL campo colidiu.
+    assert 'Não foi possível criar a conta'.encode('utf-8') in response.data
+    assert 'já está cadastrado'.encode('utf-8') not in response.data
     _purge_user(row[0])
 
 
