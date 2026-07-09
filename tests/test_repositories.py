@@ -223,6 +223,24 @@ def test_cadastrar_animal_cria_pesagem_inicial(um):
     assert float(pesagens[0][3]) == pytest.approx(280.0)  # índice 3 = peso
 
 
+def test_normalizar_raca_canonicaliza_variacoes():
+    """Trim, colapso de espaços e Title Case reduzem variações à mesma forma."""
+    assert animal_repository._normalizar_raca("nelore ") == "Nelore"
+    assert animal_repository._normalizar_raca("NELORE") == "Nelore"
+    assert animal_repository._normalizar_raca("  red  angus ") == "Red Angus"
+    assert animal_repository._normalizar_raca("") is None
+    assert animal_repository._normalizar_raca(None) is None
+
+
+def test_get_racas_distintas_agrupa_variacoes(um):
+    """Duas grafias da mesma raça na escrita → um único valor no dropdown."""
+    animal_repository.cadastrar_animal(f"RC{_n()}", "F", "2024-01-01", 1000.0, 280.0, um, raca="nelore ")
+    animal_repository.cadastrar_animal(f"RC{_n()}", "M", "2024-01-01", 1000.0, 280.0, um, raca="NELORE")
+    racas = animal_repository.get_racas_distintas(um)
+    assert racas.count("Nelore") == 1
+    assert "nelore " not in racas and "NELORE" not in racas
+
+
 def test_cadastrar_lote_associa_pesagem_ao_animal_correto(um):
     """cadastrar_lote insere animais e pesagens via executemany, mapeando o
     animal_id de volta por brinco — cada pesagem tem que ficar com o animal certo,

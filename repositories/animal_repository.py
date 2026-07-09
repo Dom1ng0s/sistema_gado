@@ -2,6 +2,17 @@ from db_config import get_db_cursor
 from datetime import datetime
 
 
+def _normalizar_raca(raca):
+    """Canonicaliza raça antes de gravar: trim, colapsa espaços e Title Case.
+
+    Ponto único de higienização — evita que "nelore ", "NELORE" e "Nelore"
+    virem linhas distintas no dropdown/filtro do painel. Retorna None p/ vazio.
+    """
+    if not raca:
+        return None
+    return ' '.join(raca.split()).title() or None
+
+
 # ATENÇÃO: `conds` deve conter apenas literais hardcoded (ex.: "deleted_at IS NULL").
 # Dados externos (usuário, banco, request) nunca devem ser interpolados em `conds` —
 # sempre vão para `params` e chegam ao banco via placeholder %s.
@@ -589,7 +600,7 @@ def _inserir_animal(cursor, brinco, sexo, data_compra, preco_compra, peso_entrad
         "INSERT INTO animais "
         "(brinco, sexo, raca, data_compra, data_nascimento, preco_compra, user_id, mae_id, pai_id) "
         "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
-        (brinco, sexo, raca or None, data_compra or None, data_nascimento or None,
+        (brinco, sexo, _normalizar_raca(raca), data_compra or None, data_nascimento or None,
          preco_compra or None, user_id, mae_id or None, pai_id or None)
     )
     animal_id = cursor.lastrowid
@@ -787,7 +798,7 @@ def cadastrar_lote(user_id, codigo_lote, descricao, data_compra, animais_data, r
         cursor.executemany(
             "INSERT INTO animais (brinco, sexo, raca, data_compra, preco_compra, user_id, lote_id) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-            [(brinco, sexo, raca or None, data_compra, custo_animal, user_id, lote_id)
+            [(brinco, sexo, _normalizar_raca(raca), data_compra, custo_animal, user_id, lote_id)
              for brinco, sexo, peso, custo_animal in animais_data]
         )
 
