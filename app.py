@@ -108,6 +108,14 @@ _CACHE_BUST = _git_sha()
 def inject_cache_bust():
     return {'cache_bust': _CACHE_BUST}
 
+
+@app.context_processor
+def inject_constantes():
+    # Fonte única de KG_POR_ARROBA para o front (utils/calculo.py) — evita
+    # literal 30 duplicado no JS. Ver issue #49.
+    from utils.calculo import KG_POR_ARROBA
+    return {'kg_por_arroba': KG_POR_ARROBA}
+
 @app.route('/')
 def index():
     if current_user.is_authenticated:
