@@ -18,8 +18,30 @@ from repositories import configuracao_repository
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+_DEBUG = os.getenv('FLASK_DEBUG', 'False') == 'True'
+
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
+if not app.secret_key:
+    # Sem SECRET_KEY as sessões/CSRF ficam inseguras. Em produção é erro fatal;
+    # em dev gera uma chave efêmera para não travar quem ainda não tem .env.
+    if _DEBUG:
+        import secrets as _secrets
+        app.secret_key = _secrets.token_hex(32)
+        logging.getLogger(__name__).warning("SECRET_KEY ausente — usando chave efêmera de dev.")
+    else:
+        raise RuntimeError("SECRET_KEY não definido — defina-o no ambiente antes do deploy.")
+
+# Cookies de sessão: HttpOnly + SameSite sempre; Secure em produção (HTTPS).
+# Em dev sobre HTTP o Secure quebraria o login, então segue o FLASK_DEBUG.
+_cookie_secure = os.getenv('SESSION_COOKIE_SECURE', 'false' if _DEBUG else 'true') == 'true'
+app.config.update(
+    SESSION_COOKIE_SECURE=_cookie_secure,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    REMEMBER_COOKIE_SECURE=_cookie_secure,
+    REMEMBER_COOKIE_HTTPONLY=True,
+)
 csrf = CSRFProtect(app)
 limiter.init_app(app)
 compress.init_app(app)
@@ -86,11 +108,34 @@ def set_static_cache(response):
         response.cache_control.public = True
     return response
 
+# CSP alinhada ao que o front realmente carrega: scripts/estilos inline (o app
+# usa <script> e handlers inline em vários templates → precisa de 'unsafe-inline'),
+# echarts via jsDelivr, fontes do Google. Toda chamada fetch é same-origin.
+# É defesa em profundidade (bloqueia origens externas não listadas), não substitui
+# o escape de dados — ver issue #48.
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data:; "
+    "connect-src 'self'; "
+    "frame-ancestors 'self'; "
+    "base-uri 'self'; "
+    "form-action 'self'"
+)
+
 @app.after_request
 def set_security_headers(response):
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
     response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    response.headers.setdefault('Content-Security-Policy', _CSP)
+    # HSTS só faz sentido sob HTTPS; em dev (HTTP) o browser ignoraria de qualquer forma.
+    if not _DEBUG:
+        response.headers.setdefault(
+            'Strict-Transport-Security', 'max-age=31536000; includeSubDomains'
+        )
     return response
 
 
@@ -107,6 +152,14 @@ _CACHE_BUST = _git_sha()
 @app.context_processor
 def inject_cache_bust():
     return {'cache_bust': _CACHE_BUST}
+
+
+@app.context_processor
+def inject_constantes():
+    # Fonte única de KG_POR_ARROBA para o front (utils/calculo.py) — evita
+    # literal 30 duplicado no JS. Ver issue #49.
+    from utils.calculo import KG_POR_ARROBA
+    return {'kg_por_arroba': KG_POR_ARROBA}
 
 @app.route('/')
 def index():

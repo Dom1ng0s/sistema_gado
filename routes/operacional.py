@@ -708,7 +708,7 @@ def importar_csv():
                 brinco      = (row.get('brinco') or '').strip()
                 sexo        = (row.get('sexo') or '').strip().upper()
                 data_compra = (row.get('data_compra') or '').strip()
-                raca        = (row.get('raca') or '').strip() or None
+                raca        = animal_repository._normalizar_raca(row.get('raca'))
                 data_nasc   = (row.get('data_nascimento') or '').strip() or None
 
                 linha_erros = []

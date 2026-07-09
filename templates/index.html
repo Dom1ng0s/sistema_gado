@@ -328,6 +328,15 @@ const API = {
   csrf:    "{{ csrf_token() }}",
 };
 
+// Escapa strings antes de interpolar em innerHTML — usado para dados que não
+// controlamos totalmente: feed externo de cotações (item.praca) e brinco (texto
+// livre do usuário). Ver issue #48.
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 async function gerarPDF() {
   const btn = document.getElementById('btn-pdf');
   btn.disabled = true;
@@ -449,7 +458,7 @@ async function carregarMetricas() {
     alertasDiv.innerHTML = '';
 
     if (!alertasData.error && alertasData.total > 0) {
-      const lista  = alertasData.animais.slice(0, 6).map(a => a.brinco).join(', ');
+      const lista  = alertasData.animais.slice(0, 6).map(a => escHtml(a.brinco)).join(', ');
       const mais   = alertasData.total > 6 ? ` e mais ${alertasData.total - 6}` : '';
       const limite = alertasData.gmd_limite_inferior != null
                      ? alertasData.gmd_limite_inferior.toFixed(3)
@@ -553,7 +562,7 @@ function abrirModalBrasil() {
       const pNov = mapaNovilha[item.praca]
         ? parseFloat(mapaNovilha[item.praca]).toFixed(2).replace('.', ',') : '---';
       return `<tr>
-        <td class="praca-nome">${item.praca}</td>
+        <td class="praca-nome">${escHtml(item.praca)}</td>
         <td class="preco-boi">R$ ${pBoi}</td>
         <td class="preco-novilha">R$ ${pNov}</td>
       </tr>`;

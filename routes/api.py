@@ -14,6 +14,7 @@ from datetime import date
 from playwright.sync_api import sync_playwright
 from repositories import animal_repository, configuracao_repository, financeiro_repository
 from extensions import limiter
+from utils.calculo import KG_POR_ARROBA
 
 api_bp = Blueprint('api', __name__)
 logger = logging.getLogger(__name__)
@@ -97,7 +98,10 @@ def _fetch_cotacoes_github() -> tuple[list, list]:
     def _get(endpoint: str) -> list:
         try:
             r = requests.get(f"{base}/{endpoint}", timeout=5)
-            return r.json() if r.status_code == 200 else []
+            if r.status_code != 200:
+                return []
+            dados = r.json()
+            return dados if isinstance(dados, list) else []
         except Exception:
             return []
 
@@ -172,7 +176,7 @@ def graficos_peso():
     rows = animal_repository.get_pesos_atuais_rebanho(current_user.id)
     cat_peso = {'Menos de 10@': 0, '10@ a 15@': 0, '15@ a 20@': 0, 'Mais de 20@': 0}
     for (p_kg,) in rows:
-        p_arr = float(p_kg) / 30
+        p_arr = float(p_kg) / KG_POR_ARROBA
         if p_arr < 10:
             cat_peso['Menos de 10@'] += 1
         elif 10 <= p_arr < 15:

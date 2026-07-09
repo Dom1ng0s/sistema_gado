@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 5000
+# gunicorn.conf.py faz bind em 0.0.0.0:$PORT (default 8000)
+EXPOSE 8000
 
-CMD ["flask", "run", "--host=0.0.0.0"]
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]

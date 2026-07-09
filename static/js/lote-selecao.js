@@ -1,6 +1,6 @@
 // Widget de seleção em lote: checkbox por linha, marcar/desmarcar todos, contagem.
 // Cada página injeta onCheck/onUncheck para o comportamento específico do campo de peso.
-const KG_POR_ARROBA = 30;
+// (KG_POR_ARROBA, quando necessário, é injetado pela própria página via {{ kg_por_arroba }}.)
 
 function initSelecaoLote({ onCheck, onUncheck } = {}) {
   const checks       = document.querySelectorAll('.animal-check');
