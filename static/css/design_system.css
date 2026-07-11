@@ -303,18 +303,22 @@ h3 { font-size: var(--text-lg); font-weight: var(--weight-medium); }
   box-shadow: var(--shadow-md);
   z-index: var(--z-nav);
   transform-origin: top right;
-  transform: scale(0.96);
+  transform: translateY(-8px) scale(0.94);
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--transition-fast),
-              transform var(--transition-fast),
-              visibility var(--transition-fast);
+  transition: opacity 220ms cubic-bezier(0.4, 0, 0.2, 1),
+              transform 220ms cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 220ms;
 }
 
 .action-menu__panel.open {
-  transform: scale(1);
+  transform: translateY(0) scale(1);
   opacity: 1;
   visibility: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action-menu__panel { transition: none; }
 }
 
 .action-menu__item {
