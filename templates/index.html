@@ -31,40 +31,28 @@
 <!-- ── Barra de ações ──────────────────────────────────── -->
 <div class="header-actions flex flex-wrap items-center gap-2" style="justify-content:flex-end; margin-bottom:var(--space-6);">
     <!-- Dropdown "Mais ações" — agrupa ações secundárias para reduzir densidade no mobile -->
-    <div class="header-more-actions" style="position:relative;">
-      <button type="button" class="btn btn-secondary btn-sm" id="btn-mais-acoes"
+    <div class="action-menu">
+      <button type="button" class="btn btn-secondary btn-sm action-menu__trigger" id="btn-mais-acoes"
               aria-haspopup="true" aria-expanded="false"
               onclick="toggleMaisAcoes(event)">
         Mais ações
         <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" style="margin-left:2px;"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
-      <div id="menu-mais-acoes" role="menu" aria-labelledby="btn-mais-acoes"
-           style="display:none; position:absolute; top:calc(100% + 6px); right:0; z-index:200;
-                  background:var(--color-surface); border:1px solid var(--color-border);
-                  border-radius:var(--radius-md); box-shadow:var(--shadow-md);
-                  min-width:180px; padding:var(--space-1) 0;">
-        <button role="menuitem" onclick="gerarPDF(); fecharMaisAcoes();"
-                style="display:flex; align-items:center; gap:var(--space-2); width:100%; padding:var(--space-2) var(--space-3); background:none; border:none; cursor:pointer; font-size:var(--text-sm); color:var(--color-ink); text-align:left; white-space:nowrap;"
-                onmouseover="this.style.background='var(--color-bg)'" onmouseout="this.style.background='none'">
+      <div id="menu-mais-acoes" class="action-menu__panel" role="menu" aria-labelledby="btn-mais-acoes">
+        <button role="menuitem" class="action-menu__item" onclick="gerarPDF(); fecharMaisAcoes();">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Relatório PDF
         </button>
-        <a role="menuitem" href="{{ url_for('api.export_animais_csv') }}"
-           style="display:flex; align-items:center; gap:var(--space-2); padding:var(--space-2) var(--space-3); font-size:var(--text-sm); color:var(--color-ink); text-decoration:none; white-space:nowrap;"
-           onmouseover="this.style.background='var(--color-bg)'" onmouseout="this.style.background='none'">
+        <a role="menuitem" class="action-menu__item" href="{{ url_for('api.export_animais_csv') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Exportar CSV
         </a>
-        <a role="menuitem" href="{{ url_for('operacional.importar_csv') }}"
-           style="display:flex; align-items:center; gap:var(--space-2); padding:var(--space-2) var(--space-3); font-size:var(--text-sm); color:var(--color-ink); text-decoration:none; white-space:nowrap;"
-           onmouseover="this.style.background='var(--color-bg)'" onmouseout="this.style.background='none'">
+        <a role="menuitem" class="action-menu__item" href="{{ url_for('operacional.importar_csv') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><line x1="12" y1="3" x2="12" y2="9"/><polyline points="17 5 12 0 7 5"/></svg>
           Importar CSV
         </a>
-        <hr style="margin:var(--space-1) 0; border:none; border-top:1px solid var(--color-border);">
-        <a role="menuitem" href="{{ url_for('operacional.ranking_touros') }}"
-           style="display:flex; align-items:center; gap:var(--space-2); padding:var(--space-2) var(--space-3); font-size:var(--text-sm); color:var(--color-ink); text-decoration:none; white-space:nowrap;"
-           onmouseover="this.style.background='var(--color-bg)'" onmouseout="this.style.background='none'">
+        <hr class="action-menu__sep">
+        <a role="menuitem" class="action-menu__item" href="{{ url_for('operacional.ranking_touros') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           Ranking Touros
         </a>
@@ -611,13 +599,13 @@ function toggleMaisAcoes(e) {
   e.stopPropagation();
   var menu = document.getElementById('menu-mais-acoes');
   var btn  = document.getElementById('btn-mais-acoes');
-  var open = menu.style.display === 'none';
-  menu.style.display = open ? 'block' : 'none';
+  var open = !menu.classList.contains('open');
+  menu.classList.toggle('open', open);
   btn.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 function fecharMaisAcoes() {
   var menu = document.getElementById('menu-mais-acoes');
-  if (menu) { menu.style.display = 'none'; }
+  if (menu) { menu.classList.remove('open'); }
   var btn = document.getElementById('btn-mais-acoes');
   if (btn) btn.setAttribute('aria-expanded', 'false');
 }
