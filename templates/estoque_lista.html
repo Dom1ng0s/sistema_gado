@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as m %}
 {% block title %}Estoque Virtual{% endblock %}
 
 {% block extra_css %}
@@ -26,6 +27,11 @@
   </div>
   <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">← Painel</a>
 </div>
+
+{{ m.tab_nav([
+  ('Estoque', url_for('estoque.lista_estoque'), request.endpoint and request.endpoint.startswith('estoque')),
+  ('Protocolos', url_for('sanitario.lista_protocolos'), request.endpoint and request.endpoint.startswith('sanitario')),
+]) }}
 
 
 <!-- ── Alerta de estoque baixo ─────────────────────── -->
