@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as m %}
 {% block title %}Relatórios — Rebanho{% endblock %}
 
 {% block extra_css %}
@@ -26,6 +27,11 @@
     <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary btn-sm">← Painel</a>
   </div>
 </div>
+
+{{ m.tab_nav([
+  ('Gráficos', url_for('api.graficos_page'), request.endpoint == 'api.graficos_page'),
+  ('Ranking de Touros', url_for('operacional.ranking_touros'), request.endpoint == 'operacional.ranking_touros'),
+]) }}
 
 <!-- ── Card GMD ───────────────────────────────────────── -->
 <div class="grid-metrics" style="margin-bottom:var(--space-6);">

@@ -19,3 +19,14 @@
   {% endif %}
 </div>
 {% endmacro %}
+
+{# Sub-navegação por abas dentro de uma página-mãe.
+   tabs: lista de (label, href, ativo). Ativo definido pelo chamador via request.endpoint. #}
+{% macro tab_nav(tabs) %}
+<nav class="tab-nav" aria-label="Seções">
+  {% for label, href, ativo in tabs %}
+  <a href="{{ href }}" class="tab-nav-link{% if ativo %} active{% endif %}"
+     {% if ativo %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+{% endmacro %}

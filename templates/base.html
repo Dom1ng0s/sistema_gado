@@ -42,35 +42,23 @@
       </div>
     </div>
     <a href="{{ url_for('operacional.painel') }}"
-       class="nav-link{% if request.endpoint and request.endpoint.startswith('operacional') %} active{% endif %}">
+       class="nav-link{% if request.endpoint and request.endpoint.startswith('operacional') and request.endpoint != 'operacional.ranking_touros' %} active{% endif %}">
       Rebanho
-    </a>
-    <a href="{{ url_for('operacional.ranking_touros') }}"
-       class="nav-link{% if request.endpoint == 'operacional.ranking_touros' %} active{% endif %}">
-      Ranking de Touros
     </a>
     <a href="{{ url_for('financeiro.financeiro') }}"
        class="nav-link{% if request.endpoint and request.endpoint.startswith('financeiro') %} active{% endif %}">
       Financeiro
-    </a>
-    <a href="{{ url_for('financeiro.resultado_lotes') }}"
-       class="nav-link{% if request.endpoint in ('financeiro.resultado_lotes', 'financeiro.detalhe_lote') %} active{% endif %}">
-      Financeiro/Lotes
     </a>
     <a href="{{ url_for('pastos.listar_pastos') }}"
        class="nav-link{% if request.endpoint and request.endpoint.startswith('pastos') %} active{% endif %}">
       Pastos
     </a>
     <a href="{{ url_for('estoque.lista_estoque') }}"
-       class="nav-link{% if request.endpoint and request.endpoint.startswith('estoque') %} active{% endif %}">
-      Estoque
-    </a>
-    <a href="{{ url_for('sanitario.lista_protocolos') }}"
-       class="nav-link{% if request.endpoint and request.endpoint.startswith('sanitario') %} active{% endif %}">
-      Sanitário
+       class="nav-link{% if request.endpoint and (request.endpoint.startswith('estoque') or request.endpoint.startswith('sanitario')) %} active{% endif %}">
+      Manejo
     </a>
     <a href="{{ url_for('api.graficos_page') }}"
-       class="nav-link{% if request.endpoint == 'api.graficos_page' %} active{% endif %}">
+       class="nav-link{% if request.endpoint == 'api.graficos_page' or request.endpoint == 'operacional.ranking_touros' %} active{% endif %}">
       Relatórios
     </a>
     <a href="{{ url_for('configuracoes.settings') }}"
