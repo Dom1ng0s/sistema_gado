@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as m %}
 {% block title %}Lote {{ lote[1] }}{% endblock %}
 
 {% block content %}
@@ -14,6 +15,11 @@
     <a href="{{ url_for('financeiro.resultado_lotes') }}" class="btn btn-secondary btn-sm">← Todos os lotes</a>
   </div>
 </div>
+
+{{ m.tab_nav([
+  ('Fluxo de caixa', url_for('financeiro.financeiro'), request.endpoint == 'financeiro.financeiro'),
+  ('Resultado por lote', url_for('financeiro.resultado_lotes'), request.endpoint in ('financeiro.resultado_lotes', 'financeiro.detalhe_lote')),
+]) }}
 
 <!-- ── KPIs do lote ───────────────────────────────────────── -->
 {% set pct_vendidos = ((lote[8] / lote[4]) * 100) | round(1) if lote[4] > 0 else 0 %}

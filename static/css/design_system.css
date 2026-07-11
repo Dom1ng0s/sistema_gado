@@ -221,6 +221,7 @@ h3 { font-size: var(--text-lg); font-weight: var(--weight-medium); }
   text-decoration: none;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
+  white-space: nowrap;
   transition: color var(--transition-fast), background var(--transition-fast);
 }
 
@@ -281,6 +282,34 @@ h3 { font-size: var(--text-lg); font-weight: var(--weight-medium); }
 .nav-dropdown-item {
   display: block;
   white-space: nowrap;
+}
+
+/* ── Tab nav — sub-navegação dentro de uma página-mãe ───── */
+.tab-nav {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-6);
+  overflow-x: auto;
+}
+
+.tab-nav-link {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-ink-secondary);
+  text-decoration: none;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.tab-nav-link:hover { color: var(--color-ink); }
+
+.tab-nav-link.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
 }
 
 /* ── Layout ──────────────────────────────────────────────── */
