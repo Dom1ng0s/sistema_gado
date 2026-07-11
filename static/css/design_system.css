@@ -284,6 +284,75 @@ h3 { font-size: var(--text-lg); font-weight: var(--weight-medium); }
   white-space: nowrap;
 }
 
+/* ── Menu de ações animado (painel "Mais ações") ─────────────
+   Inspirado no popup checkbox do mockapi, adaptado aos tokens.
+   Usa opacity/visibility/transform (não display) para animar. */
+.action-menu {
+  position: relative;
+}
+
+.action-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  min-width: 200px;
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-nav);
+  transform-origin: top right;
+  transform: scale(0.96);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast),
+              transform var(--transition-fast),
+              visibility var(--transition-fast);
+}
+
+.action-menu__panel.open {
+  transform: scale(1);
+  opacity: 1;
+  visibility: visible;
+}
+
+.action-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.action-menu__item:hover,
+.action-menu__item:focus-visible {
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  outline: none;
+}
+
+.action-menu__sep {
+  margin: var(--space-1) 0;
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+/* seta do gatilho gira ao abrir */
+.action-menu__trigger svg { transition: transform var(--transition-fast); }
+.action-menu__trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
+
 /* ── Tab nav — sub-navegação dentro de uma página-mãe ───── */
 .tab-nav {
   display: flex;
