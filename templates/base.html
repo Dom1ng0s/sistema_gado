@@ -29,40 +29,53 @@
     SGG
   </a>
   <div class="nav-links" id="nav-links">
-    <div class="nav-dropdown" id="nav-dropdown">
-      <button type="button" class="nav-dropdown-toggle" id="nav-dropdown-toggle"
-              aria-haspopup="true" aria-expanded="false">
+    <div class="nav-dropdown">
+      <button type="button" class="nav-dropdown-toggle" aria-haspopup="true" aria-expanded="false">
         + Novo
       </button>
-      <div class="nav-dropdown-menu" id="nav-dropdown-menu">
+      <div class="nav-dropdown-menu">
         <a href="{{ url_for('operacional.cadastro') }}" class="nav-link nav-dropdown-item">Cadastro individual</a>
         <a href="{{ url_for('operacional.cadastro_lote') }}" class="nav-link nav-dropdown-item">Cadastro em lote</a>
         <a href="{{ url_for('operacional.venda_lote') }}" class="nav-link nav-dropdown-item">Venda em lote</a>
         <a href="{{ url_for('operacional.importar_csv') }}" class="nav-link nav-dropdown-item">Importar CSV</a>
       </div>
     </div>
+    {% set _ep = request.endpoint or '' %}
+    {# Páginas que pertencem a outra seção da navbar apesar do prefixo do blueprint. #}
+    {% set _ep_reproducao = _ep in ('operacional.reproducao_painel', 'operacional.reproducao_animal', 'operacional.registrar_reproducao') %}
+    {% set _ep_relatorios = _ep in ('api.graficos_page', 'operacional.ranking_touros', 'pastos.gmd_por_modulo') %}
     <a href="{{ url_for('operacional.painel') }}"
-       class="nav-link{% if request.endpoint and request.endpoint.startswith('operacional') and request.endpoint != 'operacional.ranking_touros' %} active{% endif %}">
+       class="nav-link{% if _ep.startswith('operacional') and not _ep_reproducao and not _ep_relatorios %} active{% endif %}">
       Rebanho
     </a>
+    <a href="{{ url_for('operacional.reproducao_painel') }}"
+       class="nav-link{% if _ep_reproducao %} active{% endif %}">
+      Reprodução
+    </a>
     <a href="{{ url_for('financeiro.financeiro') }}"
-       class="nav-link{% if request.endpoint and request.endpoint.startswith('financeiro') %} active{% endif %}">
+       class="nav-link{% if _ep.startswith('financeiro') %} active{% endif %}">
       Financeiro
     </a>
     <a href="{{ url_for('pastos.listar_pastos') }}"
-       class="nav-link{% if request.endpoint and request.endpoint.startswith('pastos') %} active{% endif %}">
+       class="nav-link{% if _ep.startswith('pastos') and not _ep_relatorios %} active{% endif %}">
       Pastos
     </a>
-    <a href="{{ url_for('estoque.lista_estoque') }}"
-       class="nav-link{% if request.endpoint and (request.endpoint.startswith('estoque') or request.endpoint.startswith('sanitario')) %} active{% endif %}">
-      Manejo
-    </a>
+    <div class="nav-dropdown">
+      <button type="button" class="nav-dropdown-toggle{% if _ep.startswith('estoque') or _ep.startswith('sanitario') %} active{% endif %}"
+              aria-haspopup="true" aria-expanded="false">
+        Manejo
+      </button>
+      <div class="nav-dropdown-menu">
+        <a href="{{ url_for('estoque.lista_estoque') }}" class="nav-link nav-dropdown-item">Estoque</a>
+        <a href="{{ url_for('sanitario.lista_protocolos') }}" class="nav-link nav-dropdown-item">Calendário sanitário</a>
+      </div>
+    </div>
     <a href="{{ url_for('api.graficos_page') }}"
-       class="nav-link{% if request.endpoint == 'api.graficos_page' or request.endpoint == 'operacional.ranking_touros' %} active{% endif %}">
+       class="nav-link{% if _ep_relatorios %} active{% endif %}">
       Relatórios
     </a>
     <a href="{{ url_for('configuracoes.settings') }}"
-       class="nav-link{% if request.endpoint and request.endpoint.startswith('configuracoes') %} active{% endif %}">
+       class="nav-link{% if _ep.startswith('configuracoes') %} active{% endif %}">
       Configurações
     </a>
   </div>
@@ -125,30 +138,40 @@
   });
 })();
 
-/* ── nav-dropdown ("+ Novo") ────────────────────────────── */
+/* ── nav-dropdowns ("+ Novo", "Manejo") ─────────────────── */
 (function () {
-  var trigger = document.getElementById('nav-dropdown-toggle');
-  var menu    = document.getElementById('nav-dropdown-menu');
-  if (!trigger || !menu) return;
+  var dropdowns = [];
+  document.querySelectorAll('.nav-dropdown').forEach(function (dd) {
+    var trigger = dd.querySelector('.nav-dropdown-toggle');
+    var menu    = dd.querySelector('.nav-dropdown-menu');
+    if (trigger && menu) dropdowns.push({ trigger: trigger, menu: menu });
+  });
+  if (!dropdowns.length) return;
 
-  trigger.addEventListener('click', function (e) {
-    e.stopPropagation();
-    var open = menu.classList.toggle('open');
-    trigger.setAttribute('aria-expanded', open);
+  function fechar(dd) {
+    dd.menu.classList.remove('open');
+    dd.trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  dropdowns.forEach(function (dd) {
+    dd.trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      // Só um menu aberto por vez — dois abertos se sobrepõem na navbar.
+      dropdowns.forEach(function (outro) { if (outro !== dd) fechar(outro); });
+      var open = dd.menu.classList.toggle('open');
+      dd.trigger.setAttribute('aria-expanded', open);
+    });
   });
 
   document.addEventListener('click', function (e) {
-    if (!menu.contains(e.target) && e.target !== trigger) {
-      menu.classList.remove('open');
-      trigger.setAttribute('aria-expanded', 'false');
-    }
+    dropdowns.forEach(function (dd) {
+      // contains() e não !==: o clique pode cair num filho do trigger (ícone/svg).
+      if (!dd.menu.contains(e.target) && !dd.trigger.contains(e.target)) fechar(dd);
+    });
   });
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') {
-      menu.classList.remove('open');
-      trigger.setAttribute('aria-expanded', 'false');
-    }
+    if (e.key === 'Escape') dropdowns.forEach(fechar);
   });
 })();
 

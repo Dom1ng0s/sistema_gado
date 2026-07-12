@@ -51,24 +51,15 @@
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><line x1="12" y1="3" x2="12" y2="9"/><polyline points="17 5 12 0 7 5"/></svg>
           Importar CSV
         </a>
-        <hr class="action-menu__sep">
-        <a role="menuitem" class="action-menu__item" href="{{ url_for('operacional.ranking_touros') }}">
-          <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Ranking Touros
-        </a>
       </div>
     </div>
     <a href="{{ url_for('operacional.vacinacao_coletiva') }}" class="btn btn-accent btn-sm">
       <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="m18 2 4 4-1.5 1.5-4-4L18 2ZM10.5 9.5l4 4M7 8l4 4m-7 7 4-4m1-8 8 8"/><path d="m2 22 4-4"/></svg>
       Vacina em Lote
     </a>
-    <a href="{{ url_for('operacional.pesagem_lote') }}" class="btn btn-secondary btn-sm">
+    <a href="{{ url_for('operacional.pesagem_lote') }}" class="btn btn-primary">
       <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 1 4 4v1h2a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2V6a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v1h4V6a2 2 0 0 0-2-2z"/></svg>
       Pesagem em Lote
-    </a>
-    <a href="{{ url_for('operacional.transacoes') }}" class="btn btn-primary">
-      <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-      Transações
     </a>
 </div>
 

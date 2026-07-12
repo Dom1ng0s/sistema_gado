@@ -78,11 +78,6 @@ def restaurar_animal(id_animal):
         logger.error(f"Erro restaurar: {e}", exc_info=True)
     return redirect(url_for('operacional.lixeira'))
 
-@operacional_bp.route('/transacoes')
-@login_required
-def transacoes():
-    return render_template('transacoes.html')
-
 @operacional_bp.route("/cadastro", methods=["GET", "POST"])
 @login_required
 def cadastro():
@@ -536,6 +531,33 @@ def reproducao_animal(id_animal):
                            animal=animal, eventos=eventos,
                            stats=stats, machos=machos,
                            partos_previstos=partos_previstos)
+
+
+@operacional_bp.route('/reproducao')
+@login_required
+def reproducao_painel():
+    """Visão de rebanho da reprodução — /animais/<id>/reproducao só responde por indivíduo.
+
+    A gestação bovina é ~285 dias, então esse horizonte cobre toda vaca gestante:
+    vw_partos_previstos já filtra DG positivo com parto ainda não registrado.
+    """
+    partos_previstos, total_gestantes = [], 0
+    try:
+        partos_previstos = reproducao_repository.get_partos_previstos(current_user.id, dias=285)
+        total_gestantes = reproducao_repository.get_contagem_gestantes(current_user.id)
+    except Exception as e:
+        logger.error(f"Erro painel reprodução: {e}", exc_info=True)
+        flash("Não foi possível carregar os dados de reprodução agora. Tente novamente em instantes.", 'error')
+
+    # dias_restantes (p[4]) é negativo quando a data prevista já passou sem parto registrado.
+    n_atrasados = sum(1 for p in partos_previstos if p[4] <= 0)
+    n_proximos_30 = sum(1 for p in partos_previstos if 0 < p[4] <= 30)
+
+    return render_template('reproducao_painel.html',
+                           partos_previstos=partos_previstos,
+                           total_gestantes=total_gestantes,
+                           n_atrasados=n_atrasados,
+                           n_proximos_30=n_proximos_30)
 
 
 @operacional_bp.route('/reproducao', methods=['POST'])
