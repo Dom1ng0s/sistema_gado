@@ -11,13 +11,6 @@
   <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-ghost btn-sm">← Financeiro</a>
 </div>
 
-{% if mensagem %}
-  <div class="alert alert-danger" role="alert" style="margin-bottom:var(--space-6);">
-    <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" viewBox="0 0 24 24"><path d="m10.29 3.86-8.6 14.9A2 2 0 0 0 3.43 22h17.14a2 2 0 0 0 1.74-2.84l-8.6-14.9a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></span>
-    <div>{{ mensagem }}</div>
-  </div>
-{% endif %}
-
 <div style="max-width:480px;">
   <form action="{{ url_for('financeiro.custos_operacionais') }}" method="POST" class="form-container">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

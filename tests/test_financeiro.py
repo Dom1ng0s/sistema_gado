@@ -420,3 +420,27 @@ def test_agendamentos_baixar_de_outro_usuario_nao_altera(client):
     row = cur.fetchone()
     cur.close(); conn.close()
     assert row[0] == 'pendente'
+
+
+# ── Alerta de erro centralizado no base.html (issue #72) ─────────────────────
+
+def test_erro_de_validacao_renderiza_alerta(client):
+    """`mensagem` é renderizada pelo base.html — os templates não repetem mais o bloco.
+
+    Guarda a issue #72: se a renderização central sumir, o usuário perde o
+    feedback de validação sem que nenhum status HTTP mude.
+    """
+    login(client)
+    response = client.post('/custos_operacionais', data={
+        'categoria': 'Variavel',
+        'tipo_variavel': 'Nutrição',
+        'valor': '-5',            # viola min_val=0.01
+        'data': '2024-01-01',
+        'descricao': '',
+    })
+    assert response.status_code == 200
+    corpo = response.data.decode('utf-8')
+    assert 'alert-danger' in corpo
+    assert 'Valor' in corpo
+    # e o form_data digitado sobrevive ao erro (motivo de não usar redirect+flash)
+    assert 'Nutri' in corpo
