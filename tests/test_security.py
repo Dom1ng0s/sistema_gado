@@ -13,10 +13,6 @@ from werkzeug.security import generate_password_hash
 import db_config as dbc
 from extensions import limiter
 
-DB_CONFIG = {
-    "host": "localhost", "user": "gado_test",
-    "password": "gado123", "port": 3306, "database": "sistema_gado_test",
-}
 
 _seq = itertools.count(8500)
 
