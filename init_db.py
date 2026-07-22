@@ -3,6 +3,7 @@ import os
 import sys
 import time
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash
 
 load_dotenv()
 
@@ -48,17 +49,25 @@ def criar_schema(cursor):
     );
     """)
 
-    # 1.2 Inserção do ADMIN Padrão
-    print(" Verificando usuário 'admin'...")
-    hash_admin = 'scrypt:32768:8:1$kXp5C5q9Zz8s$6e28d45f348043653131707572706854199c07172551061919864273347072557766858172970635489708764835940561570198038755030800008853755355'
-    try:
-        cursor.execute("INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)", ('admin', hash_admin))
-        print("   -> Usuário 'admin' criado (Senha: admin123).")
-    except mysql.connector.Error as err:
-        if err.errno == 1062:
-            print("   -> Usuário 'admin' já existe.")
-        else:
-            raise err
+    # 1.2 Inserção do ADMIN Padrão (opt-in, só para bootstrap de ambiente local)
+    # railway.toml roda este script a cada deploy: semear uma credencial fixa aqui
+    # criaria uma conta de acesso conhecida em produção. Exige SEED_ADMIN=true.
+    if os.getenv('SEED_ADMIN') == 'true':
+        senha_admin = os.getenv('ADMIN_PASSWORD')
+        if not senha_admin:
+            raise RuntimeError("SEED_ADMIN=true exige ADMIN_PASSWORD definido no ambiente.")
+        print(" Verificando usuário 'admin'...")
+        try:
+            cursor.execute(
+                "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
+                ('admin', generate_password_hash(senha_admin))
+            )
+            print("   -> Usuário 'admin' criado com a senha de ADMIN_PASSWORD.")
+        except mysql.connector.Error as err:
+            if err.errno == 1062:
+                print("   -> Usuário 'admin' já existe.")
+            else:
+                raise err
 
     # 1.3 Tabela ANIMAIS
     print(" [2/6] Criando tabela 'animais'...")
