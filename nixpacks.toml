@@ -1,0 +1,10 @@
+# Railway usa o builder nixpacks (ver railway.toml) e ignora o Dockerfile.
+# O pacote pip do playwright NÃO traz o binário do Chromium; sem este passo a
+# geração de PDF (routes/api.py::_gerar_pdf_bg) falha em runtime gravando .error.
+#
+# Fase própria, dependente de 'install', para não sobrescrever a criação de venv
+# que o provider Python do nixpacks faz na fase install. 'python -m playwright'
+# em vez do script 'playwright' evita depender do bin do venv estar no PATH.
+[phases.playwright]
+dependsOn = ["install"]
+cmds = ["python -m playwright install --with-deps chromium"]
