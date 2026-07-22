@@ -106,17 +106,45 @@ def get_ocupacao_ativa(modulo_id, user_id):
 
 
 def iniciar_ocupacao(modulo_id, user_id, data_entrada, animal_ids):
-    """Insere ocupacao e ocupacao_animais em uma única transação. Retorna ocupacao_id."""
+    """Insere ocupacao e ocupacao_animais em uma única transação.
+
+    Valida que todos os animal_ids pertencem ao user_id antes de inserir —
+    mesmo padrão de animal_repository.registrar_pesagens_lote.
+    Retorna ocupacao_id.
+
+    IDs de outro tenant são descartados em silêncio: o form só lista os animais
+    do próprio usuário, então isso só ocorre em POST forjado.
+    """
+    ids = []
+    for aid in animal_ids:
+        try:
+            ids.append(int(aid))
+        except (TypeError, ValueError):
+            continue
+
     with get_db_cursor() as cursor:
         cursor.execute(
             "INSERT INTO ocupacoes (modulo_id, user_id, data_entrada) VALUES (%s, %s, %s)",
             (modulo_id, user_id, data_entrada)
         )
         ocupacao_id = cursor.lastrowid
-        cursor.executemany(
-            "INSERT INTO ocupacao_animais (ocupacao_id, animal_id) VALUES (%s, %s)",
-            [(ocupacao_id, int(aid)) for aid in animal_ids]
-        )
+
+        validos = set()
+        if ids:
+            placeholders = ','.join(['%s'] * len(ids))
+            cursor.execute(
+                f"SELECT id FROM animais WHERE id IN ({placeholders}) "
+                f"AND user_id = %s AND deleted_at IS NULL",
+                ids + [user_id]
+            )
+            validos = {row[0] for row in cursor.fetchall()}
+
+        if validos:
+            cursor.executemany(
+                "INSERT INTO ocupacao_animais (ocupacao_id, animal_id) VALUES (%s, %s)",
+                [(ocupacao_id, aid) for aid in validos]
+            )
+
         return ocupacao_id
 
 
