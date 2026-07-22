@@ -31,6 +31,7 @@
 {{ m.tab_nav([
   ('Gráficos', url_for('api.graficos_page'), request.endpoint == 'api.graficos_page'),
   ('Ranking de Touros', url_for('operacional.ranking_touros'), request.endpoint == 'operacional.ranking_touros'),
+  ('GMD por Módulo', url_for('pastos.gmd_por_modulo'), request.endpoint == 'pastos.gmd_por_modulo'),
 ]) }}
 
 <!-- ── Card GMD ───────────────────────────────────────── -->

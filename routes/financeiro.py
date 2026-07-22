@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 import math
 from datetime import date, timedelta
 import logging
-from repositories import animal_repository, financeiro_repository, reproducao_repository, pasto_repository
+from repositories import animal_repository, financeiro_repository
 from routes.validators import validate
 from utils.calculo import KG_POR_ARROBA
 
@@ -102,24 +102,8 @@ def financeiro():
     except Exception as e:
         logger.error(f"Erro ao carregar custos: {e}", exc_info=True)
 
-    partos_previstos = []
-    total_gestantes = 0
-    try:
-        partos_previstos = reproducao_repository.get_partos_previstos(current_user.id, dias=30)
-        total_gestantes = reproducao_repository.get_contagem_gestantes(current_user.id)
-    except Exception as e:
-        logger.error(f"Erro ao carregar dados de prenhez: {e}", exc_info=True)
-
-    top_gmd_modulos = []
-    try:
-        top_gmd_modulos = pasto_repository.get_top_gmd_por_modulo(current_user.id)
-    except Exception as e:
-        logger.error(f"Erro ao carregar GMD por módulo: {e}", exc_info=True)
-
     return render_template('financeiro.html', financeiro=view_data, ano_selecionado=ano_sel, anos=anos,
-                           custos=custos, pagina_atual=page, total_custos=total_custos, total_paginas=total_paginas,
-                           partos_previstos=partos_previstos, total_gestantes=total_gestantes,
-                           top_gmd_modulos=top_gmd_modulos)
+                           custos=custos, pagina_atual=page, total_custos=total_custos, total_paginas=total_paginas)
 
 
 @financeiro_bp.route('/simulador-custo', methods=['GET', 'POST'])

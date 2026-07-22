@@ -210,30 +210,20 @@ def test_detalhe_lote_outro_usuario_redireciona(client):
     assert response.status_code == 302
 
 
-# ── Sprint 2 — Widgets de Inteligência Zootécnica ──────────────────────────
+# ── Fronteira de domínio — zootecnia não pertence ao Financeiro (issue #71) ──
 
-def test_financeiro_widget_prenhez_sem_dados(client):
-    """Painel financeiro carrega sem erros quando não há gestações registradas."""
-    login(client)
-    response = client.get('/financeiro')
-    assert response.status_code == 200
-    assert 'Reprodu'.encode('utf-8') in response.data
-
-
-def test_financeiro_widget_prenhez_com_dg_positivo(client):
-    """Widget de prenhez exibe vaca gestante com DG positivo."""
+def test_financeiro_nao_exibe_dados_de_prenhez(client):
+    """Vaca gestante não deve aparecer no Financeiro — o lugar dela é /reproducao."""
     login(client)
     uid = _get_user_id()
     conn = mysql.connector.connect(**DB_CONFIG)
     cur = conn.cursor()
-    # Cria vaca e touro
     cur.execute(
         "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "
         "VALUES ('VACA-DG01', 'F', '2023-01-01', 800, %s)",
         (uid,)
     )
     vaca_id = cur.lastrowid
-    # Reprodução com DG positivo e parto previsto nos próximos 30 dias
     from datetime import date, timedelta
     data_cob = date.today() - timedelta(days=260)
     data_prev = data_cob + timedelta(days=285)
@@ -249,15 +239,20 @@ def test_financeiro_widget_prenhez_com_dg_positivo(client):
 
     response = client.get('/financeiro')
     assert response.status_code == 200
+    assert b'VACA-DG01' not in response.data
+
+    # ...e continua visível no painel de reprodução, que é o dono do dado.
+    response = client.get('/reproducao')
+    assert response.status_code == 200
     assert b'VACA-DG01' in response.data
 
 
-def test_financeiro_widget_gmd_sem_dados(client):
-    """Painel financeiro carrega sem erros quando não há dados de GMD por módulo."""
+def test_financeiro_nao_exibe_gmd_por_modulo(client):
+    """Widget "Top Módulos por GMD" saiu do Financeiro — vive em Relatórios."""
     login(client)
     response = client.get('/financeiro')
     assert response.status_code == 200
-    assert 'Top M'.encode('utf-8') in response.data
+    assert 'Top M'.encode('utf-8') not in response.data
 
 
 # ── Sprint 3 — Agrupamento de Custos ────────────────────────────────────────

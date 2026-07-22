@@ -467,3 +467,57 @@ def test_pagina_reproducao_mostra_data_prevista(app):
         esperado = (date(2026, 6, 1) + timedelta(days=285)).isoformat()
         assert esperado.encode() in r.data
         _purge(uid)
+
+
+# ── painel global de reprodução (GET /reproducao) ─────────────────────────────
+
+def test_rota_reproducao_painel_requer_login(app):
+    """GET /reproducao sem sessão redireciona para o login."""
+    with app.test_client() as client:
+        r = client.get("/reproducao")
+        assert r.status_code in (301, 302)
+        assert "/login" in r.headers["Location"]
+
+
+def test_rota_reproducao_painel_lista_gestante(app):
+    """Vaca com DG positivo aparece no painel; sem DG, não aparece."""
+    with app.test_client() as client:
+        from datetime import date
+        uid = _make_user()
+        vaca_id = _make_animal(uid, sexo="F", brinco=f"GEST{_n()}")
+        brinco = f"GEST_ALVO_{_n()}"
+        vaca_alvo = _make_animal(uid, sexo="F", brinco=brinco)
+        rid = reproducao_repository.insert_reproducao(
+            uid, vaca_alvo, None, "T", date.today().isoformat(), None, "aborto"
+        )
+        _login(client, uid)
+
+        # Sem DG: gestante ainda não confirmada, não deve constar
+        r = client.get("/reproducao")
+        assert r.status_code == 200
+        assert brinco.encode() not in r.data
+
+        reproducao_repository.update_diagnostico(rid, uid, "positivo", date.today().isoformat())
+        r = client.get("/reproducao")
+        assert r.status_code == 200
+        assert brinco.encode() in r.data
+        _purge(uid)
+
+
+def test_rota_reproducao_painel_nao_vaza_gestante_de_outro_usuario(app):
+    """Multi-tenant: B não vê a gestante de A no painel de reprodução."""
+    with app.test_client() as client:
+        from datetime import date
+        uid_a, uid_b = _make_user(), _make_user()
+        brinco = f"GEST_A_{_n()}"
+        vaca_a = _make_animal(uid_a, sexo="F", brinco=brinco)
+        rid = reproducao_repository.insert_reproducao(
+            uid_a, vaca_a, None, "T", date.today().isoformat(), None, "aborto"
+        )
+        reproducao_repository.update_diagnostico(rid, uid_a, "positivo", date.today().isoformat())
+
+        _login(client, uid_b)
+        r = client.get("/reproducao")
+        assert r.status_code == 200
+        assert brinco.encode() not in r.data
+        _purge(uid_a); _purge(uid_b)

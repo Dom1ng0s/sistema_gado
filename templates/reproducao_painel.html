@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block title %}Reprodução{% endblock %}
+
+{% block content %}
+
+<!-- ── Cabeçalho de página ──────────────────────────────── -->
+<div class="page-header">
+  <div>
+    <p class="label">{{ nome_fazenda_header }}</p>
+    <h1 class="page-title">Reprodução</h1>
+  </div>
+</div>
+
+<!-- ── Métricas do rebanho reprodutivo ──────────────────── -->
+<div class="grid-metrics">
+
+  <div class="metric-card">
+    <span class="label">Vacas gestantes</span>
+    <div class="metric-value">{{ total_gestantes }}</div>
+    <div class="metric-delta flat">DG positivo, parto não registrado</div>
+  </div>
+
+  <div class="metric-card" style="border-top:3px solid var(--color-accent);">
+    <span class="label">Partos nos próximos 30 dias</span>
+    <div class="metric-value">{{ n_proximos_30 }}</div>
+    <div class="metric-delta flat">Preparar piquete maternidade</div>
+  </div>
+
+  <div class="metric-card" style="border-top:3px solid var(--color-danger);">
+    <span class="label">Partos atrasados</span>
+    <div class="metric-value">{{ n_atrasados }}</div>
+    {% if n_atrasados %}
+      <div class="metric-delta down">↓ Data prevista já passou</div>
+    {% else %}
+      <div class="metric-delta flat">Nenhum em atraso</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- ── Agenda de partos ─────────────────────────────────── -->
+<div style="display:flex; align-items:center; justify-content:space-between;
+            flex-wrap:wrap; gap:var(--space-3); margin-bottom:var(--space-4);">
+  <h2 style="margin:0;">Agenda de partos</h2>
+  <span style="color:var(--color-ink-tertiary); font-size:var(--text-sm);">
+    Gestação bovina ≈ 285 dias a partir da cobertura
+  </span>
+</div>
+
+{% if n_atrasados %}
+<div class="alert alert-danger" role="alert" style="margin-bottom:var(--space-5);">
+  <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" viewBox="0 0 24 24"><path d="m10.29 3.86-8.6 14.9A2 2 0 0 0 3.43 22h17.14a2 2 0 0 0 1.74-2.84l-8.6-14.9a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></span>
+  <div>
+    {{ n_atrasados }} vaca(s) com data prevista de parto já vencida e parto não registrado.
+    Confirme o parto na ficha reprodutiva — o bezerro é cadastrado automaticamente.
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-body">
+    {% if partos_previstos %}
+    <div class="table-wrapper" style="margin-top:0;">
+      <table>
+        <thead>
+          <tr>
+            <th>Vaca</th>
+            <th>Cobertura</th>
+            <th>Parto previsto</th>
+            <th style="text-align:right;">Faltam</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in partos_previstos %}
+          {% set dias = p[4] | int %}
+          <tr>
+            <td class="td-primary">{{ p[1] }}</td>
+            <td>{{ p[2]|date_br }}</td>
+            <td>{{ p[3]|date_br }}</td>
+            <td style="text-align:right;">
+              {% if dias <= 0 %}
+                <span class="badge badge-danger">Atrasado</span>
+              {% elif dias <= 7 %}
+                <span class="badge badge-danger">{{ dias }}d</span>
+              {% elif dias <= 30 %}
+                <span class="badge badge-warning">{{ dias }}d</span>
+              {% else %}
+                <span class="badge badge-neutral">{{ dias }}d</span>
+              {% endif %}
+            </td>
+            <td style="text-align:right;">
+              <a href="{{ url_for('operacional.reproducao_animal', id_animal=p[5]) }}"
+                 class="btn btn-ghost btn-sm">Ficha reprodutiva</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align:center; padding:var(--space-12) var(--space-4);">
+      <div style="color:var(--color-ink-disabled); margin-bottom:var(--space-4);">
+        <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="20" cy="8" r="2"/><path d="M20 14c1.7.7 3 2.3 3 4"/></svg>
+      </div>
+      <p style="color:var(--color-ink-secondary); font-weight:var(--weight-semibold); margin:0 0 var(--space-2);">
+        Nenhuma gestação em andamento
+      </p>
+      <p style="color:var(--color-ink-tertiary); font-size:var(--text-sm); margin:0 0 var(--space-5);">
+        Registre uma cobertura na ficha reprodutiva da matriz. Após o diagnóstico de
+        prenhez positivo, a vaca aparece aqui com a data prevista de parto.
+      </p>
+      <a href="{{ url_for('operacional.painel', sexo='F') }}" class="btn btn-primary btn-sm">
+        Ver matrizes
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

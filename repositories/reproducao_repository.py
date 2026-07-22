@@ -82,10 +82,14 @@ def update_diagnostico(reproducao_id, user_id, diagnostico, data_diagnostico):
 
 
 def get_partos_previstos(user_id, dias=30):
-    """Vacas com DG positivo e parto previsto nos próximos `dias` dias."""
+    """Vacas com DG positivo e parto previsto nos próximos `dias` dias.
+
+    vaca_id vem por último para não deslocar os índices posicionais já usados
+    pelos templates (p[1]..p[4]).
+    """
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT id, vaca_brinco, data_cobertura, data_parto_prevista, dias_restantes "
+            "SELECT id, vaca_brinco, data_cobertura, data_parto_prevista, dias_restantes, vaca_id "
             "FROM vw_partos_previstos "
             "WHERE user_id = %s AND dias_restantes <= %s "
             "ORDER BY dias_restantes ASC",

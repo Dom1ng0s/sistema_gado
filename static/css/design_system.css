@@ -259,6 +259,12 @@ h3 { font-size: var(--text-lg); font-weight: var(--weight-medium); }
   background: var(--color-surface-raised);
 }
 
+/* Toggle de seção (ex.: "Manejo") sinaliza a página atual como um .nav-link faria. */
+.nav-dropdown-toggle.active {
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
 .nav-dropdown-menu {
   display: none;
   position: absolute;
