@@ -195,6 +195,18 @@ if _sched_permitido:
     scheduler.add_job(verificar_protocolos_vencendo,'cron', hour=8, args=[app])
     scheduler.add_job(verificar_estoque_critico,    'cron', day_of_week='mon', hour=8, args=[app])
     scheduler.add_job(verificar_feedback_7dias,     'cron', hour=9, args=[app])
+
+    # Heartbeat observável: um listener cobre todos os jobs (atuais e futuros).
+    # Sem isso, o scheduler parando ou duplicando é silencioso — ver #80.
+    from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
+
+    def _log_job(event):
+        if event.exception:
+            logging.getLogger('scheduler').error("Job %s FALHOU", event.job_id, exc_info=event.exception)
+        else:
+            logging.getLogger('scheduler').info("Job %s executou", event.job_id)
+
+    scheduler.add_listener(_log_job, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
     scheduler.start()
 
 if __name__ == '__main__':
