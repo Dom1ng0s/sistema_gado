@@ -20,6 +20,11 @@ DB_CONFIG = {
     "port": DB_PORT,
 }
 
+# Mesmo servidor, já apontando para o banco de teste. Testes que abrem conexão
+# própria devem importar daqui (from conftest import TEST_DB_CONFIG) em vez de
+# repetir credenciais — do contrário ignoram os overrides TEST_DB_* do CI.
+TEST_DB_CONFIG = {**DB_CONFIG, "database": TEST_DB_NAME}
+
 @pytest.fixture(scope='session')
 def db_setup():
     """Cria o banco de dados de teste e as tabelas/views a partir da mesma

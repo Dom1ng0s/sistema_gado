@@ -2,10 +2,7 @@ import pytest
 import mysql.connector
 from werkzeug.security import generate_password_hash
 
-DB_CONFIG = {
-    "host": "localhost", "user": "gado_test",
-    "password": "gado123", "port": 3306, "database": "sistema_gado_test",
-}
+from conftest import TEST_DB_CONFIG as DB_CONFIG
 
 def login(client):
     return client.post('/login', data={'username': 'testuser', 'password': '123'}, follow_redirects=True)

@@ -43,4 +43,8 @@ jobs:
       # pytest não está em requirements.txt (é dependência só de teste)
       - run: pip install -r requirements.txt pytest
 
+      # tests/e2e/ dirige um navegador de verdade; o pacote pip do playwright
+      # não traz o binário do Chromium.
+      - run: playwright install --with-deps chromium
+
       - run: pytest tests/ -q
