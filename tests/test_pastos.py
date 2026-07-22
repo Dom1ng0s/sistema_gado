@@ -156,6 +156,25 @@ def test_iniciar_ocupacao_cria_registros(um):
     assert row[0] == 1
 
 
+def test_iniciar_ocupacao_ignora_animal_de_outro_tenant(dois):
+    """animal_ids forjados de outro usuário não podem entrar em ocupacao_animais."""
+    uid_a, uid_b = dois
+    aid_a = _make_animal(uid_a)
+    aid_b = _make_animal(uid_b)
+    pid = pasto_repository.insert_pasto(uid_a, "Pasto Vaz", None, None, 10.0)
+    mid = pasto_repository.insert_modulo(pid, uid_a, "Mod Vaz", None, 10.0)
+
+    oc_id = pasto_repository.iniciar_ocupacao(mid, uid_a, "2024-03-01", [aid_a, aid_b])
+
+    total = _fetch_one("SELECT COUNT(*) FROM ocupacao_animais WHERE ocupacao_id = %s", (oc_id,))[0]
+    alheio = _fetch_one(
+        "SELECT COUNT(*) FROM ocupacao_animais WHERE ocupacao_id = %s AND animal_id = %s",
+        (oc_id, aid_b),
+    )[0]
+    assert alheio == 0
+    assert total == 1
+
+
 def test_encerrar_ocupacao_libera_modulo(um):
     aid = _make_animal(um)
     pid = pasto_repository.insert_pasto(um, "Pasto Enc", None, None, 10.0)
