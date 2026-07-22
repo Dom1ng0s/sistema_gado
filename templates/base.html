@@ -99,6 +99,15 @@
       </div>
     {% endfor %}
   {% endwith %}
+  {# `mensagem` é o canal de erro de validação: a rota devolve 400 + render (em vez de
+     redirect + flash) para não perder o form_data digitado. Renderizado aqui uma vez
+     só — as páginas não repetem esse bloco. #}
+  {% if mensagem %}
+    <div class="alert alert-danger" role="alert" style="margin-bottom:var(--space-5);">
+      <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" viewBox="0 0 24 24"><path d="m10.29 3.86-8.6 14.9A2 2 0 0 0 3.43 22h17.14a2 2 0 0 0 1.74-2.84l-8.6-14.9a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></span>
+      <div>{{ mensagem }}</div>
+    </div>
+  {% endif %}
   {% block content %}{% endblock %}
 </main>
 
