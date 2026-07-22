@@ -91,6 +91,20 @@ O banco não armazena dados brutos para o Python calcular. Cada view encapsula u
 | `vw_gmd_por_touro` | Ranking de touros por GMD médio dos filhos |
 | `vw_saldo_estoque` | Saldo de estoque com flag de mínimo atingido |
 
+### Migrações de schema — política só-aditiva
+
+Não há Alembic. O schema vive inteiro em `init_db.py` como DDL idempotente
+(`CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE VIEW`, `ALTER` protegido por errno),
+rodada a cada deploy pelo `railway.toml`. A decisão é **manter esse padrão só-aditivo**:
+sem ORM, ~20 ALTERs convergentes não justificam uma ferramenta de migração.
+
+- **Direto no `init_db.py`:** tabela, view ou índice novos; coluna *nullable* ou com `DEFAULT`.
+- **Exige script one-shot em `migrations/`, rodado à mão, fora do `preDeployCommand`:**
+  renomear, mudar tipo, `NOT NULL` sem default em tabela populada, ou qualquer backfill.
+
+DDL destrutiva nunca entra no `init_db.py` nem no `preDeployCommand` — como roda a cada
+deploy, seria irreversível. Reavaliar adotar migração versionada na primeira mudança desse tipo.
+
 ## Testes
 
 ### Testes unitários e de integração
