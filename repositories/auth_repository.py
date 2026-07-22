@@ -39,7 +39,9 @@ def get_valid_token(email, code):
             WHERE u.email = %s
               AND t.code = %s
               AND t.used = 0
-              AND t.expires_at > NOW()
+              -- expires_at é gravado em UTC (datetime.now(timezone.utc) em auth.py);
+              -- NOW() usa o fuso da sessão do servidor e deslocaria a janela — ver #59.
+              AND t.expires_at > UTC_TIMESTAMP()
         """, (email, code))
         return cursor.fetchone()
 

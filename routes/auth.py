@@ -1,6 +1,6 @@
 import secrets
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, login_required, logout_user, current_user
@@ -146,7 +146,7 @@ def esqueci_senha():
 
             if user:
                 code = str(secrets.randbelow(900000) + 100000)
-                expires_at = datetime.utcnow() + timedelta(minutes=15)
+                expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
                 auth_repository.save_reset_token(user[0], code, expires_at)
 
                 try:
@@ -177,7 +177,7 @@ def verificar_codigo():
         return redirect(url_for('auth.esqueci_senha'))
 
     expires_ts = session.get('reset_expires_at', 0)
-    expires_in_seconds = max(0, int(expires_ts - datetime.utcnow().timestamp()))
+    expires_in_seconds = max(0, int(expires_ts - datetime.now(timezone.utc).timestamp()))
     email_mascarado = _mascara_email(email)
 
     if request.method == 'POST':
@@ -221,7 +221,7 @@ def reenviar_codigo():
         user = auth_repository.get_user_by_email(email)
         if user:
             code = str(secrets.randbelow(900000) + 100000)
-            expires_at = datetime.utcnow() + timedelta(minutes=15)
+            expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
             auth_repository.save_reset_token(user[0], code, expires_at)
             try:
                 send_reset_code(email, code)

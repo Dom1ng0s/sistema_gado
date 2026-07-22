@@ -228,6 +228,32 @@ def test_fluxo_completo_reset_de_senha(client, mock_smtp):
     _purge_user(uid)
 
 
+def test_get_valid_token_usa_utc_nao_fuso_do_servidor(client):
+    """Token expirado em UTC deve ser rejeitado mesmo com o servidor em fuso != UTC.
+
+    Regressão do #59: com NOW() (fuso da sessão do servidor; o CI roda em UTC-3),
+    um token expirado há minutos em UTC ainda passaria, pois NOW() local < expires_at
+    gravado em UTC. UTC_TIMESTAMP() casa com o valor gravado e corrige a janela.
+    """
+    from datetime import datetime, timezone, timedelta
+    from repositories import auth_repository
+
+    email = f"utc_{_n()}@example.com"
+    uid, _ = _make_user_with_email(email)
+    try:
+        auth_repository.save_reset_token(
+            uid, "111111", datetime.now(timezone.utc) - timedelta(minutes=1))
+        assert auth_repository.get_valid_token(email, "111111") is None, \
+            "token expirado em UTC não pode ser aceito"
+
+        auth_repository.save_reset_token(
+            uid, "222222", datetime.now(timezone.utc) + timedelta(minutes=15))
+        assert auth_repository.get_valid_token(email, "222222") is not None, \
+            "token válido (expira em 15 min UTC) deve ser aceito"
+    finally:
+        _purge_user(uid)
+
+
 def test_verificar_codigo_invalido_mostra_erro(client, mock_smtp):
     email = f"codigoerrado_{_n()}@example.com"
     uid, _ = _make_user_with_email(email)
