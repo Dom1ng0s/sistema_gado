@@ -9,3 +9,4 @@ scripts/reset_admin.py
 scripts/capture_demo.py
 photos/demo_*.png
 /.agents
+.vscode
