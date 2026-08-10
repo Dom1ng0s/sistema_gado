@@ -1,23 +1,25 @@
 {% macro paginacao(endpoint, pagina_atual, total_paginas) %}
-<div style="display:flex; align-items:center; gap:var(--space-3);">
+<nav class="toolbar gap-3" aria-label="Paginação">
   {% if pagina_atual > 1 %}
     <a href="{{ url_for(endpoint, page=pagina_atual-1, **kwargs) }}"
-       class="btn btn-secondary btn-sm">&laquo; Anterior</a>
+       class="btn btn-secondary btn-sm" rel="prev">&laquo; Anterior</a>
   {% else %}
-    <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">&laquo; Anterior</span>
+    <span class="btn btn-secondary btn-sm" aria-disabled="true"
+          style="opacity:.45; pointer-events:none;">&laquo; Anterior</span>
   {% endif %}
 
-  <span style="font-size:var(--text-sm); color:var(--color-ink-secondary);">
+  <span class="text-sm text-secondary" aria-current="page">
     Página {{ pagina_atual }} de {{ total_paginas }}
   </span>
 
   {% if pagina_atual < total_paginas %}
     <a href="{{ url_for(endpoint, page=pagina_atual+1, **kwargs) }}"
-       class="btn btn-secondary btn-sm">Próximo &raquo;</a>
+       class="btn btn-secondary btn-sm" rel="next">Próximo &raquo;</a>
   {% else %}
-    <span class="btn btn-secondary btn-sm" style="opacity:.4; pointer-events:none;">Próximo &raquo;</span>
+    <span class="btn btn-secondary btn-sm" aria-disabled="true"
+          style="opacity:.45; pointer-events:none;">Próximo &raquo;</span>
   {% endif %}
-</div>
+</nav>
 {% endmacro %}
 
 {# Sub-navegação por abas dentro de uma página-mãe.
@@ -30,3 +32,68 @@
   {% endfor %}
 </nav>
 {% endmacro %}
+
+{# Estado vazio ilustrado. `arte` escolhe o desenho: rebanho | pasto | caixa.
+   O SVG é inline (sem requisição extra) e usa os tokens do design system,
+   então acompanha o tema e o modo de alto contraste. #}
+{% macro empty_state(titulo, descricao, arte='rebanho') %}
+<div class="empty-state">
+  <div class="empty-state__icon" aria-hidden="true">
+    {% if arte == 'rebanho' %}
+    <svg width="132" height="96" viewBox="0 0 132 96" fill="none">
+      <ellipse cx="66" cy="84" rx="46" ry="6" fill="var(--n-100)"/>
+      <path d="M14 68 Q34 60 52 68 T92 68 T124 64" stroke="var(--g-200)" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M8 76 Q30 68 50 76 T94 76 T128 72" stroke="var(--g-100)" stroke-width="2.5" stroke-linecap="round"/>
+      <rect x="44" y="26" width="44" height="34" rx="9" fill="var(--n-50)" stroke="var(--n-200)" stroke-width="2"/>
+      <path d="M44 40 q-9 -3 -10 -12 q9 1 12 8" fill="var(--n-100)" stroke="var(--n-200)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M88 40 q9 -3 10 -12 q-9 1 -12 8" fill="var(--n-100)" stroke="var(--n-200)" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="57" cy="42" r="3" fill="var(--n-300)"/><circle cx="75" cy="42" r="3" fill="var(--n-300)"/>
+      <ellipse cx="66" cy="53" rx="11" ry="7" fill="var(--n-100)" stroke="var(--n-200)" stroke-width="2"/>
+      <circle cx="62" cy="53" r="1.4" fill="var(--n-300)"/><circle cx="70" cy="53" r="1.4" fill="var(--n-300)"/>
+      <circle cx="96" cy="22" r="11" fill="var(--g-50)" stroke="var(--g-300)" stroke-width="2"/>
+      <path d="M91 22 h10 M96 17 v10" stroke="var(--g-600)" stroke-width="2.4" stroke-linecap="round"/>
+    </svg>
+    {% elif arte == 'pasto' %}
+    <svg width="132" height="96" viewBox="0 0 132 96" fill="none">
+      <ellipse cx="66" cy="84" rx="48" ry="6" fill="var(--n-100)"/>
+      <rect x="26" y="40" width="80" height="40" rx="8" fill="var(--g-50)" stroke="var(--g-200)" stroke-width="2"/>
+      <path d="M26 60 h80" stroke="var(--g-200)" stroke-width="2" stroke-dasharray="5 5"/>
+      <path d="M46 40 v40 M66 40 v40 M86 40 v40" stroke="var(--g-200)" stroke-width="2" stroke-dasharray="5 5"/>
+      <path d="M20 40 v44 M112 40 v44" stroke="var(--n-300)" stroke-width="3" stroke-linecap="round"/>
+      <path d="M38 30 q4 -12 10 -12 q-2 9 -10 12 Z" fill="var(--g-200)"/>
+      <path d="M52 28 q3 -14 9 -14 q-2 11 -9 14 Z" fill="var(--g-300)"/>
+      <path d="M66 30 q4 -12 10 -12 q-2 9 -10 12 Z" fill="var(--g-200)"/>
+    </svg>
+    {% else %}
+    <svg width="132" height="96" viewBox="0 0 132 96" fill="none">
+      <ellipse cx="66" cy="86" rx="42" ry="6" fill="var(--n-100)"/>
+      <path d="M30 38 L66 22 L102 38 L102 74 L66 90 L30 74 Z" fill="var(--n-50)" stroke="var(--n-200)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M30 38 L66 54 L102 38 M66 54 L66 90" stroke="var(--n-200)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M48 30 L84 46" stroke="var(--a-200)" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    {% endif %}
+  </div>
+  <p class="empty-state__title">{{ titulo }}</p>
+  <p class="empty-state__desc">{{ descricao }}</p>
+  {{ caller() if caller else '' }}
+</div>
+{% endmacro %}
+
+{# Trilha de navegação — responde "onde estou?" em toda tela interna.
+   trilha: lista de (label, href). O href do último item é ignorado: ele é a
+   página atual e vira texto, não link (WAI-ARIA breadcrumb pattern). #}
+{% macro breadcrumb(trilha) %}
+<nav class="breadcrumb" aria-label="Trilha de navegação">
+  <ol>
+    {% for label, href in trilha %}
+      {% if loop.last %}
+        <li aria-current="page">{{ label }}</li>
+      {% else %}
+        <li><a href="{{ href }}">{{ label }}</a></li>
+        <li class="sep" aria-hidden="true">&rsaquo;</li>
+      {% endif %}
+    {% endfor %}
+  </ol>
+</nav>
+{% endmacro %}
+

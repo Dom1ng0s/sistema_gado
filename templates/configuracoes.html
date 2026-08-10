@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as m %}
 {% block title %}Configurações{% endblock %}
 
 {% block extra_css %}
@@ -6,12 +7,20 @@
 {% endblock %}
 
 {% block content %}
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 20px;">
-        <h1 style="border: none; margin: 0; padding: 0;">Configurações da Fazenda</h1>
-        <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary">Voltar ao Painel</a>
+    <div class="page-header">
+      <div>
+        {{ m.breadcrumb([('Configurações', '')]) }}
+        <h1 class="page-title">Configurações da Fazenda</h1>
+        <p class="page-subtitle">
+          Estes dados alimentam os cálculos de todo o sistema: a meta de GMD
+          define quando um animal aparece como abaixo do ideal, e o estado
+          escolhe a praça de cotação exibida no painel.
+        </p>
+      </div>
+      <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm shrink-0">← Voltar ao painel</a>
     </div>
 
-    <div class="form-container" style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px;">
+    <div class="form-container" style="max-width: 600px; margin: 0 auto;">
 
         <form method="POST" action="{{ url_for('configuracoes.settings') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -182,7 +191,7 @@
                     .catch(err => {
                         console.error(err);
                         statusMsg.innerText = "Erro ao carregar lista. Digite manualmente.";
-                        statusMsg.style.color = "var(--danger-color)";
+                        statusMsg.style.color = "var(--color-danger)";
                     });
             }
             carregarCidades();

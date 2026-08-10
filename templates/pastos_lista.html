@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as m %}
 {% block title %}Gestão de Pastos{% endblock %}
 
 {% block content %}
@@ -6,6 +7,7 @@
 <div class="page-header">
   <div>
     <p class="label">{{ nome_fazenda_header }}</p>
+    {{ m.breadcrumb([('Pastos', '')]) }}
     <h1 class="page-title">Gestão de Pastos</h1>
   </div>
   <a href="{{ url_for('pastos.gmd_por_modulo') }}" class="btn btn-secondary btn-sm">

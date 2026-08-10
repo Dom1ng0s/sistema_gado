@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as m %}
 {% block title %}Ficha — {{ animal[1] if animal else 'Animal' }}{% endblock %}
 
 {% block extra_css %}{% endblock %}
@@ -9,13 +10,7 @@
 <!-- ── Cabeçalho ─────────────────────────────────────── -->
 <div class="page-header">
   <div>
-    <nav aria-label="Localização" style="margin-bottom:var(--space-1);">
-      <ol style="display:flex;align-items:center;gap:var(--space-2);list-style:none;margin:0;padding:0;font-size:var(--text-xs);color:var(--color-ink-secondary);">
-        <li><a href="{{ url_for('operacional.painel') }}" style="color:var(--color-primary);">Rebanho</a></li>
-        <li aria-hidden="true">&rsaquo;</li>
-        <li aria-current="page">{{ animal[1] }}</li>
-      </ol>
-    </nav>
+    {{ m.breadcrumb([('Rebanho', url_for('operacional.painel')), ('Brinco ' ~ animal[1], '')]) }}
     <h1 class="page-title" style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap;">
       Brinco {{ animal[1] }}
       {% if animal[6] %}
@@ -330,15 +325,15 @@ const pesagensRaw = [
 // Inverter para cronológico (query retorna DESC)
 const pesagens = pesagensRaw.slice().reverse();
 
-const chart = echarts.init(document.getElementById('chartPeso'));
+const chart = sggGrafico(document.getElementById('chartPeso'));
 chart.setOption({
-  textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A' },
+  textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#3D3D3A' },
   grid: { top: 20, right: 20, bottom: 40, left: 58, containLabel: false },
   tooltip: {
     trigger: 'axis',
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'Rubik, sans-serif', fontSize: 13 },
+    textStyle: { color: '#FAFAF8', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 13 },
     formatter: p => `${p[0].axisValue}<br/><strong>${p[0].value} kg</strong>`
   },
   xAxis: {
@@ -386,7 +381,13 @@ window.addEventListener('resize', () => chart.resize());
       sggConfirm(
         form.dataset.confirmTitle || 'Confirmar',
         form.dataset.confirmMsg,
-        function () { form.dataset.confirmed = '1'; form.submit(); }
+        function () {
+          /* requestSubmit re-dispara o evento 'submit', o que faz o sgg.js
+             aplicar o estado de carregamento no botão. form.submit() puro
+             não dispara evento algum e a ação ficaria sem feedback. */
+          form.dataset.confirmed = '1';
+          if (form.requestSubmit) form.requestSubmit(); else form.submit();
+        }
       );
     });
   });

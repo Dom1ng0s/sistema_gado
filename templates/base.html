@@ -2,17 +2,23 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#3B6D11">
   <title>{% block title %}SGG{% endblock %} — Sistema de Gestão de Gado</title>
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
   <!-- Google Fonts — preconnect first, then stylesheet with font-display=swap -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Rubik:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap">
 
   <!-- Design System único -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}?v={{ cache_bust }}">
+
+  <!-- Kit de interface: validação, diálogos, toasts, autocomplete.
+       `defer` mantém o parser livre e garante execução após o DOM. -->
+  <script defer src="{{ url_for('static', filename='js/sgg.js') }}?v={{ cache_bust }}"></script>
 
   {% block extra_css %}{% endblock %}
 </head>
@@ -44,44 +50,55 @@
     {# Páginas que pertencem a outra seção da navbar apesar do prefixo do blueprint. #}
     {% set _ep_reproducao = _ep in ('operacional.reproducao_painel', 'operacional.reproducao_animal', 'operacional.registrar_reproducao') %}
     {% set _ep_relatorios = _ep in ('api.graficos_page', 'operacional.ranking_touros', 'pastos.gmd_por_modulo') %}
+    {% set _at_rebanho = _ep.startswith('operacional') and not _ep_reproducao and not _ep_relatorios %}
+    {% set _at_manejo = _ep.startswith('estoque') or _ep.startswith('sanitario') %}
     <a href="{{ url_for('operacional.painel') }}"
-       class="nav-link{% if _ep.startswith('operacional') and not _ep_reproducao and not _ep_relatorios %} active{% endif %}">
+       class="nav-link{% if _at_rebanho %} active{% endif %}"
+       {% if _at_rebanho %}aria-current="page"{% endif %}>
       Rebanho
     </a>
     <a href="{{ url_for('operacional.reproducao_painel') }}"
-       class="nav-link{% if _ep_reproducao %} active{% endif %}">
+       class="nav-link{% if _ep_reproducao %} active{% endif %}"
+       {% if _ep_reproducao %}aria-current="page"{% endif %}>
       Reprodução
     </a>
     <a href="{{ url_for('financeiro.financeiro') }}"
-       class="nav-link{% if _ep.startswith('financeiro') %} active{% endif %}">
+       class="nav-link{% if _ep.startswith('financeiro') %} active{% endif %}"
+       {% if _ep.startswith('financeiro') %}aria-current="page"{% endif %}>
       Financeiro
     </a>
     <a href="{{ url_for('pastos.listar_pastos') }}"
-       class="nav-link{% if _ep.startswith('pastos') and not _ep_relatorios %} active{% endif %}">
+       class="nav-link{% if _ep.startswith('pastos') and not _ep_relatorios %} active{% endif %}"
+       {% if _ep.startswith('pastos') and not _ep_relatorios %}aria-current="page"{% endif %}>
       Pastos
     </a>
+    {# "Estoque e Sanidade" em vez de "Manejo": o rótulo nomeia o conteúdo,
+       não uma categoria guarda-chuva que o usuário precisa abrir para descobrir. #}
     <div class="nav-dropdown">
-      <button type="button" class="nav-dropdown-toggle{% if _ep.startswith('estoque') or _ep.startswith('sanitario') %} active{% endif %}"
+      <button type="button" class="nav-dropdown-toggle{% if _at_manejo %} active{% endif %}"
               aria-haspopup="true" aria-expanded="false">
-        Manejo
+        Estoque e Sanidade
       </button>
       <div class="nav-dropdown-menu">
-        <a href="{{ url_for('estoque.lista_estoque') }}" class="nav-link nav-dropdown-item">Estoque</a>
+        <a href="{{ url_for('estoque.lista_estoque') }}" class="nav-link nav-dropdown-item">Estoque de insumos</a>
         <a href="{{ url_for('sanitario.lista_protocolos') }}" class="nav-link nav-dropdown-item">Calendário sanitário</a>
       </div>
     </div>
     <a href="{{ url_for('api.graficos_page') }}"
-       class="nav-link{% if _ep_relatorios %} active{% endif %}">
+       class="nav-link{% if _ep_relatorios %} active{% endif %}"
+       {% if _ep_relatorios %}aria-current="page"{% endif %}>
       Relatórios
     </a>
     <a href="{{ url_for('configuracoes.settings') }}"
-       class="nav-link{% if _ep.startswith('configuracoes') %} active{% endif %}">
+       class="nav-link{% if _ep.startswith('configuracoes') %} active{% endif %}"
+       {% if _ep.startswith('configuracoes') %}aria-current="page"{% endif %}>
       Configurações
     </a>
   </div>
   <div class="nav-right">
     <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost btn-sm">Sair</a>
-    <button class="nav-hamburger" id="nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="nav-links">
+    <button class="nav-hamburger" id="nav-toggle" aria-label="Abrir menu de navegação"
+            aria-expanded="false" aria-controls="nav-links">
       <span></span>
       <span></span>
       <span></span>
@@ -92,10 +109,11 @@
 <main class="page-container" id="main-content">
   {% with _fmsgs = get_flashed_messages(with_categories=True) %}
     {% for _cat, _fmsg in _fmsgs %}
-      <div class="alert {% if _cat == 'success' %}alert-success{% elif _cat == 'warning' %}alert-warning{% else %}alert-danger{% endif %}"
-           role="alert" style="margin-bottom:var(--space-5);">
+      {# Erro interrompe (role=alert); sucesso e aviso apenas informam (role=status). #}
+      <div class="alert {% if _cat == 'success' %}alert-success{% elif _cat == 'warning' %}alert-warning{% else %}alert-danger{% endif %} mb-5"
+           role="{% if _cat in ('success', 'warning') %}status{% else %}alert{% endif %}">
         <span class="alert-icon" aria-hidden="true">{% if _cat == 'success' %}<svg class="icon icon-md" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>{% else %}<svg class="icon icon-md" viewBox="0 0 24 24"><path d="m10.29 3.86-8.6 14.9A2 2 0 0 0 3.43 22h17.14a2 2 0 0 0 1.74-2.84l-8.6-14.9a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>{% endif %}</span>
-        <div>{{ _fmsg }}</div>
+        <div><span class="sr-only">{% if _cat == 'success' %}Sucesso: {% elif _cat == 'warning' %}Atenção: {% else %}Erro: {% endif %}</span>{{ _fmsg }}</div>
       </div>
     {% endfor %}
   {% endwith %}
@@ -103,9 +121,9 @@
      redirect + flash) para não perder o form_data digitado. Renderizado aqui uma vez
      só — as páginas não repetem esse bloco. #}
   {% if mensagem %}
-    <div class="alert alert-danger" role="alert" style="margin-bottom:var(--space-5);">
+    <div class="alert alert-danger mb-5" role="alert">
       <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" viewBox="0 0 24 24"><path d="m10.29 3.86-8.6 14.9A2 2 0 0 0 3.43 22h17.14a2 2 0 0 0 1.74-2.84l-8.6-14.9a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></span>
-      <div>{{ mensagem }}</div>
+      <div><span class="sr-only">Erro: </span>{{ mensagem }}</div>
     </div>
   {% endif %}
   {% block content %}{% endblock %}
@@ -115,120 +133,22 @@
 
 <!-- ── Componentes globais: modal de confirmação + toast ── -->
 <div id="sggConfirmModal" class="modal-overlay modal-confirm" role="dialog"
-     aria-modal="true" aria-labelledby="sgg-confirm-title" aria-hidden="true">
+     aria-modal="true" aria-labelledby="sgg-confirm-title" aria-describedby="sgg-confirm-msg"
+     aria-hidden="true">
   <div class="modal-content">
-    <h3 class="modal-title" id="sgg-confirm-title">Confirmar</h3>
+    <h2 class="modal-title" id="sgg-confirm-title">Confirmar</h2>
     <p class="modal-confirm-msg" id="sgg-confirm-msg"></p>
     <div class="modal-confirm-actions">
-      <button class="btn btn-ghost" id="sgg-confirm-cancel">Cancelar</button>
-      <button class="btn btn-danger" id="sgg-confirm-ok">Confirmar</button>
+      <button type="button" class="btn btn-ghost" id="sgg-confirm-cancel">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="sgg-confirm-ok">Confirmar</button>
     </div>
   </div>
 </div>
 
-<div class="toast-container" id="sggToastContainer" aria-live="polite" aria-atomic="false"></div>
+<div class="toast-container" id="sggToastContainer"></div>
 
-<script>
-(function () {
-  var toggle = document.getElementById('nav-toggle');
-  var links  = document.getElementById('nav-links');
-  if (!toggle || !links) return;
-
-  toggle.addEventListener('click', function () {
-    var open = links.classList.toggle('open');
-    this.setAttribute('aria-expanded', open);
-  });
-
-  links.querySelectorAll('.nav-link').forEach(function (link) {
-    link.addEventListener('click', function () {
-      links.classList.remove('open');
-      toggle.setAttribute('aria-expanded', 'false');
-    });
-  });
-})();
-
-/* ── nav-dropdowns ("+ Novo", "Manejo") ─────────────────── */
-(function () {
-  var dropdowns = [];
-  document.querySelectorAll('.nav-dropdown').forEach(function (dd) {
-    var trigger = dd.querySelector('.nav-dropdown-toggle');
-    var menu    = dd.querySelector('.nav-dropdown-menu');
-    if (trigger && menu) dropdowns.push({ trigger: trigger, menu: menu });
-  });
-  if (!dropdowns.length) return;
-
-  function fechar(dd) {
-    dd.menu.classList.remove('open');
-    dd.trigger.setAttribute('aria-expanded', 'false');
-  }
-
-  dropdowns.forEach(function (dd) {
-    dd.trigger.addEventListener('click', function (e) {
-      e.stopPropagation();
-      // Só um menu aberto por vez — dois abertos se sobrepõem na navbar.
-      dropdowns.forEach(function (outro) { if (outro !== dd) fechar(outro); });
-      var open = dd.menu.classList.toggle('open');
-      dd.trigger.setAttribute('aria-expanded', open);
-    });
-  });
-
-  document.addEventListener('click', function (e) {
-    dropdowns.forEach(function (dd) {
-      // contains() e não !==: o clique pode cair num filho do trigger (ícone/svg).
-      if (!dd.menu.contains(e.target) && !dd.trigger.contains(e.target)) fechar(dd);
-    });
-  });
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') dropdowns.forEach(fechar);
-  });
-})();
-
-/* ── sggConfirm ─────────────────────────────────────────── */
-(function () {
-  var _cb = null;
-  var modal = document.getElementById('sggConfirmModal');
-  var titleEl = document.getElementById('sgg-confirm-title');
-  var msgEl   = document.getElementById('sgg-confirm-msg');
-  var btnOk   = document.getElementById('sgg-confirm-ok');
-  var btnCan  = document.getElementById('sgg-confirm-cancel');
-
-  function close() { modal.style.display = 'none'; modal.setAttribute('aria-hidden', 'true'); _cb = null; }
-  function open()  { modal.style.display = 'flex'; modal.setAttribute('aria-hidden', 'false'); btnOk.focus(); }
-
-  btnOk.addEventListener('click', function () { var cb = _cb; close(); if (cb) cb(); });
-  btnCan.addEventListener('click', close);
-  modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && modal.style.display === 'flex') close(); });
-
-  window.sggConfirm = function (title, msg, onConfirm) {
-    titleEl.textContent = title || 'Confirmar';
-    msgEl.textContent   = msg   || '';
-    _cb = onConfirm || null;
-    open();
-  };
-}());
-
-/* ── sggToast ───────────────────────────────────────────── */
-(function () {
-  var ICONS = { error: '✕', success: '✓', warning: '⚠' };
-
-  window.sggToast = function (msg, type) {
-    type = type || 'error';
-    var container = document.getElementById('sggToastContainer');
-    if (!container) return;
-    var t = document.createElement('div');
-    t.className = 'toast toast-' + type;
-    t.innerHTML = '<span style="flex-shrink:0;">' + (ICONS[type] || '●') + '</span><span>' + msg + '</span>';
-    container.appendChild(t);
-    setTimeout(function () {
-      t.style.opacity = '0';
-      t.style.transition = 'opacity 180ms ease';
-      setTimeout(function () { t.remove(); }, 200);
-    }, 4000);
-  };
-}());
-</script>
+<!-- Região viva para anúncios do autocomplete (quantidade de resultados). -->
+<div id="combo-status" class="sr-only" role="status" aria-live="polite"></div>
 
 </body>
 </html>

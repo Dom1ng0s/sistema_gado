@@ -8,6 +8,7 @@
 <div class="page-header">
   <div>
     <p class="label">{{ nome_fazenda_header }}</p>
+    {{ m.breadcrumb([('Financeiro', url_for('financeiro.financeiro')), ('Resultado por lote', url_for('financeiro.resultado_lotes')), ('Lote ' ~ lote[1], '')]) }}
     <h1 class="page-title">Lote {{ lote[1] }}</h1>
     {% if lote[2] %}<p style="color:var(--color-ink-secondary); margin:0;">{{ lote[2] }}</p>{% endif %}
   </div>

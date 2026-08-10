@@ -7,6 +7,7 @@
 <div class="page-header">
   <div>
     <p class="label">Rebanho</p>
+    {{ m.breadcrumb([('Rebanho', url_for('operacional.painel')), ('Lixeira', '')]) }}
     <h1 class="page-title">Lixeira de Animais</h1>
   </div>
   <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary btn-sm">← Voltar ao Rebanho</a>

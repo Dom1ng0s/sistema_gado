@@ -7,6 +7,7 @@
 <div class="page-header">
   <div>
     <p class="label">{{ nome_fazenda_header }}</p>
+    {{ m.breadcrumb([('Calendário sanitário', '')]) }}
     <h1 class="page-title">Calendário Sanitário</h1>
   </div>
   <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">← Painel</a>
@@ -183,7 +184,13 @@
       sggConfirm(
         form.dataset.confirmTitle || 'Confirmar',
         form.dataset.confirmMsg,
-        function () { form.dataset.confirmed = '1'; form.submit(); }
+        function () {
+          /* requestSubmit re-dispara o evento 'submit', o que faz o sgg.js
+             aplicar o estado de carregamento no botão. form.submit() puro
+             não dispara evento algum e a ação ficaria sem feedback. */
+          form.dataset.confirmed = '1';
+          if (form.requestSubmit) form.requestSubmit(); else form.submit();
+        }
       );
     });
   });

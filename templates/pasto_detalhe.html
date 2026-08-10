@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as ui %}
 {% block title %}{{ pasto[1] }} — Detalhe{% endblock %}
 
 {% block extra_css %}
@@ -36,13 +37,7 @@ details summary {
 <!-- ── Cabeçalho ─────────────────────────────────────── -->
 <div class="page-header">
   <div>
-    <nav aria-label="Localização" style="margin-bottom:var(--space-1);">
-      <ol style="display:flex;align-items:center;gap:var(--space-2);list-style:none;margin:0;padding:0;font-size:var(--text-xs);color:var(--color-ink-secondary);">
-        <li><a href="{{ url_for('pastos.listar_pastos') }}" style="color:var(--color-primary);">Pastos</a></li>
-        <li aria-hidden="true">&rsaquo;</li>
-        <li aria-current="page">{{ pasto[1] }}</li>
-      </ol>
-    </nav>
+    {{ ui.breadcrumb([('Pastos', url_for('pastos.listar_pastos')), (pasto[1], '')]) }}
     <h1 class="page-title">{{ pasto[1] }}</h1>
     <div style="display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-1);">
       {% if pasto[2] %}<span class="tag">{{ pasto[2] }} ha</span>{% endif %}
@@ -237,7 +232,13 @@ details summary {
       sggConfirm(
         form.dataset.confirmTitle || 'Confirmar',
         form.dataset.confirmMsg,
-        function () { form.dataset.confirmed = '1'; form.submit(); }
+        function () {
+          /* requestSubmit re-dispara o evento 'submit', o que faz o sgg.js
+             aplicar o estado de carregamento no botão. form.submit() puro
+             não dispara evento algum e a ação ficaria sem feedback. */
+          form.dataset.confirmed = '1';
+          if (form.requestSubmit) form.requestSubmit(); else form.submit();
+        }
       );
     });
   });

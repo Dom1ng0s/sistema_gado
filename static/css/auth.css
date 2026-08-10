@@ -1,20 +1,27 @@
-/* Estilos compartilhados pelas páginas standalone de autenticação
-   (esqueci_senha, verificar_codigo, nova_senha, novo_usuario).
-   Cada página mantém no seu próprio <style> apenas o que for
-   genuinamente específico dela (overrides de tamanho/espaçamento e
-   componentes exclusivos como .otp-wrap, .strength-bar, .section-sep). */
+/* Estilos compartilhados por TODAS as páginas de autenticação, inclusive o
+   login. Cada página mantém no seu próprio <style> apenas o que for
+   genuinamente específico dela (o painel de marca do login, .otp-wrap,
+   .strength-bar, .section-sep).
+
+   O layout centralizado vive em `.auth-center` e não em `body`: o login usa
+   um shell de duas colunas e precisa do mesmo vocabulário de campos sem
+   herdar a centralização. */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
+
 body {
     font-family: var(--font-body);
     background: var(--color-surface-sunken);
+    -webkit-font-smoothing: antialiased;
+}
+
+.auth-center {
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    padding: 24px;
-    -webkit-font-smoothing: antialiased;
+    padding: var(--space-6);
 }
 
 .auth-card {
@@ -132,3 +139,48 @@ body {
 
 .flash-error   { background: var(--color-danger-bg);  color: var(--color-danger-dark);   border-left: 3px solid var(--color-danger); }
 .flash-success { background: var(--color-success-bg); color: var(--color-primary-dark);  border-left: 3px solid var(--color-primary); }
+
+/* ── Mostrar/ocultar senha ───────────────────────────────────
+   Botão sobreposto ao campo; a área de toque cresce no dedo sem
+   deslocar o ícone. */
+.pwd-wrap { position: relative; }
+.pwd-wrap .field-input { padding-right: 46px; }
+
+.pwd-toggle {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--color-ink-tertiary);
+    cursor: pointer;
+    transition: color 150ms, background 150ms;
+}
+
+@media (hover: hover) {
+    .pwd-toggle:hover { color: var(--color-primary); background: var(--color-surface-raised); }
+}
+
+.pwd-toggle[aria-pressed="true"] { color: var(--color-primary); }
+
+/* ── Ergonomia tátil ─────────────────────────────────────── */
+@media (pointer: coarse) {
+    .field-input {
+        min-height: 44px;
+        /* < 16px faz o iOS dar zoom ao focar e reposicionar a página */
+        font-size: max(1rem, var(--text-base));
+    }
+    .pwd-toggle { width: 44px; height: 44px; right: 2px; }
+    .auth-link, .field-aside {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+    }
+}

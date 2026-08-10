@@ -20,17 +20,20 @@
     padding: var(--space-5);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
-    width: 400px;
+    /* largura fixa de 400px estourava o viewport em telas de 360px */
+    width: 100%;
+    max-width: 400px;
     text-align: center;
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
 
-.grafico-box h2 { border: none; font-size: 1.2rem; margin-bottom: var(--space-4); color: var(--color-ink); }
+.grafico-box h2 { border: none; font-size: var(--text-lg); margin-bottom: var(--space-4); color: var(--color-ink); }
 
-.kpi-valor { font-size: 4.5rem; font-weight: 800; color: var(--color-primary); margin: 10px 0; }
-.kpi-sub   { font-size: 1rem; color: var(--color-ink-tertiary); font-weight: normal; }
+/* clamp: o KPI encolhe no celular em vez de forçar rolagem horizontal */
+.kpi-valor { font-size: clamp(2.5rem, 12vw, 4.5rem); font-weight: var(--weight-bold); color: var(--color-primary); line-height: 1; letter-spacing: var(--tracking-display); margin: 10px 0; }
+.kpi-sub   { font-size: var(--text-base); color: var(--color-ink-tertiary); font-weight: var(--weight-regular); }
 
 .switch-wrapper {
     display: flex;
@@ -69,11 +72,30 @@ input:checked + .slider:before { transform: translateX(20px); }
     gap: var(--space-2);
     background: var(--color-surface-raised);
     padding: var(--space-2);
-    border: 1px solid var(--color-accent-bg);
+    min-height: 40px;
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
 }
 
-.item-animal:hover { background-color: var(--color-primary-bg); border-color: var(--color-primary); }
+/* O item inteiro é área de toque: o rótulo ocupa o espaço restante e ambos
+   acionam a mesma caixa de seleção. */
+.item-animal label { flex: 1; display: flex; align-items: center; min-height: 36px; }
+
+@media (hover: hover) {
+    .item-animal:hover { background-color: var(--color-primary-bg); border-color: var(--color-primary-mid); }
+}
+
+.item-animal:focus-within { border-color: var(--color-primary); background-color: var(--color-primary-bg); }
+
+@media (pointer: coarse) {
+    .item-animal { min-height: 48px; padding: var(--space-2) var(--space-3); }
+    .item-animal label { min-height: 44px; }
+    /* alterna o interruptor com o dedo, não com a ponta do mouse */
+    .switch { width: 52px; height: 30px; }
+    .slider:before { height: 22px; width: 22px; }
+    input:checked + .slider:before { transform: translateX(22px); }
+    .switch-wrapper { min-height: 44px; }
+}
 
 .barra-fixa {
     background: var(--color-primary-bg);
