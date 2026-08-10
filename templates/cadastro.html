@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as m %}
 {% block title %}Novo Animal{% endblock %}
 
 {% block content %}
@@ -6,6 +7,7 @@
 <div class="page-header">
   <div>
     <p class="label">Rebanho</p>
+    {{ m.breadcrumb([('Rebanho', url_for('operacional.painel')), ('Novo animal', '')]) }}
     <h1 class="page-title">Cadastrar Novo Animal</h1>
   </div>
   <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">← Voltar</a>

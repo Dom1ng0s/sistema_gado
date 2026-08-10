@@ -2,25 +2,23 @@
 {% import '_macros.html' as m %}
 {% block title %}Rebanho{% endblock %}
 
-{% block extra_css %}{% endblock %}
-
 {% block content %}
 
 <!-- ── Cabeçalho de página ──────────────────────────────── -->
 <div class="page-header">
   <div>
+    {{ m.breadcrumb([('Rebanho', url_for('operacional.painel'))]) }}
     <p class="label">{{ nome_fazenda_header }}</p>
     <h1 class="page-title">Gestão do Rebanho</h1>
   </div>
-  <div class="flex flex-wrap items-center gap-2">
+  <div class="toolbar">
     <div id="mini-widget" class="mini-cotacao" style="display:none;">
-      <span id="lbl-uf" style="text-transform:uppercase; font-weight:700; font-size:var(--text-xs); color:var(--color-ink-secondary);">--</span>
-      <span style="color:var(--color-border-strong);">|</span>
-      <span style="font-size:var(--text-xs);">Boi: <strong id="preco-boi">--</strong></span>
-      <span style="color:var(--color-border-strong);">|</span>
-      <span style="font-size:var(--text-xs);">Novilha: <strong id="preco-novilha">--</strong></span>
-      <button type="button" onclick="abrirModalBrasil()"
-              style="font-size:var(--text-xs); cursor:pointer; color:var(--color-primary); font-weight:var(--weight-medium); background:none; border:none; padding:0; display:inline-flex; align-items:center; gap:4px;">
+      <span id="lbl-uf" class="text-xs text-secondary" style="text-transform:uppercase; font-weight:var(--weight-bold);">--</span>
+      <span aria-hidden="true" style="color:var(--color-border-strong);">|</span>
+      <span class="text-xs">Boi: <strong id="preco-boi">--</strong></span>
+      <span aria-hidden="true" style="color:var(--color-border-strong);">|</span>
+      <span class="text-xs">Novilha: <strong id="preco-novilha">--</strong></span>
+      <button type="button" id="btn-ver-brasil" class="text-xs" style="cursor:pointer; color:var(--color-primary); font-weight:var(--weight-medium); background:none; border:none; padding:0; display:inline-flex; align-items:center; gap:4px;">
         <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
         Ver Brasil
       </button>
@@ -29,19 +27,18 @@
 </div>
 
 <!-- ── Barra de ações ──────────────────────────────────── -->
-<div class="header-actions flex flex-wrap items-center gap-2" style="justify-content:flex-end; margin-bottom:var(--space-6);">
+<div class="header-actions toolbar toolbar-end mb-6">
     <!-- Dropdown "Mais ações" — agrupa ações secundárias para reduzir densidade no mobile -->
     <div class="action-menu">
       <button type="button" class="btn btn-secondary btn-sm action-menu__trigger" id="btn-mais-acoes"
-              aria-haspopup="true" aria-expanded="false"
-              onclick="toggleMaisAcoes(event)">
+              aria-haspopup="true" aria-expanded="false" aria-controls="menu-mais-acoes">
         Mais ações
         <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" style="margin-left:2px;"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div id="menu-mais-acoes" class="action-menu__panel" role="menu" aria-labelledby="btn-mais-acoes">
-        <button role="menuitem" class="action-menu__item" onclick="gerarPDF(); fecharMaisAcoes();">
+        <button type="button" role="menuitem" class="action-menu__item" id="btn-pdf">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          Relatório PDF
+          <span class="btn-pdf-rotulo">Relatório PDF</span>
         </button>
         <a role="menuitem" class="action-menu__item" href="{{ url_for('api.export_animais_csv') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -63,139 +60,173 @@
     </a>
 </div>
 
-<!-- ── Cards de métrica ────────────────────────────────── -->
+<!-- ── Falha ao carregar indicadores ───────────────────── -->
+<div id="metricas-erro" class="alert alert-danger mb-4" role="alert" hidden>
+  <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 7v6M12 16.5v.01"/></svg></span>
+  <div>
+    Não foi possível carregar os indicadores do rebanho. Os animais listados abaixo continuam corretos.
+    <button type="button" class="btn btn-sm btn-secondary mt-2" id="btn-recarregar-metricas">Tentar novamente</button>
+  </div>
+</div>
+
+<!-- ── Cards de métrica ──────────────────────────────────
+     O GMD é o herói: ocupa duas colunas e mostra a distância até a meta
+     configurada em Configurações. Os demais são secundários por desenho. -->
 <div class="grid-metrics">
+
+  <div class="metric-card metric-hero">
+    <div class="metric-hero__topo">
+      <div>
+        <span class="label skeleton skeleton-label" aria-hidden="true" id="sk-lbl-gmd"></span>
+        <span class="label" id="lbl-gmd" style="display:none;"
+              title="Ganho Médio Diário — quanto o animal engordou por dia, em kg">
+          GMD médio{% if sexo_filtro == 'M' %} · machos{% elif sexo_filtro == 'F' %} · fêmeas{% endif %}
+        </span>
+        <div aria-live="polite" aria-atomic="true">
+          <span class="skeleton skeleton-value" aria-hidden="true" id="sk-gmd"></span>
+          <span class="metric-value" id="val-gmd" style="display:none;"></span>
+          <span class="metric-unit" id="unit-gmd" style="display:none;">kg/dia</span>
+        </div>
+        <div class="metric-delta flat skeleton skeleton-delta" aria-hidden="true" id="sk-delta-gmd"></div>
+        <div class="metric-delta" id="delta-gmd" style="display:none;"></div>
+      </div>
+    </div>
+    <div id="bloco-meta" style="display:none;">
+      <div class="meta-bar"><i id="meta-fill" style="width:0%"></i></div>
+      <div class="meta-txt">
+        <span id="meta-pct"></span>
+        <span id="meta-alvo"></span>
+      </div>
+    </div>
+  </div>
 
   <div class="metric-card">
     <span class="label skeleton skeleton-label" aria-hidden="true" id="sk-lbl-total"></span>
-    <span class="label" id="lbl-total" style="display:none;">Total no Rebanho{% if origem_filtro == 'fazenda' %} Filtrado{% endif %}</span>
+    <span class="label" id="lbl-total" style="display:none;">Rebanho{% if origem_filtro == 'fazenda' %} · nascidos na fazenda{% endif %}</span>
     <div class="metric-value" id="val-total" aria-live="polite" aria-atomic="true">
       <span class="skeleton skeleton-value" aria-hidden="true" id="sk-total"></span>
     </div>
     <div class="metric-delta flat skeleton skeleton-delta" aria-hidden="true" id="sk-delta-total"></div>
-    <div class="metric-delta flat" id="delta-total" style="display:none;" aria-live="polite"></div>
+    <div id="bloco-composicao" style="display:none; margin-top:var(--space-3);">
+      <div class="split-bar">
+        <i id="split-m" style="background:var(--g-500); width:50%"></i>
+        <i id="split-f" style="background:var(--a-300); width:50%"></i>
+      </div>
+      <div class="split-legend">
+        <span id="leg-m"></span>
+        <span id="leg-f"></span>
+      </div>
+    </div>
+    <div class="metric-delta flat" id="delta-total" style="display:none;"></div>
   </div>
 
   <div class="metric-card">
-    <span class="label skeleton skeleton-label" aria-hidden="true" id="sk-lbl-gmd"></span>
-    <span class="label" id="lbl-gmd" style="display:none;" title="Ganho Médio Diário — quanto o animal engordou por dia, em kg">GMD médio{% if sexo_filtro == 'M' %} (Machos){% elif sexo_filtro == 'F' %} (Fêmeas){% endif %}</span>
-    <div aria-live="polite" aria-atomic="true">
-      <span class="skeleton skeleton-value" aria-hidden="true" id="sk-gmd"></span>
-      <span class="metric-value" id="val-gmd" style="display:none;"></span>
-      <span class="metric-unit" id="unit-gmd" style="display:none;">kg/dia</span>
+    <span class="label skeleton skeleton-label" aria-hidden="true" id="sk-lbl-abaixo"></span>
+    <span class="label" id="lbl-abaixo" style="display:none;"
+          title="Animais cujo ganho está muito abaixo da média do próprio lote">Ganho abaixo do lote</span>
+    <div class="metric-value" id="val-abaixo" aria-live="polite" aria-atomic="true">
+      <span class="skeleton skeleton-value" aria-hidden="true" id="sk-abaixo"></span>
     </div>
-    <div class="metric-delta flat skeleton skeleton-delta" aria-hidden="true" id="sk-delta-gmd"></div>
-    <div class="metric-delta flat" id="delta-gmd" style="display:none;" aria-live="polite"></div>
-  </div>
-
-  <div class="metric-card">
-    <span class="label skeleton skeleton-label" aria-hidden="true" id="sk-lbl-machos"></span>
-    <span class="label" id="lbl-machos" style="display:none;">Machos</span>
-    <div class="metric-value" id="val-machos" aria-live="polite" aria-atomic="true">
-      <span class="skeleton skeleton-value" aria-hidden="true" id="sk-machos"></span>
-    </div>
-    <div class="metric-delta flat skeleton skeleton-delta" aria-hidden="true" id="sk-delta-machos"></div>
-    <div class="metric-delta flat" id="delta-machos" style="display:none;" aria-live="polite"></div>
-  </div>
-
-  <div class="metric-card">
-    <span class="label skeleton skeleton-label" aria-hidden="true" id="sk-lbl-femeas"></span>
-    <span class="label" id="lbl-femeas" style="display:none;">Fêmeas</span>
-    <div class="metric-value" id="val-femeas" aria-live="polite" aria-atomic="true">
-      <span class="skeleton skeleton-value" aria-hidden="true" id="sk-femeas"></span>
-    </div>
-    <div class="metric-delta flat skeleton skeleton-delta" aria-hidden="true" id="sk-delta-femeas"></div>
-    <div class="metric-delta flat" id="delta-femeas" style="display:none;" aria-live="polite"></div>
+    <div class="metric-delta flat skeleton skeleton-delta" aria-hidden="true" id="sk-delta-abaixo"></div>
+    <div class="metric-delta" id="delta-abaixo" style="display:none;"></div>
   </div>
 
 </div>
 
 <!-- ── Alertas sanitários ─────────────────────────────── -->
 {% if alertas_sanitarios %}
-<div role="alert" style="display:flex; flex-direction:column; gap:var(--space-2); margin-bottom:var(--space-4);">
+<div class="stack-2 mb-4" role="status">
   {% for p in alertas_sanitarios %}
-  <div style="display:flex; align-items:center; gap:var(--space-3); padding:var(--space-3) var(--space-4);
-              background:var(--color-warning-bg); border-left:3px solid var(--color-accent);
-              border-radius:var(--radius-sm);">
-    <svg aria-hidden="true" class="icon icon-md" style="color:var(--color-accent); flex-shrink:0;" viewBox="0 0 24 24"><path d="m18 2 4 4-1.5 1.5-4-4L18 2ZM10.5 9.5l4 4M7 8l4 4m-7 7 4-4m1-8 8 8"/><path d="m2 22 4-4"/></svg>
-    <div style="flex:1;">
-      <span style="font-weight:var(--weight-semibold);">{{ p[1] }}</span>
-      <span style="color:var(--color-ink-secondary); margin-left:var(--space-2);">· vence em {{ p[2] }}</span>
+  <div class="alert alert-warning">
+    <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" viewBox="0 0 24 24"><path d="m18 2 4 4-1.5 1.5-4-4L18 2ZM10.5 9.5l4 4M7 8l4 4m-7 7 4-4m1-8 8 8"/><path d="m2 22 4-4"/></svg></span>
+    <div class="flex-1">
+      <span class="font-semibold">{{ p[1] }}</span>
+      <span class="text-secondary" style="margin-left:var(--space-2);">· vence em {{ p[2] }}</span>
     </div>
-    <a href="{{ url_for('sanitario.lista_protocolos') }}" class="btn btn-accent btn-sm">Ver calendário</a>
+    <a href="{{ url_for('sanitario.lista_protocolos') }}" class="btn btn-accent btn-sm shrink-0">Ver calendário</a>
   </div>
   {% endfor %}
 </div>
 {% endif %}
 
 <!-- ── Alertas de GMD ──────────────────────────────────── -->
-<div id="alertas-gmd" role="status" style="display:flex; flex-direction:column; gap:var(--space-2); margin-bottom:var(--space-6);"></div>
+<div id="alertas-gmd" class="stack-2 mb-6" role="status"></div>
 
 <!-- ── Busca ───────────────────────────────────────────── -->
 <form action="{{ url_for('operacional.painel') }}" method="GET"
-      class="flex flex-wrap items-center gap-2" style="margin-bottom:var(--space-4);">
+      class="toolbar mb-4" role="search" aria-label="Buscar animal por brinco">
   <input type="hidden" name="status" value="{{ status }}">
   <input type="hidden" name="raca" value="{{ raca_filtro }}">
   <input type="hidden" name="origem" value="{{ origem_filtro }}">
   <input type="hidden" name="sexo" value="{{ sexo_filtro }}">
-  <input type="text" name="busca" class="form-input"
-         placeholder="Buscar pelo número do brinco..."
-         value="{{ busca }}"
-         style="flex:1; min-width:180px;">
+
+  <div class="combo">
+    <label class="sr-only" for="busca-brinco">Número do brinco</label>
+    <input type="text" name="busca" id="busca-brinco" class="form-input"
+           placeholder="Buscar pelo número do brinco..."
+           value="{{ busca }}">
+    <ul class="combo__list" id="combo-brincos" role="listbox"
+        aria-label="Sugestões de brinco" hidden></ul>
+  </div>
+
   <button type="submit" class="btn btn-secondary btn-sm">
     <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     Buscar
   </button>
   {% if busca or status != 'todos' or raca_filtro or origem_filtro or sexo_filtro %}
-    <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">Limpar</a>
+    <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">Limpar filtros</a>
   {% endif %}
 </form>
 
-<!-- ── Filtros de status ───────────────────────────────── -->
-<div class="flex items-start gap-2" style="margin-bottom:var(--space-5);">
-<div class="flex flex-wrap items-center gap-2" style="row-gap:var(--space-2);">
-  <span class="label" id="status-tabs-label">Exibir:</span>
-  <div role="tablist" aria-labelledby="status-tabs-label" style="display:contents;">
-    <a href="{{ url_for('operacional.painel', status='todos',    busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
-       role="tab" aria-selected="{{ 'true' if status == 'todos'    else 'false' }}"
-       class="btn btn-sm btn-secondary{% if status == 'todos'    %} is-active{% endif %}">Todos</a>
-    <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
-       role="tab" aria-selected="{{ 'true' if status == 'ativos'   else 'false' }}"
-       class="btn btn-sm btn-secondary{% if status == 'ativos'   %} is-active{% endif %}">Ativos</a>
-    <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
-       role="tab" aria-selected="{{ 'true' if status == 'vendidos' else 'false' }}"
-       class="btn btn-sm btn-secondary{% if status == 'vendidos' %} is-active{% endif %}">Vendidos</a>
-    <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem='' if origem_filtro == 'fazenda' else 'fazenda', sexo=sexo_filtro) }}"
-       role="tab" aria-selected="{{ 'true' if origem_filtro == 'fazenda' else 'false' }}"
-       title="Animais nascidos na própria fazenda (sem data de compra)"
-       class="btn btn-sm btn-secondary{% if origem_filtro == 'fazenda' %} is-active{% endif %}">Nascidos na Fazenda</a>
+{# Tolerância a erro de digitação: se a busca não devolveu nada, o sgg.js
+   procura o brinco mais próximo e oferece o link já pronto. #}
+{% if busca and total_animais == 0 %}
+<p id="sgg-sugestao" class="search-suggestion" data-termo="{{ busca }}" hidden></p>
+{% endif %}
+
+<!-- ── Filtros ─────────────────────────────────────────── -->
+<div class="toolbar items-start gap-4 mb-5">
+  <div class="toolbar gap-4">
+
+    <div class="filter-group" role="group" aria-label="Filtrar por situação">
+      <span class="filter-group__label" aria-hidden="true">Exibir</span>
+      <a href="{{ url_for('operacional.painel', status='todos',    busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
+         class="chip"{% if status == 'todos' %} aria-current="true"{% endif %}>Todos</a>
+      <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
+         class="chip"{% if status == 'ativos' %} aria-current="true"{% endif %}>Ativos</a>
+      <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
+         class="chip"{% if status == 'vendidos' %} aria-current="true"{% endif %}>Vendidos</a>
+      <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem='' if origem_filtro == 'fazenda' else 'fazenda', sexo=sexo_filtro) }}"
+         class="chip"{% if origem_filtro == 'fazenda' %} aria-current="true"{% endif %}
+         title="Animais nascidos na própria fazenda (sem data de compra)">Nascidos na Fazenda</a>
+    </div>
+
+    <div class="filter-group" role="group" aria-label="Filtrar por sexo">
+      <span class="filter-group__label" aria-hidden="true">Sexo</span>
+      <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro) }}"
+         class="chip"{% if not sexo_filtro %} aria-current="true"{% endif %}>Todos</a>
+      <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro, sexo='M') }}"
+         class="chip"{% if sexo_filtro == 'M' %} aria-current="true"{% endif %}
+         title="Recalcula o GMD médio considerando só machos">Machos</a>
+      <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro, sexo='F') }}"
+         class="chip"{% if sexo_filtro == 'F' %} aria-current="true"{% endif %}
+         title="Recalcula o GMD médio considerando só fêmeas">Fêmeas</a>
+    </div>
+
+    {% if racas_disponiveis | length > 1 %}
+    <div class="filter-group" role="group" aria-label="Filtrar por raça">
+      <span class="filter-group__label" aria-hidden="true">Raça</span>
+      <a href="{{ url_for('operacional.painel', status=status, busca=busca, origem=origem_filtro, sexo=sexo_filtro) }}"
+         class="chip"{% if not raca_filtro %} aria-current="true"{% endif %}>Todas</a>
+      {% for r in racas_disponiveis %}
+      <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=r, origem=origem_filtro, sexo=sexo_filtro) }}"
+         class="chip"{% if raca_filtro == r %} aria-current="true"{% endif %}>{{ r }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
   </div>
-  <span class="label" style="margin-left:var(--space-4);" id="sexo-tabs-label">Sexo:</span>
-  <div role="tablist" aria-labelledby="sexo-tabs-label" style="display:contents;">
-    <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro) }}"
-       role="tab" aria-selected="{{ 'true' if not sexo_filtro else 'false' }}"
-       class="btn btn-sm btn-secondary{% if not sexo_filtro %} is-active{% endif %}">Todos</a>
-    <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro, sexo='M') }}"
-       role="tab" aria-selected="{{ 'true' if sexo_filtro == 'M' else 'false' }}"
-       title="Recalcula o GMD médio considerando só machos"
-       class="btn btn-sm btn-secondary{% if sexo_filtro == 'M' %} is-active{% endif %}">Machos</a>
-    <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro, sexo='F') }}"
-       role="tab" aria-selected="{{ 'true' if sexo_filtro == 'F' else 'false' }}"
-       title="Recalcula o GMD médio considerando só fêmeas"
-       class="btn btn-sm btn-secondary{% if sexo_filtro == 'F' %} is-active{% endif %}">Fêmeas</a>
-  </div>
-  {% if racas_disponiveis | length > 1 %}
-  <span class="label" style="margin-left:var(--space-4);">Raça:</span>
-  <a href="{{ url_for('operacional.painel', status=status, busca=busca, origem=origem_filtro, sexo=sexo_filtro) }}"
-     class="btn btn-sm btn-secondary{% if not raca_filtro %} is-active{% endif %}">Todas</a>
-  {% for r in racas_disponiveis %}
-  <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=r, origem=origem_filtro, sexo=sexo_filtro) }}"
-     class="btn btn-sm btn-secondary{% if raca_filtro == r %} is-active{% endif %}">{{ r }}</a>
-  {% endfor %}
-  {% endif %}
-</div>
-  <a href="{{ url_for('operacional.lixeira') }}"
-     class="btn btn-sm btn-ghost" style="margin-left:auto; flex-shrink:0;">
+  <a href="{{ url_for('operacional.lixeira') }}" class="btn btn-sm btn-ghost ml-auto shrink-0">
     <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
     Lixeira
   </a>
@@ -204,26 +235,29 @@
 <!-- ── Tabela de animais ───────────────────────────────── -->
 <div class="table-wrapper">
   <table>
-    <caption class="sr-only">Lista de animais cadastrados</caption>
+    <caption class="sr-only">
+      Lista de animais cadastrados. As colunas Último Peso e GMD carregam logo
+      após a página e ficam ocultas em telas estreitas.
+    </caption>
     <thead>
       <tr>
         <th scope="col">Brinco</th>
         <th scope="col">Sexo</th>
         <th scope="col">Raça</th>
-        <th scope="col" class="col-peso">Último Peso</th>
-        <th scope="col" class="col-gmd" title="Ganho Médio Diário — kg/dia de ganho de peso">GMD</th>
+        <th scope="col" class="col-peso num">Último peso (kg)</th>
+        <th scope="col" class="col-gmd num" title="Ganho Médio Diário — kg/dia de ganho de peso">GMD kg/dia</th>
         <th scope="col">Status</th>
-        <th scope="col"></th>
+        <th scope="col"><span class="sr-only">Ações</span></th>
       </tr>
     </thead>
     <tbody>
       {% for animal in lista_animais %}
       <tr data-aid="{{ animal[0] }}">
-        <td class="td-primary">{{ animal[1] }}</td>
+        <th scope="row" class="td-primary" style="font-weight:var(--weight-medium); text-align:left;">{{ animal[1] }}</th>
         <td>{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</td>
         <td>{{ animal[3] or '—' }}</td>
-        <td class="col-peso"><span class="skeleton" style="display:inline-block;width:58px;height:13px;border-radius:3px;"></span></td>
-        <td class="col-gmd"><span class="skeleton" style="display:inline-block;width:46px;height:13px;border-radius:3px;"></span></td>
+        <td class="col-peso num"><span class="skeleton" style="display:inline-block;width:58px;height:13px;border-radius:3px;"></span></td>
+        <td class="col-gmd num"><span class="skeleton" style="display:inline-block;width:46px;height:13px;border-radius:3px;"></span></td>
         <td>
           {% if animal[6] %}
             <span class="badge badge-neutral">Vendido</span>
@@ -233,22 +267,28 @@
         </td>
         <td>
           <a href="{{ url_for('operacional.detalhes', id_animal=animal[0]) }}"
-             class="btn btn-ghost btn-sm">Ver ficha</a>
+             class="btn btn-ghost btn-sm">Ver ficha<span class="sr-only"> do brinco {{ animal[1] }}</span></a>
         </td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="7" style="text-align:center; padding:var(--space-12) var(--space-4);">
-          <div style="color:var(--color-ink-disabled); margin-bottom:var(--space-4);">
-            <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
-          </div>
-          <p style="color:var(--color-ink-secondary); font-weight:var(--weight-semibold); margin:0 0 var(--space-2);">
-            Rebanho vazio ou nenhum animal encontrado
-          </p>
-          <p style="color:var(--color-ink-tertiary); font-size:var(--text-sm); margin:0 0 var(--space-5);">
-            Cadastre o primeiro animal ou ajuste os filtros de busca.
-          </p>
-          <a href="{{ url_for('operacional.cadastro') }}" class="btn btn-primary btn-sm">+ Novo animal</a>
+        <td colspan="7">
+          {% if busca or raca_filtro or origem_filtro or sexo_filtro or status != 'todos' %}
+            {% call m.empty_state('Nenhum animal com esses filtros',
+                                  'Ajuste ou limpe os filtros para ver o rebanho completo.',
+                                  'pasto') %}
+              <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary btn-sm">Limpar filtros</a>
+            {% endcall %}
+          {% else %}
+            {% call m.empty_state('Nenhum animal por aqui ainda',
+                                  'Cadastre o primeiro brinco ou importe sua planilha — o GMD começa a ser calculado na segunda pesagem.',
+                                  'rebanho') %}
+              <div class="toolbar" style="justify-content:center;">
+                <a href="{{ url_for('operacional.cadastro') }}" class="btn btn-primary btn-sm">Cadastrar animal</a>
+                <a href="{{ url_for('operacional.importar_csv') }}" class="btn btn-secondary btn-sm">Importar CSV</a>
+              </div>
+            {% endcall %}
+          {% endif %}
         </td>
       </tr>
       {% endfor %}
@@ -257,12 +297,12 @@
 </div>
 
 <!-- ── Paginação ──────────────────────────────────────── -->
-<div style="display:flex; justify-content:space-between; align-items:center; gap:var(--space-3); margin-top:var(--space-6); flex-wrap:wrap;">
-  <span style="font-size:var(--text-sm); color:var(--color-ink-tertiary);">
+<div class="toolbar toolbar-split gap-3 mt-6">
+  <span class="text-sm text-muted">
     {% if total_animais > 0 %}
       {% set inicio = (pagina_atual - 1) * 20 + 1 %}
       {% set fim = [pagina_atual * 20, total_animais]|min %}
-      Exibindo {{ inicio }}–{{ fim }} de {{ total_animais }} animal{{ 'is' if total_animais != 1 }}
+      Exibindo {{ inicio }}–{{ fim }} de {{ total_animais }} {{ 'animal' if total_animais == 1 else 'animais' }}
     {% else %}
       Nenhum animal encontrado
     {% endif %}
@@ -275,9 +315,9 @@
 <div id="modalBrasil" class="modal-overlay" role="dialog" aria-modal="true"
      aria-labelledby="modal-cotacoes-title" aria-hidden="true">
   <div class="modal-content">
-    <button class="btn-fechar" id="btn-fechar-modal" aria-label="Fechar modal de cotações">&times;</button>
+    <button class="btn-fechar" id="btn-fechar-modal" aria-label="Fechar cotações nacionais">&times;</button>
     <h2 class="modal-title" id="modal-cotacoes-title">Cotações Nacionais</h2>
-    <div id="loadingModal" class="modal-loading" aria-live="polite">Carregando dados...</div>
+    <div id="loadingModal" class="modal-loading" role="status">Carregando dados...</div>
     <table class="tabela-cotacao" id="tabelaModal" style="display:none;">
       <thead>
         <tr>
@@ -295,14 +335,6 @@
 
 {% block scripts %}
 <script>
-document.querySelectorAll('[role="tab"]').forEach(function(tab) {
-  tab.addEventListener('click', function() {
-    document.querySelectorAll('[role="tab"]').forEach(function(t) { t.setAttribute('aria-selected', 'false'); });
-    this.setAttribute('aria-selected', 'true');
-  });
-});
-</script>
-<script>
 const API = {
   summary: "{{ url_for('api.dashboard_summary', sexo=sexo_filtro, origem=origem_filtro) }}",
   cotacao: "{{ url_for('api.cotacoes_regionais') }}",
@@ -311,67 +343,122 @@ const API = {
   csrf:    "{{ csrf_token() }}",
 };
 
-// Escapa strings antes de interpolar em innerHTML — usado para dados que não
-// controlamos totalmente: feed externo de cotações (item.praca) e brinco (texto
-// livre do usuário). Ver issue #48.
-function escHtml(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const GMD_META = {{ gmd_meta }};
+
+/* sgg.js é carregado com `defer`: só existe depois que o parser termina.
+   Por isso o helper é chamado através de uma função, nunca capturado numa
+   const no momento em que este script é avaliado. */
+function escHtml(s) { return window.sggEscapar(s); }
+
+/* ── Relatório PDF ──────────────────────────────────────────
+   O botão é o próprio item do menu; o rótulo vive num <span> para que a
+   troca de texto não apague o ícone. */
+const btnPDF = document.getElementById('btn-pdf');
+const rotuloPDF = btnPDF.querySelector('.btn-pdf-rotulo');
+
+function estadoPDF(ocupado, texto) {
+  btnPDF.disabled = ocupado;
+  btnPDF.setAttribute('aria-busy', ocupado ? 'true' : 'false');
+  rotuloPDF.textContent = texto;
 }
 
 async function gerarPDF() {
-  const btn = document.getElementById('btn-pdf');
-  btn.disabled = true;
-  btn.textContent = 'Gerando...';
+  estadoPDF(true, 'Gerando relatório…');
+  const aviso = sggToast('Gerando o relatório PDF. Isso pode levar alguns segundos.', 'warning', { duracao: 0 });
   try {
-    const res = await fetch(API.pdf, {
-      method: 'POST',
-      headers: { 'X-CSRFToken': API.csrf },
-    });
-    if (!res.ok) throw new Error('Falha ao iniciar geração');
+    const res = await fetch(API.pdf, { method: 'POST', headers: { 'X-CSRFToken': API.csrf } });
+    if (!res.ok) throw new Error('start');
     const { job_id } = await res.json();
-    await _aguardarPDF(job_id);
+    await aguardarPDF(job_id, aviso);
   } catch (e) {
-    console.error(e);
-    btn.textContent = 'Relatório PDF';
-    btn.disabled = false;
-    alert('Erro ao gerar PDF. Tente novamente.');
+    if (aviso) aviso();
+    estadoPDF(false, 'Relatório PDF');
+    sggToast('Não foi possível gerar o relatório agora. Tente novamente em instantes.', 'error');
   }
 }
 
-async function _aguardarPDF(job_id) {
-  const btn = document.getElementById('btn-pdf');
-  const statusUrl = `/api/v1/relatorio/pdf/${job_id}/status`;
+async function aguardarPDF(job_id, aviso) {
+  const statusUrl   = `/api/v1/relatorio/pdf/${job_id}/status`;
   const downloadUrl = `/api/v1/relatorio/pdf/${job_id}/download`;
   let delay = 1500;
+
   for (let i = 0; i < 25; i++) {
     await new Promise(r => setTimeout(r, delay));
     delay = Math.min(Math.round(delay * 1.4), 5000); // backoff até 5s
+    let s;
     try {
-      const s = await fetch(statusUrl).then(r => r.json());
-      if (s.status === 'done') {
-        window.location.href = downloadUrl;
-        btn.textContent = 'Relatório PDF';
-        btn.disabled = false;
-        return;
-      }
-      if (s.status === 'error') throw new Error('Erro na geração do PDF');
+      s = await fetch(statusUrl).then(r => r.json());
     } catch (e) {
-      btn.textContent = 'Relatório PDF';
-      btn.disabled = false;
-      alert('Erro ao gerar PDF. Tente novamente.');
+      if (aviso) aviso();
+      estadoPDF(false, 'Relatório PDF');
+      sggToast('A conexão caiu enquanto o relatório era gerado. Tente novamente.', 'error');
+      return;
+    }
+    if (s.status === 'done') {
+      if (aviso) aviso();
+      window.location.href = downloadUrl;
+      estadoPDF(false, 'Relatório PDF');
+      sggToast('Relatório pronto — o download começou.', 'success');
+      return;
+
+    }
+    if (s.status === 'error') {
+      if (aviso) aviso();
+      estadoPDF(false, 'Relatório PDF');
+      sggToast('O relatório falhou ao ser montado. Tente novamente.', 'error');
       return;
     }
   }
-  btn.textContent = 'Relatório PDF';
-  btn.disabled = false;
-  alert('Tempo esgotado. Tente novamente.');
+  if (aviso) aviso();
+  estadoPDF(false, 'Relatório PDF');
+  sggToast('O relatório está demorando mais que o normal. Tente novamente em alguns minutos.', 'error');
+}
+
+/* ── Indicadores do topo ────────────────────────────────── */
+
+function esconder(ids) {
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+}
+
+function preencher(chave, valor, deltaTexto, deltaClasse) {
+  esconder(['sk-lbl-' + chave, 'sk-' + chave, 'sk-delta-' + chave]);
+  document.getElementById('lbl-' + chave).style.display = '';
+
+  const v = document.getElementById('val-' + chave);
+  /* val-gmd nasce com display:none (o skeleton ocupa o lugar); os demais são
+     divs sempre visíveis, para os quais '' é inofensivo. */
+  v.style.display = '';
+  v.textContent = valor;
+
+  const d = document.getElementById('delta-' + chave);
+  d.style.display = '';
+  d.textContent = deltaTexto;
+  d.className = 'metric-delta ' + (deltaClasse || 'flat');
+}
+
+/* Falha de rede não pode deixar o skeleton brilhando para sempre: troca por
+   um traço legível e abre um caminho de recuperação. */
+function metricasIndisponiveis() {
+  ['total', 'gmd', 'abaixo'].forEach(chave => {
+    esconder(['sk-lbl-' + chave, 'sk-' + chave, 'sk-delta-' + chave]);
+    const lbl = document.getElementById('lbl-' + chave);
+    if (lbl) lbl.style.display = '';
+    const val = document.getElementById('val-' + chave);
+    if (val) { val.style.display = ''; val.innerHTML = '<span class="data-empty">—</span>'; }
+    const d = document.getElementById('delta-' + chave);
+    if (d) { d.style.display = ''; d.textContent = 'Indisponível'; d.className = 'metric-delta flat'; }
+  });
+  document.getElementById('unit-gmd').style.display = 'none';
+  document.getElementById('metricas-erro').hidden = false;
 }
 
 async function carregarMetricas() {
+  document.getElementById('metricas-erro').hidden = true;
   try {
-    const data = await fetch(API.summary).then(r => r.json());
+    const res = await fetch(API.summary);
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+
     const sexoData    = data.sexo    || {};
     const gmdData     = data.gmd     || {};
     const alertasData = data.alertas || {};
@@ -380,129 +467,141 @@ async function carregarMetricas() {
     const F = sexoData['F'] || 0;
     const total = M + F;
 
-    function revealMetric(skId, lblId, valEl, valText, deltaEl, deltaText, deltaClass) {
-      const sk = document.getElementById(skId);
-      const lbl = document.getElementById(lblId);
-      const skDelta = document.getElementById('sk-delta-' + skId.replace('sk-', ''));
-      if (sk) sk.style.display = 'none';
-      if (lbl) lbl.style.display = '';
-      if (skDelta) skDelta.style.display = 'none';
-      if (valEl) { valEl.style.display = ''; valEl.textContent = valText; }
-      if (deltaEl) { deltaEl.style.display = ''; deltaEl.textContent = deltaText; deltaEl.className = 'metric-delta ' + deltaClass; }
+    /* ── Rebanho + composição ── */
+    preencher('total', total, '', 'flat');
+    document.getElementById('delta-total').style.display = 'none';
+    if (total > 0) {
+      const pctM = (M / total) * 100;
+      document.getElementById('split-m').style.width = pctM + '%';
+      document.getElementById('split-f').style.width = (100 - pctM) + '%';
+      document.getElementById('leg-m').innerHTML =
+        `<b style="color:var(--g-700)">${sggNum(M)}</b> machos`;
+      document.getElementById('leg-f').innerHTML =
+        `<b style="color:var(--a-600)">${sggNum(F)}</b> fêmeas`;
+      document.getElementById('bloco-composicao').style.display = '';
     }
 
-    // Total
-    ['sk-lbl-total','sk-total'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
-    document.getElementById('lbl-total').style.display = '';
-    document.getElementById('sk-delta-total').style.display = 'none';
-    document.getElementById('val-total').innerHTML = total;
-    const dtEl = document.getElementById('delta-total');
-    dtEl.style.display = ''; dtEl.textContent = `${M} machos · ${F} fêmeas`; dtEl.className = 'metric-delta flat';
-
-    // Machos
-    ['sk-lbl-machos','sk-machos'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
-    document.getElementById('lbl-machos').style.display = '';
-    document.getElementById('sk-delta-machos').style.display = 'none';
-    document.getElementById('val-machos').innerHTML = M;
-    const dmEl = document.getElementById('delta-machos');
-    dmEl.style.display = ''; dmEl.textContent = total > 0 ? `${((M/total)*100).toFixed(0)}% do rebanho` : '—'; dmEl.className = 'metric-delta flat';
-
-    // Fêmeas
-    ['sk-lbl-femeas','sk-femeas'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
-    document.getElementById('lbl-femeas').style.display = '';
-    document.getElementById('sk-delta-femeas').style.display = 'none';
-    document.getElementById('val-femeas').innerHTML = F;
-    const dfEl = document.getElementById('delta-femeas');
-    dfEl.style.display = ''; dfEl.textContent = total > 0 ? `${((F/total)*100).toFixed(0)}% do rebanho` : '—'; dfEl.className = 'metric-delta flat';
-
-    // GMD
+    /* ── GMD (herói) + barra de meta ── */
     const gmd = gmdData.gmd_medio || 0;
-    ['sk-lbl-gmd','sk-gmd'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
-    document.getElementById('lbl-gmd').style.display = '';
-    document.getElementById('sk-delta-gmd').style.display = 'none';
-    const gmdEl = document.getElementById('val-gmd');
-    gmdEl.style.display = ''; gmdEl.textContent = gmd > 0 ? gmd.toFixed(3) : '—';
-    document.getElementById('unit-gmd').style.display = '';
-    const deltaGmd = document.getElementById('delta-gmd');
-    deltaGmd.style.display = '';
-    if (gmd >= {{ gmd_meta }}) {
-      deltaGmd.textContent = '↑ Desempenho elevado';
-      deltaGmd.className = 'metric-delta up';
-    } else if (gmd > 0) {
-      deltaGmd.textContent = '↓ Ganho abaixo do ideal';
-      deltaGmd.className = 'metric-delta down';
-    } else {
-      deltaGmd.textContent = 'Sem pesagens registradas';
-      deltaGmd.className = 'metric-delta flat';
+    let deltaTxt, deltaCls;
+    if (gmd >= GMD_META)   { deltaTxt = '↑ Acima da meta';         deltaCls = 'up'; }
+    else if (gmd > 0)      { deltaTxt = '↓ Abaixo da meta';        deltaCls = 'down'; }
+    else                   { deltaTxt = 'Sem pesagens registradas'; deltaCls = 'flat'; }
+    preencher('gmd', gmd > 0 ? sggNum(gmd, 3) : '—', deltaTxt, deltaCls);
+    document.getElementById('unit-gmd').style.display = gmd > 0 ? '' : 'none';
+
+    /* Percentual real da meta configurada — nada é estimado aqui. */
+    if (gmd > 0 && GMD_META > 0) {
+      const pct = Math.round((gmd / GMD_META) * 100);
+      document.getElementById('meta-fill').style.width = Math.min(pct, 100) + '%';
+      document.getElementById('meta-pct').textContent = pct + '% da meta';
+      document.getElementById('meta-alvo').textContent = 'meta ' + sggNum(GMD_META, 3) + ' kg/dia';
+      document.getElementById('bloco-meta').style.display = '';
     }
 
-    // Alertas GMD
-    const alertasDiv = document.getElementById('alertas-gmd');
-    alertasDiv.innerHTML = '';
+    /* ── Animais com ganho muito abaixo do próprio lote ── */
+    const nAbaixo = alertasData.total || 0;
+    preencher(
+      'abaixo',
+      nAbaixo,
+      total > 0 ? sggNum((nAbaixo / total) * 100, 1) + '% do rebanho' : '—',
+      nAbaixo > 0 ? 'down' : 'flat'
+    );
 
-    if (!alertasData.error && alertasData.total > 0) {
-      const lista  = alertasData.animais.slice(0, 6).map(a => escHtml(a.brinco)).join(', ');
-      const mais   = alertasData.total > 6 ? ` e mais ${alertasData.total - 6}` : '';
-      const limite = alertasData.gmd_limite_inferior != null
-                     ? alertasData.gmd_limite_inferior.toFixed(3)
-                     : '—';
-      const svgWarn = `<svg aria-hidden="true" class="icon icon-md" viewBox="0 0 24 24"><path d="m10.29 3.86-8.6 14.9A2 2 0 0 0 3.43 22h17.14a2 2 0 0 0 1.74-2.84l-8.6-14.9a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>`;
-      alertasDiv.innerHTML = `
-        <div class="alert alert-danger">
-          <span class="alert-icon">${svgWarn}</span>
-          <div>
-            <strong>${alertasData.total} animal${alertasData.total > 1 ? 'is' : ''} com ganho de peso muito abaixo do lote (&lt; ${limite} kg/dia)</strong><br>
-            <span style="font-size:var(--text-xs);">${lista}${mais} — esses animais crescem significativamente menos que os demais; verifique saúde, nutrição e parasitas</span>
-          </div>
-        </div>`;
-    } else if (!alertasData.error && total > 0) {
-      const svgCheck = `<svg aria-hidden="true" class="icon icon-md" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
-      alertasDiv.innerHTML = `
-        <div class="alert alert-success">
-          <span class="alert-icon">${svgCheck}</span>
-          <div><strong>Ganho de peso homogêneo — todos os animais estão dentro da variação esperada do lote</strong></div>
-        </div>`;
-    }
-
+    renderAlertasGMD(alertasData, total);
   } catch (e) {
     console.error('Erro ao carregar métricas:', e);
+    metricasIndisponiveis();
   }
+}
+
+function renderAlertasGMD(alertasData, total) {
+  const alertasDiv = document.getElementById('alertas-gmd');
+  alertasDiv.innerHTML = '';
+  if (alertasData.error) return;
+
+  const svgWarn  = `<svg aria-hidden="true" class="icon icon-md" viewBox="0 0 24 24"><path d="m10.29 3.86-8.6 14.9A2 2 0 0 0 3.43 22h17.14a2 2 0 0 0 1.74-2.84l-8.6-14.9a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>`;
+  const svgCheck = `<svg aria-hidden="true" class="icon icon-md" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+
+  if (alertasData.total > 0) {
+    const lista  = alertasData.animais.slice(0, 6).map(a => escHtml(a.brinco)).join(', ');
+    const mais   = alertasData.total > 6 ? ` e mais ${alertasData.total - 6}` : '';
+    const limite = alertasData.gmd_limite_inferior != null
+                   ? sggNum(alertasData.gmd_limite_inferior, 3) : '—';
+    alertasDiv.innerHTML = `
+      <div class="alert alert-danger">
+        <span class="alert-icon">${svgWarn}</span>
+        <div>
+          <strong>${sggAnimais(alertasData.total)} com ganho de peso muito abaixo do lote (&lt; ${limite} kg/dia)</strong><br>
+          <span class="text-xs">${lista}${mais} — esses animais crescem significativamente menos que os demais; verifique saúde, nutrição e parasitas</span>
+        </div>
+      </div>`;
+  } else if (total > 0) {
+    alertasDiv.innerHTML = `
+      <div class="alert alert-success">
+        <span class="alert-icon">${svgCheck}</span>
+        <div><strong>Ganho de peso homogêneo — todos os animais estão dentro da variação esperada do lote</strong></div>
+      </div>`;
+  }
+}
+
+/* ── GMD por linha da tabela ────────────────────────────────
+   O desempenho é comunicado por glifo + rótulo textual + cor. Em
+   monocromia (ou para quem não distingue verde de vermelho) o significado
+   continua legível. */
+function faixaGMD(g) {
+  if (g >= GMD_META)        return { classe: 'perf-alto',  glifo: '▲', texto: 'acima da meta' };
+  if (g >= GMD_META * 0.75) return { classe: 'perf-medio', glifo: '●', texto: 'próximo da meta' };
+  return { classe: 'perf-baixo', glifo: '▼', texto: 'abaixo da meta' };
 }
 
 async function carregarGMDTabela() {
   const rows = document.querySelectorAll('tr[data-aid]');
   if (!rows.length) return;
   const ids = Array.from(rows).map(r => r.dataset.aid).join(',');
+  const dash = '<span class="data-empty">—</span>';
   try {
-    const data = await fetch('/api/animais/gmd-lote?ids=' + ids).then(r => r.json());
-    const dash = '<span style="color:var(--color-ink-disabled);">—</span>';
+    const res = await fetch('/api/animais/gmd-lote?ids=' + ids);
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+
     rows.forEach(row => {
       const entry  = data[row.dataset.aid];
       const pesoTd = row.querySelector('.col-peso');
       const gmdTd  = row.querySelector('.col-gmd');
       if (!pesoTd || !gmdTd) return;
-      if (entry) {
-        const [peso, gmd] = entry;
-        pesoTd.innerHTML = peso ? parseFloat(peso).toFixed(1) + ' kg' : dash;
-        if (gmd !== null && gmd !== undefined) {
-          const g   = parseFloat(gmd);
-          const cor = g >= {{ gmd_meta }} ? 'var(--color-success)' : g >= {{ gmd_meta }} * 0.75 ? 'var(--color-accent-dark)' : 'var(--color-danger)';
-          gmdTd.innerHTML = '<span style="color:' + cor + ';font-weight:var(--weight-semibold);">' + g.toFixed(3) + '</span>';
-        } else {
-          gmdTd.innerHTML = dash;
-        }
-      } else {
-        pesoTd.innerHTML = dash;
-        gmdTd.innerHTML  = dash;
-      }
+
+      if (!entry) { pesoTd.innerHTML = dash; gmdTd.innerHTML = dash; return; }
+
+      const [peso, gmd] = entry;
+      pesoTd.innerHTML = peso ? sggNum(peso, 1) : dash;
+
+      if (gmd === null || gmd === undefined) { gmdTd.innerHTML = dash; return; }
+      const g = parseFloat(gmd);
+      const f = faixaGMD(g);
+      /* A barra é proporcional à meta e dá a leitura da distribuição do lote
+         de relance. O glifo e o texto oculto garantem que o significado não
+         dependa da cor nem da barra. */
+      const larg = Math.max(2, Math.min(100, (g / GMD_META) * 100));
+      gmdTd.innerHTML =
+        `<span class="gmd-cell ${f.classe}">` +
+          `<span class="gmd-cell__valor">` +
+            `<span aria-hidden="true">${f.glifo}</span> ${sggNum(g, 3)}` +
+          `</span>` +
+          `<span class="gmd-cell__barra" aria-hidden="true"><i style="width:${larg}%"></i></span>` +
+          `<span class="sr-only"> kg por dia, ${f.texto}</span>` +
+        `</span>`;
     });
   } catch (e) {
     console.error('Erro ao carregar GMD:', e);
     document.querySelectorAll('tr[data-aid] .col-peso, tr[data-aid] .col-gmd').forEach(td => {
-      td.innerHTML = '<span style="color:var(--color-ink-disabled);">—</span>';
+      td.innerHTML = dash;
     });
+    sggToast('Peso e GMD da tabela não puderam ser carregados. Recarregue a página para tentar de novo.', 'warning');
   }
 }
+
+/* ── Cotação ────────────────────────────────────────────── */
 
 async function carregarCotacao() {
   try {
@@ -517,7 +616,10 @@ async function carregarCotacao() {
   } catch (e) { console.error(e); }
 }
 
-let _modalTrigger = null;
+/* ── Modal de cotações nacionais ────────────────────────── */
+
+let soltarFocoModal = null;
+let restaurarFundoModal = null;
 
 function abrirModalBrasil() {
   const modal   = document.getElementById('modalBrasil');
@@ -525,27 +627,36 @@ function abrirModalBrasil() {
   const loading = document.getElementById('loadingModal');
   const tabela  = document.getElementById('tabelaModal');
 
-  _modalTrigger = document.activeElement;
   modal.style.display = 'flex';
   modal.setAttribute('aria-hidden', 'false');
-  document.getElementById('btn-fechar-modal').focus();
+  restaurarFundoModal = window.sggIsolarFundo(modal);
+  soltarFocoModal = window.sggPrenderFoco(modal, document.getElementById('btn-fechar-modal'));
 
   tbody.innerHTML = '';
+  loading.textContent = 'Carregando dados...';
   loading.style.display = 'block';
   tabela.style.display  = 'none';
 
-  fetch(API.brasil).then(r => r.json()).then(data => {
+  fetch(API.brasil).then(r => {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(data => {
     const listaBoi     = data.boi     || [];
     const listaNovilha = data.novilha || [];
     const mapaNovilha  = {};
     listaNovilha.forEach(i => { mapaNovilha[i.praca] = i.preco_vista; });
+
+    if (!listaBoi.length) {
+      loading.textContent = 'Nenhuma cotação disponível no momento. Tente novamente mais tarde.';
+      return;
+    }
 
     tbody.innerHTML = listaBoi.map(item => {
       const pBoi = parseFloat(item.preco_vista).toFixed(2).replace('.', ',');
       const pNov = mapaNovilha[item.praca]
         ? parseFloat(mapaNovilha[item.praca]).toFixed(2).replace('.', ',') : '---';
       return `<tr>
-        <td class="praca-nome">${escHtml(item.praca)}</td>
+        <th scope="row" class="praca-nome">${escHtml(item.praca)}</th>
         <td class="preco-boi">R$ ${pBoi}</td>
         <td class="preco-novilha">R$ ${pNov}</td>
       </tr>`;
@@ -555,7 +666,7 @@ function abrirModalBrasil() {
     tabela.style.display  = 'table';
   }).catch(err => {
     console.error(err);
-    loading.innerText = "Erro ao carregar dados.";
+    loading.textContent = 'Não foi possível carregar as cotações nacionais agora. Feche e tente novamente em instantes.';
   });
 }
 
@@ -563,57 +674,27 @@ function fecharModalBrasil() {
   const modal = document.getElementById('modalBrasil');
   modal.style.display = 'none';
   modal.setAttribute('aria-hidden', 'true');
-  if (_modalTrigger) { _modalTrigger.focus(); _modalTrigger = null; }
+  if (soltarFocoModal) { soltarFocoModal(); soltarFocoModal = null; }
+  if (restaurarFundoModal) { restaurarFundoModal(); restaurarFundoModal = null; }
 }
 
-function fecharModal(e) {
-  if (e.target.id === 'modalBrasil') fecharModalBrasil();
-}
+/* Espera o kit (sgg.js, `defer`) estar disponível antes de ligar qualquer
+   coisa que dependa dele. */
+document.addEventListener('DOMContentLoaded', function () {
+  btnPDF.addEventListener('click', gerarPDF);
+  document.getElementById('btn-ver-brasil').addEventListener('click', abrirModalBrasil);
+  document.getElementById('btn-fechar-modal').addEventListener('click', fecharModalBrasil);
+  document.getElementById('modalBrasil').addEventListener('click', function (e) {
+    if (e.target === this) fecharModalBrasil();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && soltarFocoModal) fecharModalBrasil();
+  });
+  document.getElementById('btn-recarregar-metricas').addEventListener('click', carregarMetricas);
 
-document.addEventListener('keydown', function (e) {
-  const modal = document.getElementById('modalBrasil');
-  if (modal.style.display !== 'flex') return;
-  if (e.key === 'Escape') { fecharModalBrasil(); return; }
-  if (e.key !== 'Tab') return;
-
-  const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-  const first = focusable[0];
-  const last  = focusable[focusable.length - 1];
-  if (e.shiftKey) {
-    if (document.activeElement === first) { e.preventDefault(); last.focus(); }
-  } else {
-    if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
-  }
-});
-
-function toggleMaisAcoes(e) {
-  e.stopPropagation();
-  var menu = document.getElementById('menu-mais-acoes');
-  var btn  = document.getElementById('btn-mais-acoes');
-  var open = !menu.classList.contains('open');
-  menu.classList.toggle('open', open);
-  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-}
-function fecharMaisAcoes() {
-  var menu = document.getElementById('menu-mais-acoes');
-  if (menu) { menu.classList.remove('open'); }
-  var btn = document.getElementById('btn-mais-acoes');
-  if (btn) btn.setAttribute('aria-expanded', 'false');
-}
-document.addEventListener('click', function (e) {
-  if (!document.getElementById('btn-mais-acoes').contains(e.target)) {
-    fecharMaisAcoes();
-  }
-});
-document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') fecharMaisAcoes();
-});
-
-document.addEventListener('DOMContentLoaded', () => {
   carregarMetricas();
   carregarCotacao();
   carregarGMDTabela();
-  document.getElementById('btn-fechar-modal').addEventListener('click', fecharModalBrasil);
 });
 </script>
 {% endblock %}

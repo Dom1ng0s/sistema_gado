@@ -7,6 +7,7 @@
 <div class="page-header">
   <div>
     <p class="label">{{ nome_fazenda_header }}</p>
+    {{ m.breadcrumb([('Relatórios', url_for('api.graficos_page')), ('GMD por módulo', '')]) }}
     <h1 class="page-title">Ranking GMD por Módulo</h1>
   </div>
   <a href="{{ url_for('pastos.listar_pastos') }}" class="btn btn-secondary btn-sm">← Pastos</a>
@@ -94,23 +95,23 @@ const valores = ranking.map(r => ({
   }
 })).reverse();
 
-const chart = echarts.init(document.getElementById('chartGMD'));
+const chart = sggGrafico(document.getElementById('chartGMD'));
 chart.setOption({
-  textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A' },
+  textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#3D3D3A' },
   grid: { top: 10, right: 80, bottom: 30, left: 20, containLabel: true },
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'shadow' },
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'Rubik, sans-serif', fontSize: 13 },
-    formatter: p => `${p[0].name}<br/><strong>${Number(p[0].value).toFixed(3)} kg/dia</strong>`
+    textStyle: { color: '#FAFAF8', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 13 },
+    formatter: p => `${p[0].name}<br/><strong>${sggNum(p[0].value, 3)} kg/dia</strong>`
   },
   xAxis: {
     type: 'value',
     name: 'kg/dia',
     nameTextStyle: { color: '#6B6B68', fontSize: 11 },
-    axisLabel: { color: '#6B6B68', fontSize: 11, formatter: v => v.toFixed(2) },
+    axisLabel: { color: '#6B6B68', fontSize: 11, formatter: v => sggNum(v, 2) },
     splitLine: { lineStyle: { color: '#EDEDE8' } },
     max: value => Math.max(value.max * 1.15, 1.0)
   },
@@ -127,7 +128,7 @@ chart.setOption({
     label: {
       show: true, position: 'right',
       fontSize: 12, color: '#3D3D3A',
-      formatter: p => p.value > 0 ? p.value.toFixed(3) : ''
+      formatter: p => p.value > 0 ? sggNum(p.value, 3) : ''
     },
     markLine: {
       silent: true,

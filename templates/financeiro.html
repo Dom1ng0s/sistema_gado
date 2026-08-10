@@ -10,6 +10,7 @@
 <div class="page-header">
   <div>
     <p class="label">{{ nome_fazenda_header }}</p>
+    {{ m.breadcrumb([('Financeiro', '')]) }}
     <h1 class="page-title">Dashboard Financeiro</h1>
   </div>
   <div class="flex flex-wrap items-center gap-2">
@@ -207,16 +208,16 @@ const reposicao  = parseVal("{{ financeiro.reposicao_ano }}");
 const med        = parseVal("{{ financeiro.med_ano }}");
 const custosOp   = parseVal("{{ financeiro.custos_op_ano }}");
 
-const chart = echarts.init(document.getElementById('chartFinanceiro'));
+const chart = sggGrafico(document.getElementById('chartFinanceiro'));
 chart.setOption({
-  textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A' },
+  textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#3D3D3A' },
   grid: { top: 20, right: 20, bottom: 55, left: 80, containLabel: false },
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'shadow' },
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'Rubik, sans-serif', fontSize: 13 },
+    textStyle: { color: '#FAFAF8', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 13 },
     formatter: params => params.map(p => `${p.marker} ${p.name}: <strong>R$ ${Number(p.value).toLocaleString('pt-BR', {minimumFractionDigits:2})}</strong>`).join('<br>')
   },
   xAxis: {

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as ui %}
 {% block title %}{{ produto[2] }} — Estoque{% endblock %}
 
 {% block extra_css %}
@@ -25,13 +26,8 @@
 <!-- ── Cabeçalho ─────────────────────────────────────── -->
 <div class="page-header">
   <div>
-    <nav aria-label="Localização" style="margin-bottom:var(--space-1);">
-      <ol style="display:flex;align-items:center;gap:var(--space-2);list-style:none;margin:0;padding:0;font-size:var(--text-xs);color:var(--color-ink-secondary);">
-        <li><a href="{{ url_for('estoque.lista_estoque') }}" style="color:var(--color-primary);">Estoque</a></li>
-        <li aria-hidden="true">&rsaquo;</li>
-        <li aria-current="page">{{ produto[2] }}</li>
-      </ol>
-    </nav>
+    {{ ui.breadcrumb([('Estoque de insumos', url_for('estoque.lista_estoque')),
+                     (produto[2], '')]) }}
     <h1 class="page-title">{{ produto[2] }}</h1>
     <div style="display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-1);">
       <span class="tag">{{ produto[4]|capitalize }}</span>

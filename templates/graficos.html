@@ -12,6 +12,7 @@
 <div class="page-header">
   <div>
     <p class="label">{{ nome_fazenda_header }}</p>
+    {{ m.breadcrumb([('Relatórios', '')]) }}
     <h1 class="page-title">Relatórios do Rebanho</h1>
   </div>
   <div style="display:flex; gap:var(--space-2); align-items:center;">
@@ -125,11 +126,11 @@ const PALETAS = {
 };
 
 const ECHART_DEFAULTS = {
-  textStyle: { fontFamily: 'Rubik, sans-serif', color: '#1C1C1A' },
+  textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#1C1C1A' },
   tooltip: {
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'Rubik, sans-serif', fontSize: 13 }
+    textStyle: { color: '#FAFAF8', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 13 }
   }
 };
 
@@ -137,7 +138,7 @@ let instSexo = null, instPeso = null, dadosGlobais = null;
 
 function desenharSexo(paleta) {
   const el = document.getElementById('chartSexo');
-  if (!instSexo) instSexo = echarts.init(el);
+  if (!instSexo) instSexo = sggGrafico(el);
 
   const M = dadosGlobais.sexo.M || 0;
   const F = dadosGlobais.sexo.F || 0;
@@ -147,7 +148,7 @@ function desenharSexo(paleta) {
     tooltip: { ...ECHART_DEFAULTS.tooltip, trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     legend: {
       orient: 'horizontal', bottom: 0,
-      textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A' }
+      textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#3D3D3A' }
     },
     series: [{
       type: 'pie',
@@ -157,15 +158,20 @@ function desenharSexo(paleta) {
         { name: 'Machos', value: M, itemStyle: { color: paleta.sexo[0] } },
         { name: 'Fêmeas', value: F, itemStyle: { color: paleta.sexo[1] } }
       ],
-      label: { show: true, formatter: '{b}\n{c} ({d}%)', fontFamily: 'Rubik, sans-serif' },
-      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.2)' } }
+      /* Rótulo externo + legenda era informação repetida, e dentro de um
+         card de 400px as linhas-guia truncavam o texto. Fica a legenda; o
+         valor e o percentual aparecem no tooltip. */
+      label: { show: false },
+      labelLine: { show: false },
+      avoidLabelOverlap: true,
+      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(42,38,26,0.18)' } }
     }]
   });
 }
 
 function desenharPeso(paleta) {
   const el = document.getElementById('chartPeso');
-  if (!instPeso) instPeso = echarts.init(el);
+  if (!instPeso) instPeso = sggGrafico(el);
 
   const labels = Object.keys(dadosGlobais.peso);
   const series = labels.map((label, i) => ({
@@ -179,15 +185,20 @@ function desenharPeso(paleta) {
     tooltip: { ...ECHART_DEFAULTS.tooltip, trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     legend: {
       orient: 'horizontal', bottom: 0,
-      textStyle: { fontFamily: 'Rubik, sans-serif', color: '#3D3D3A' }
+      textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#3D3D3A' }
     },
     series: [{
       type: 'pie',
       radius: ['40%', '68%'],
       center: ['50%', '46%'],
       data: series,
-      label: { show: true, formatter: '{b}\n{c} ({d}%)', fontFamily: 'Rubik, sans-serif' },
-      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.2)' } }
+      /* Rótulo externo + legenda era informação repetida, e dentro de um
+         card de 400px as linhas-guia truncavam o texto. Fica a legenda; o
+         valor e o percentual aparecem no tooltip. */
+      label: { show: false },
+      labelLine: { show: false },
+      avoidLabelOverlap: true,
+      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(42,38,26,0.18)' } }
     }]
   });
 }
@@ -215,8 +226,8 @@ function carregarDados() {
     }
   }
 
-  instSexo = echarts.init(document.getElementById('chartSexo'));
-  instPeso = echarts.init(document.getElementById('chartPeso'));
+  instSexo = sggGrafico(document.getElementById('chartSexo'));
+  instPeso = sggGrafico(document.getElementById('chartPeso'));
   instSexo.showLoading({ text: 'Carregando...', color: '#3B6D11' });
   instPeso.showLoading({ text: 'Carregando...', color: '#3B6D11' });
 
@@ -251,7 +262,7 @@ function renderizarTudo() {
   document.getElementById('deltaSexo').className = 'metric-delta flat';
 
   const gmd = dadosGlobais.gmd_medio || 0;
-  document.getElementById('txtGMD').textContent = gmd > 0 ? gmd.toFixed(3) : '—';
+  document.getElementById('txtGMD').textContent = gmd > 0 ? sggNum(gmd, 3) : '—';
 
   const deltaGMD = document.getElementById('deltaGMD');
   if (gmd >= {{ gmd_meta }}) {

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as m %}
 {% block title %}Reprodução{% endblock %}
 
 {% block content %}
@@ -7,6 +8,7 @@
 <div class="page-header">
   <div>
     <p class="label">{{ nome_fazenda_header }}</p>
+    {{ m.breadcrumb([('Reprodução', '')]) }}
     <h1 class="page-title">Reprodução</h1>
   </div>
 </div>

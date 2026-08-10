@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as m %}
 {% block title %}Nova Pesagem{% endblock %}
 
 {% block content %}
@@ -6,6 +7,7 @@
 <div class="page-header">
   <div>
     <p class="label">Rebanho</p>
+    {{ m.breadcrumb([('Rebanho', url_for('operacional.painel')), ('Ficha do animal', url_for('operacional.detalhes', id_animal=id_animal)), ('Nova pesagem', '')]) }}
     <h1 class="page-title">Registrar Pesagem</h1>
   </div>
   <a href="{{ url_for('operacional.detalhes', id_animal=id_animal) }}"
