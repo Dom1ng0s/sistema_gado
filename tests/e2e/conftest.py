@@ -16,6 +16,7 @@ Run one file:
 import os
 import socket
 import subprocess
+import sys
 import time
 
 import mysql.connector
@@ -185,7 +186,17 @@ def e2e_db():
 @pytest.fixture(scope="session")
 def live_server(e2e_db):
     """Starts the Flask app as a subprocess on port E2E_PORT."""
+    # Herda o ambiente e sobrescreve só o que o teste precisa fixar.
+    #
+    # Um dict montado do zero quebra no Windows: sem SystemRoot o Winsock não
+    # consegue carregar os provedores de serviço e `import asyncio` estoura com
+    # WinError 10106, então o servidor morre antes de abrir a porta.
+    #
+    # Herdar é seguro para o isolamento: load_dotenv() não sobrescreve variável
+    # que já existe no ambiente, então as chaves DB_* definidas aqui continuam
+    # valendo sobre o .env do desenvolvedor.
     env = {
+        **os.environ,
         "DB_HOST": E2E_DB_HOST,
         "DB_USER": E2E_DB_USER,
         "DB_PASSWORD": E2E_DB_PASS,
@@ -194,21 +205,25 @@ def live_server(e2e_db):
         "SECRET_KEY": "e2e-test-secret-not-for-production",
         "FLASK_DEBUG": "False",
         "SCHEDULER_ENABLED": "false",
+        "SEED_ADMIN": "",
+        "REDIS_URL": "",
         "PORT": str(E2E_PORT),
-        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
     }
 
+    # sys.executable e não "python": dentro de um venv (ou no Windows, onde
+    # "python" cai no stub da Microsoft Store) o nome solto resolve para o
+    # interpretador errado e o servidor nunca sobe.
     proc = subprocess.Popen(
-        ["python", "app.py"],
+        [sys.executable, "app.py"],
         cwd=_PROJECT_DIR,
         env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
 
-    if not _wait_for_port("localhost", E2E_PORT, timeout=20):
+    if not _wait_for_port("localhost", E2E_PORT, timeout=40):
         proc.terminate()
-        pytest.fail(f"Flask E2E server did not start on port {E2E_PORT} within 20 s")
+        pytest.fail(f"Flask E2E server did not start on port {E2E_PORT} within 40 s")
 
     base_url = f"http://localhost:{E2E_PORT}"
     yield base_url
