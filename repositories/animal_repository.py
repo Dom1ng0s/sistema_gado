@@ -79,6 +79,42 @@ def _gmd_ctes(join_clause: str) -> str:
     )
 
 
+# ---- ORDENAÇÃO DA LISTAGEM ----
+
+# Whitelist das ordenações do painel: a CHAVE vem da query string, o VALOR nunca.
+# Mesma regra de _build_animais_where — só literal hardcoded entra no SQL.
+#
+# O segundo item diz se a ordenação exige as CTEs de GMD. Quem ordena por brinco
+# (o padrão, a maioria dos acessos) continua sem pagar a window function sobre
+# `pesagens`; o custo só aparece para quem realmente pediu peso/GMD.
+#
+# O `<coluna> IS NULL` antes do critério empurra os NULLs para o fim nos DOIS
+# sentidos. Sem isso, "menor GMD" abriria com a tela cheia de animais de uma
+# pesagem só (NULL vem primeiro no ASC do MySQL) em vez do pior boi medido.
+ORDENACAO_PADRAO = 'brinco'
+_ORDENACOES = {
+    'brinco':    ("LENGTH(a.brinco) ASC, a.brinco ASC",      False),
+    'gmd_desc':  ("g.gmd IS NULL, g.gmd DESC",               True),
+    'gmd_asc':   ("g.gmd IS NULL, g.gmd ASC",                True),
+    'peso_desc': ("g.peso_final IS NULL, g.peso_final DESC", True),
+    'peso_asc':  ("g.peso_final IS NULL, g.peso_final ASC",  True),
+}
+
+
+def normalizar_ordenacao(ordem):
+    """Reduz o que veio da query string a uma chave conhecida de _ORDENACOES."""
+    return ordem if ordem in _ORDENACOES else ORDENACAO_PADRAO
+
+
+def ordenacao_traz_gmd(ordem):
+    """True quando get_animais_paginados já devolve peso/GMD preenchidos.
+
+    O front usa isso para pular a chamada a /api/animais/gmd-lote: os valores
+    foram calculados de qualquer forma para o ORDER BY.
+    """
+    return _ORDENACOES[normalizar_ordenacao(ordem)][1]
+
+
 # ---- LISTAGENS E CONTAGENS ----
 
 def count_animais(user_id, termo=None, status='todos', raca=None, origem=None, sexo=None):
@@ -88,15 +124,46 @@ def count_animais(user_id, termo=None, status='todos', raca=None, origem=None, s
         return cursor.fetchone()[0]
 
 
-def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', raca=None, origem=None, sexo=None):
+def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', raca=None,
+                          origem=None, sexo=None, ordem=ORDENACAO_PADRAO):
+    """Uma página do rebanho, na ordem pedida.
+
+    Devolve sempre 10 colunas. As duas últimas (peso_final, gmd) só vêm
+    preenchidas quando a ordenação as exigiu — ver ordenacao_traz_gmd.
+    """
+    order_sql, precisa_gmd = _ORDENACOES[normalizar_ordenacao(ordem)]
     where, params = _build_animais_where(user_id, termo, status, raca=raca, origem=origem, sexo=sexo, alias='a.')
-    sql = (
-        "SELECT a.id, a.brinco, a.sexo, a.raca, a.data_compra, a.preco_compra, "
-        "       a.data_venda, a.preco_venda "
-        "FROM animais a "
-        + where +
-        " ORDER BY LENGTH(a.brinco) ASC, a.brinco ASC LIMIT %s OFFSET %s"
-    )
+    colunas = ("a.id, a.brinco, a.sexo, a.raca, a.data_compra, a.preco_compra, "
+               "a.data_venda, a.preco_venda")
+    # a.id fecha todo ORDER BY: sem coluna única no critério, linhas empatadas
+    # (o bloco inteiro de gmd NULL, por exemplo) podem repetir numa página e
+    # sumir da seguinte, porque o MySQL não promete ordem estável no empate.
+    final = " ORDER BY " + order_sql + ", a.id ASC LIMIT %s OFFSET %s"
+
+    if precisa_gmd:
+        sql = _gmd_ctes(
+            "JOIN animais a ON a.id = p.animal_id"
+            "    AND a.user_id = %s AND a.deleted_at IS NULL"
+            "    AND p.deleted_at IS NULL"
+        ) + (
+            ","
+            " gmd_calc AS ("
+            "  SELECT animal_id, peso_fim AS peso_final,"
+            "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
+            "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+            "      ELSE NULL END AS gmd"
+            "  FROM pu"
+            " )"
+            " SELECT " + colunas + ", g.peso_final, g.gmd"
+            " FROM animais a"
+            " LEFT JOIN gmd_calc g ON g.animal_id = a.id "
+        ) + where + final
+        # o %s do JOIN da CTE é o primeiro placeholder da query
+        params = [user_id] + params
+    else:
+        sql = ("SELECT " + colunas + ", NULL AS peso_final, NULL AS gmd "
+               "FROM animais a " + where + final)
+
     with get_db_cursor() as cursor:
         cursor.execute(sql, tuple(params + [limit, offset]))
         return cursor.fetchall()

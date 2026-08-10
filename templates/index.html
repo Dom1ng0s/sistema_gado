@@ -159,6 +159,7 @@
   <input type="hidden" name="raca" value="{{ raca_filtro }}">
   <input type="hidden" name="origem" value="{{ origem_filtro }}">
   <input type="hidden" name="sexo" value="{{ sexo_filtro }}">
+  <input type="hidden" name="ord" value="{{ ordenacao }}">
 
   <div class="combo">
     <label class="sr-only" for="busca-brinco">Número do brinco</label>
@@ -190,25 +191,25 @@
 
     <div class="filter-group" role="group" aria-label="Filtrar por situação">
       <span class="filter-group__label" aria-hidden="true">Exibir</span>
-      <a href="{{ url_for('operacional.painel', status='todos',    busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
+      <a href="{{ painel_url(status='todos') }}"
          class="chip"{% if status == 'todos' %} aria-current="true"{% endif %}>Todos</a>
-      <a href="{{ url_for('operacional.painel', status='ativos',   busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
+      <a href="{{ painel_url(status='ativos') }}"
          class="chip"{% if status == 'ativos' %} aria-current="true"{% endif %}>Ativos</a>
-      <a href="{{ url_for('operacional.painel', status='vendidos', busca=busca, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}"
+      <a href="{{ painel_url(status='vendidos') }}"
          class="chip"{% if status == 'vendidos' %} aria-current="true"{% endif %}>Vendidos</a>
-      <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem='' if origem_filtro == 'fazenda' else 'fazenda', sexo=sexo_filtro) }}"
+      <a href="{{ painel_url(origem='' if origem_filtro == 'fazenda' else 'fazenda') }}"
          class="chip"{% if origem_filtro == 'fazenda' %} aria-current="true"{% endif %}
          title="Animais nascidos na própria fazenda (sem data de compra)">Nascidos na Fazenda</a>
     </div>
 
     <div class="filter-group" role="group" aria-label="Filtrar por sexo">
       <span class="filter-group__label" aria-hidden="true">Sexo</span>
-      <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro) }}"
+      <a href="{{ painel_url(sexo='') }}"
          class="chip"{% if not sexo_filtro %} aria-current="true"{% endif %}>Todos</a>
-      <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro, sexo='M') }}"
+      <a href="{{ painel_url(sexo='M') }}"
          class="chip"{% if sexo_filtro == 'M' %} aria-current="true"{% endif %}
          title="Recalcula o GMD médio considerando só machos">Machos</a>
-      <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=raca_filtro, origem=origem_filtro, sexo='F') }}"
+      <a href="{{ painel_url(sexo='F') }}"
          class="chip"{% if sexo_filtro == 'F' %} aria-current="true"{% endif %}
          title="Recalcula o GMD médio considerando só fêmeas">Fêmeas</a>
     </div>
@@ -216,14 +217,36 @@
     {% if racas_disponiveis | length > 1 %}
     <div class="filter-group" role="group" aria-label="Filtrar por raça">
       <span class="filter-group__label" aria-hidden="true">Raça</span>
-      <a href="{{ url_for('operacional.painel', status=status, busca=busca, origem=origem_filtro, sexo=sexo_filtro) }}"
+      <a href="{{ painel_url(raca='') }}"
          class="chip"{% if not raca_filtro %} aria-current="true"{% endif %}>Todas</a>
       {% for r in racas_disponiveis %}
-      <a href="{{ url_for('operacional.painel', status=status, busca=busca, raca=r, origem=origem_filtro, sexo=sexo_filtro) }}"
+      <a href="{{ painel_url(raca=r) }}"
          class="chip"{% if raca_filtro == r %} aria-current="true"{% endif %}>{{ r }}</a>
       {% endfor %}
     </div>
     {% endif %}
+
+    {# Ordenação como <select>, não como cabeçalho clicável: as colunas peso e
+       GMD somem em tela estreita (ver a <caption> da tabela), e no celular não
+       sobraria cabeçalho nenhum para clicar. O botão "Aplicar" existe para
+       quem está sem JS; o script o esconde e submete no change. #}
+    <form action="{{ url_for('operacional.painel') }}" method="GET"
+          class="filter-group" id="form-ordenacao">
+      <input type="hidden" name="busca" value="{{ busca }}">
+      <input type="hidden" name="status" value="{{ status }}">
+      <input type="hidden" name="raca" value="{{ raca_filtro }}">
+      <input type="hidden" name="origem" value="{{ origem_filtro }}">
+      <input type="hidden" name="sexo" value="{{ sexo_filtro }}">
+      <label class="filter-group__label" for="ord">Ordenar</label>
+      <select name="ord" id="ord" class="form-select filter-select">
+        <option value="brinco"    {% if ordenacao == 'brinco'    %}selected{% endif %}>Brinco</option>
+        <option value="gmd_desc"  {% if ordenacao == 'gmd_desc'  %}selected{% endif %}>GMD — maior primeiro</option>
+        <option value="gmd_asc"   {% if ordenacao == 'gmd_asc'   %}selected{% endif %}>GMD — menor primeiro</option>
+        <option value="peso_desc" {% if ordenacao == 'peso_desc' %}selected{% endif %}>Peso — maior primeiro</option>
+        <option value="peso_asc"  {% if ordenacao == 'peso_asc'  %}selected{% endif %}>Peso — menor primeiro</option>
+      </select>
+      <button type="submit" class="btn btn-secondary btn-sm" id="btn-aplicar-ord">Aplicar</button>
+    </form>
 
   </div>
   <a href="{{ url_for('operacional.lixeira') }}" class="btn btn-sm btn-ghost ml-auto shrink-0">
@@ -244,15 +267,27 @@
         <th scope="col">Brinco</th>
         <th scope="col">Sexo</th>
         <th scope="col">Raça</th>
-        <th scope="col" class="col-peso num">Último peso (kg)</th>
-        <th scope="col" class="col-gmd num" title="Ganho Médio Diário — kg/dia de ganho de peso">GMD kg/dia</th>
+        {# aria-sort anuncia ao leitor de tela por qual coluna a lista está
+           ordenada — o controle é o <select> "Ordenar" acima. #}
+        <th scope="col" class="col-peso num"
+            aria-sort="{% if ordenacao == 'peso_asc' %}ascending{% elif ordenacao == 'peso_desc' %}descending{% else %}none{% endif %}">Último peso (kg)</th>
+        <th scope="col" class="col-gmd num" title="Ganho Médio Diário — kg/dia de ganho de peso"
+            aria-sort="{% if ordenacao == 'gmd_asc' %}ascending{% elif ordenacao == 'gmd_desc' %}descending{% else %}none{% endif %}">GMD kg/dia</th>
         <th scope="col">Status</th>
         <th scope="col"><span class="sr-only">Ações</span></th>
       </tr>
     </thead>
-    <tbody>
+    {# Quando a ordenação foi por peso/GMD, o servidor já calculou os valores
+       para o ORDER BY e os manda aqui: o JS pinta as células com esses dados e
+       poupa o round-trip a /api/animais/gmd-lote. Sem isso a coluna ordenada
+       ficaria em skeleton por um instante — a lista pareceria fora de ordem. #}
+    <tbody{% if gmd_embutido %} data-gmd-embutido="1"{% endif %}>
       {% for animal in lista_animais %}
-      <tr data-aid="{{ animal[0] }}">
+      <tr data-aid="{{ animal[0] }}"
+          {%- if gmd_embutido %}
+          {% if animal[8] is not none %}data-peso="{{ animal[8] }}"{% endif %}
+          {% if animal[9] is not none %}data-gmd="{{ animal[9] }}"{% endif %}
+          {%- endif %}>
         <th scope="row" class="td-primary" style="font-weight:var(--weight-medium); text-align:left;">{{ animal[1] }}</th>
         <td>{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</td>
         <td>{{ animal[3] or '—' }}</td>
@@ -308,7 +343,8 @@
     {% endif %}
   </span>
 {{ m.paginacao('operacional.painel', pagina_atual, total_paginas,
-               busca=busca, status=status, raca=raca_filtro, origem=origem_filtro, sexo=sexo_filtro) }}
+               busca=busca, status=status, raca=raca_filtro, origem=origem_filtro,
+               sexo=sexo_filtro, ord=ordenacao) }}
 </div>
 
 <!-- ── Modal Cotações Brasil ───────────────────────────── -->
@@ -555,47 +591,65 @@ function faixaGMD(g) {
   return { classe: 'perf-baixo', glifo: '▼', texto: 'abaixo da meta' };
 }
 
+const GMD_DASH = '<span class="data-empty">—</span>';
+
+/* Renderizador único das duas células. `data` é {id: [peso, gmd]}, venha da
+   API ou dos data-attributes que o servidor embutiu ao ordenar por peso/GMD —
+   um só lugar decide como a célula fica. */
+function pintarLinhasGMD(rows, data) {
+  rows.forEach(row => {
+    const entry  = data[row.dataset.aid];
+    const pesoTd = row.querySelector('.col-peso');
+    const gmdTd  = row.querySelector('.col-gmd');
+    if (!pesoTd || !gmdTd) return;
+
+    if (!entry) { pesoTd.innerHTML = GMD_DASH; gmdTd.innerHTML = GMD_DASH; return; }
+
+    const [peso, gmd] = entry;
+    pesoTd.innerHTML = peso ? sggNum(peso, 1) : GMD_DASH;
+
+    if (gmd === null || gmd === undefined) { gmdTd.innerHTML = GMD_DASH; return; }
+    const g = parseFloat(gmd);
+    const f = faixaGMD(g);
+    /* A barra é proporcional à meta e dá a leitura da distribuição do lote
+       de relance. O glifo e o texto oculto garantem que o significado não
+       dependa da cor nem da barra. */
+    const larg = Math.max(2, Math.min(100, (g / GMD_META) * 100));
+    gmdTd.innerHTML =
+      `<span class="gmd-cell ${f.classe}">` +
+        `<span class="gmd-cell__valor">` +
+          `<span aria-hidden="true">${f.glifo}</span> ${sggNum(g, 3)}` +
+        `</span>` +
+        `<span class="gmd-cell__barra" aria-hidden="true"><i style="width:${larg}%"></i></span>` +
+        `<span class="sr-only"> kg por dia, ${f.texto}</span>` +
+      `</span>`;
+  });
+}
+
 async function carregarGMDTabela() {
   const rows = document.querySelectorAll('tr[data-aid]');
   if (!rows.length) return;
+
+  /* Ordenado por peso/GMD: o servidor já mandou os números junto com o HTML.
+     Nada a buscar. */
+  if (document.querySelector('tbody[data-gmd-embutido]')) {
+    const embutido = {};
+    rows.forEach(r => {
+      embutido[r.dataset.aid] = [r.dataset.peso ?? null, r.dataset.gmd ?? null];
+    });
+    pintarLinhasGMD(rows, embutido);
+    return;
+  }
+
   const ids = Array.from(rows).map(r => r.dataset.aid).join(',');
-  const dash = '<span class="data-empty">—</span>';
   try {
     const res = await fetch('/api/animais/gmd-lote?ids=' + ids);
     if (!res.ok) throw new Error(res.status);
-    const data = await res.json();
-
-    rows.forEach(row => {
-      const entry  = data[row.dataset.aid];
-      const pesoTd = row.querySelector('.col-peso');
-      const gmdTd  = row.querySelector('.col-gmd');
-      if (!pesoTd || !gmdTd) return;
-
-      if (!entry) { pesoTd.innerHTML = dash; gmdTd.innerHTML = dash; return; }
-
-      const [peso, gmd] = entry;
-      pesoTd.innerHTML = peso ? sggNum(peso, 1) : dash;
-
-      if (gmd === null || gmd === undefined) { gmdTd.innerHTML = dash; return; }
-      const g = parseFloat(gmd);
-      const f = faixaGMD(g);
-      /* A barra é proporcional à meta e dá a leitura da distribuição do lote
-         de relance. O glifo e o texto oculto garantem que o significado não
-         dependa da cor nem da barra. */
-      const larg = Math.max(2, Math.min(100, (g / GMD_META) * 100));
-      gmdTd.innerHTML =
-        `<span class="gmd-cell ${f.classe}">` +
-          `<span class="gmd-cell__valor">` +
-            `<span aria-hidden="true">${f.glifo}</span> ${sggNum(g, 3)}` +
-          `</span>` +
-          `<span class="gmd-cell__barra" aria-hidden="true"><i style="width:${larg}%"></i></span>` +
-          `<span class="sr-only"> kg por dia, ${f.texto}</span>` +
-        `</span>`;
-    });
+    pintarLinhasGMD(rows, await res.json());
   } catch (e) {
     console.error('Erro ao carregar GMD:', e);
     document.querySelectorAll('tr[data-aid] .col-peso, tr[data-aid] .col-gmd').forEach(td => {
-      td.innerHTML = dash;
+      td.innerHTML = GMD_DASH;
     });
     sggToast('Peso e GMD da tabela não puderam ser carregados. Recarregue a página para tentar de novo.', 'warning');
   }
@@ -691,6 +745,14 @@ document.addEventListener('DOMContentLoaded', function () {
     if (e.key === 'Escape' && soltarFocoModal) fecharModalBrasil();
   });
   document.getElementById('btn-recarregar-metricas').addEventListener('click', carregarMetricas);
+
+  /* Com JS, escolher a ordem já recarrega: o botão "Aplicar" é o fallback de
+     quem está sem script, e some para não virar um passo extra. */
+  const formOrd = document.getElementById('form-ordenacao');
+  if (formOrd) {
+    document.getElementById('btn-aplicar-ord').hidden = true;
+    document.getElementById('ord').addEventListener('change', () => formOrd.submit());
+  }
 
   carregarMetricas();
   carregarCotacao();
