@@ -1900,6 +1900,16 @@ textarea:not(.form-textarea):focus {
   gap: var(--space-2);
 }
 
+/* Select dentro da toolbar de filtros: o .form-select padrão é width:100% (feito
+   para formulário em coluna) e esticaria a linha inteira aqui. */
+.filter-select {
+  width: auto;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  padding: 6px var(--space-3);
+  min-height: 34px;   /* mesma altura dos .chip ao lado */
+}
+
 .filter-group__label {
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);

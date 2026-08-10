@@ -80,6 +80,25 @@ def format_date_br(value):
     return str(value)
 
 
+@app.template_global()
+def painel_url(**overrides):
+    """URL do painel preservando os filtros que já estão na query string.
+
+    Existe porque cada link de filtro do painel precisava repassar busca,
+    status, raça, origem, sexo (e agora a ordenação) na mão — seis parâmetros
+    em uma dúzia de links, onde esquecer um significa perder silenciosamente o
+    filtro do usuário.
+
+    Voltar para a página 1 é o padrão: mudar filtro ou ordenação invalida a
+    página em que se estava. Só a paginação passa `page` explicitamente.
+    """
+    args = {**request.args.to_dict(), **overrides}
+    if 'page' not in overrides:
+        args.pop('page', None)
+    return url_for('operacional.painel',
+                   **{k: v for k, v in args.items() if v not in (None, '')})
+
+
 @app.context_processor
 def inject_user_info():
     if not current_user.is_authenticated:

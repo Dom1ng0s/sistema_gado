@@ -24,6 +24,7 @@ def painel():
     sexo = request.args.get('sexo', '') or None
     if sexo not in ('M', 'F'):
         sexo = None
+    ordem = animal_repository.normalizar_ordenacao(request.args.get('ord', ''))
     pg = request.args.get('page', 1, type=int)
     limit, offset = 20, (pg - 1) * 20
     total_pg = 1
@@ -35,7 +36,7 @@ def painel():
         racas_disponiveis = animal_repository.get_racas_distintas(current_user.id)
         total = animal_repository.count_animais(current_user.id, termo, status, raca=raca, origem=origem, sexo=sexo)
         animais = animal_repository.get_animais_paginados(current_user.id, limit, offset, termo, status,
-                                                           raca=raca, origem=origem, sexo=sexo)
+                                                           raca=raca, origem=origem, sexo=sexo, ordem=ordem)
         if total > 0:
             total_pg = math.ceil(total / limit)
         alertas_sanitarios = sanitario_repository.get_vencendo_em_dias(current_user.id, dias=7)
@@ -47,6 +48,8 @@ def painel():
                            total_paginas=total_pg, total_animais=total, busca=termo, status=status,
                            raca_filtro=raca or '', racas_disponiveis=racas_disponiveis,
                            origem_filtro=origem or '', sexo_filtro=sexo or '',
+                           ordenacao=ordem,
+                           gmd_embutido=animal_repository.ordenacao_traz_gmd(ordem),
                            alertas_sanitarios=alertas_sanitarios)
 
 @operacional_bp.route('/lixeira')
