@@ -309,11 +309,13 @@ Duas conversões recorrentes viram filtros, para não repetir formatação nos t
 - `|brl` formata número como moeda brasileira (`1234.5` vira `1.234,50`).
 - `|date_br` formata data como `dd/mm/aaaa`.
 
-Dois context processors injetam dados globais em todo template: `nome_fazenda_header` e `gmd_meta`, lidos das configurações do usuário e guardados em `session` para evitar uma query por request; e `cache_bust`, o hash curto do commit atual do git.
+Dois context processors injetam dados globais em todo template: `nome_fazenda_header` e `gmd_meta`, lidos das configurações do usuário e guardados em `session` para evitar uma query por request; e `cache_bust`, a versão do deploy atual.
 
 ### 5.5 Cache de assets
 
-Todo arquivo sob `/static/` recebe `Cache-Control: max-age=31536000` (um ano) via `after_request`. Para que uma versão nova não fique presa nesse cache, os links de CSS levam `?v={{ cache_bust }}`: como `cache_bust` é o SHA do commit, cada deploy muda a URL e o navegador baixa o arquivo de novo. Macros repetíveis, como a paginação, ficam em `templates/_macros.html`.
+Todo arquivo sob `/static/` recebe `Cache-Control: max-age=31536000` (um ano) via `after_request`. Para que uma versão nova não fique presa nesse cache, os links de CSS/JS levam `?v={{ cache_bust }}`: a cada deploy a URL muda e o navegador baixa o arquivo de novo.
+
+`cache_bust` tenta, nessa ordem: `RAILWAY_GIT_COMMIT_SHA` (variável que a Railway injeta — o build via nixpacks não deixa o `.git` disponível em runtime, então `git rev-parse` não funciona em produção), depois `git rev-parse --short HEAD` (cobre o dev local), e por fim o horário de start do processo. O fallback já foi uma string fixa (`'0'`): sem `.git` em produção, `cache_bust` nunca mudava entre deploys, o cache de 1 ano prendia o navegador numa versão velha de CSS/JS indefinidamente enquanto o HTML (nunca cacheado) já era o novo — descompasso silencioso, sem erro de console. Macros repetíveis, como a paginação, ficam em `templates/_macros.html`.
 
 ---
 
