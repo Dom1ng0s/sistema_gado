@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 import subprocess as _sp
 from flask import Flask, redirect, url_for, render_template, session, request
@@ -158,15 +159,32 @@ def set_security_headers(response):
     return response
 
 
-def _git_sha():
+def _cache_bust_value():
+    """Versão usada no `?v=` dos assets estáticos (ver base.html) — precisa
+    mudar a cada deploy, senão o Cache-Control de 1 ano em set_static_cache
+    prende o navegador numa versão velha de CSS/JS para sempre, enquanto o
+    HTML (nunca cacheado) já é o novo: descompasso silencioso, sem erro de
+    console, que já causou página em branco em produção.
+
+    `git rev-parse` funciona em dev local, mas o build do Railway (nixpacks)
+    não deixa o .git disponível em runtime — a exceção sempre caía no
+    fallback antigo, uma string fixa ('0'), que nunca mudava entre deploys.
+    A Railway expõe o SHA do commit via RAILWAY_GIT_COMMIT_SHA; isso tem
+    prioridade aqui. Sem os dois, cai para o horário de start do processo —
+    não é estável entre réplicas como um hash seria, mas pelo menos muda a
+    cada deploy/restart.
+    """
+    sha = os.getenv('RAILWAY_GIT_COMMIT_SHA')
+    if sha:
+        return sha[:7]
     try:
         return _sp.check_output(
             ['git', 'rev-parse', '--short', 'HEAD'], stderr=_sp.DEVNULL
         ).decode().strip()
     except Exception:
-        return '0'
+        return str(int(time.time()))
 
-_CACHE_BUST = _git_sha()
+_CACHE_BUST = _cache_bust_value()
 
 @app.context_processor
 def inject_cache_bust():
