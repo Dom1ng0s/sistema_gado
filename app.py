@@ -205,6 +205,26 @@ def index():
     return render_template('landing.html')
 
 
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('404.html'), 404
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    return app.send_static_file('robots.txt')
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    return app.send_static_file('sitemap.xml')
+
+
+@app.route('/llms.txt')
+def llms_txt():
+    return app.send_static_file('llms.txt')
+
+
 @app.route('/styleguide')
 def styleguide():
     if not app.debug:

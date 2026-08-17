@@ -172,12 +172,10 @@
                     const cache = JSON.parse(cacheSalvo);
                     const tempoPassado = Date.now() - cache.timestamp;
                     if (tempoPassado < TEMPO_CACHE_CIDADES) {
-                        console.log("⚡ Cidades carregadas do LocalStorage");
                         renderizarCidades(cache.dados);
                         return;
                     }
                 }
-                console.log("🌍 Buscando cidades no IBGE...");
                 fetch(url_api)
                     .then(res => res.json())
                     .then(cidades => {

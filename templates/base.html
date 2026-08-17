@@ -6,6 +6,9 @@
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#3B6D11">
   <title>{% block title %}SGG{% endblock %} — Sistema de Gestão de Gado</title>
+  <meta name="description" content="{% block meta_description %}Painel de gestão do rebanho: peso, GMD, reprodução, financeiro e sanidade num único sistema.{% endblock %}">
+  {# Páginas atrás de login não têm valor de indexação e não devem competir com a landing page nos resultados de busca. #}
+  <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
   <!-- Google Fonts — preconnect first, then stylesheet with font-display=swap -->
