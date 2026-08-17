@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Página não encontrada — SGG</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}?v={{ cache_bust }}">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-surface-sunken);
+      text-align: center;
+      padding: var(--space-8);
+    }
+    .err-code {
+      font-family: var(--font-display);
+      font-size: 5rem;
+      font-weight: 600;
+      color: var(--color-primary);
+      margin: 0 0 var(--space-4);
+      line-height: 1;
+    }
+    .err-msg {
+      color: var(--color-ink-secondary);
+      margin-bottom: var(--space-8);
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <p class="err-code">404</p>
+    <h1>Página não encontrada</h1>
+    <p class="err-msg">O endereço que você tentou acessar não existe ou foi movido.</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Voltar ao início</a>
+  </div>
+</body>
+</html>

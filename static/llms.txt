@@ -1,0 +1,27 @@
+# SGG — Sistema de Gestão de Gado
+
+> ERP zootécnico para pecuária de corte. Centraliza rebanho, GMD (ganho médio
+> diário), fluxo de caixa e cotações do boi gordo num único sistema web, com
+> os cálculos pesados rodando em views SQL no MySQL.
+
+O SGG resolve o problema de pecuaristas que controlam o rebanho em planilha e
+tomam decisões de compra e venda sem saber o GMD real de cada animal. O
+sistema rastreia pesagens individuais por brinco, calcula GMD via window
+functions no banco, cruza isso com o fluxo de caixa e aponta animais
+performando abaixo da meta.
+
+## Principais funcionalidades
+
+- Cadastro individual e em lote de animais, com histórico de pesagens
+- Cálculo de GMD por animal e por lote/pasto
+- Gestão de pastos e módulos
+- Fluxo de caixa consolidado (compras, vendas, custos operacionais, medicações)
+- Reprodução e hereditariedade (progênie, ranking de touros)
+- Calendário sanitário e estoque de medicamentos/vacinas
+- Cotações diárias do boi gordo em praças monitoradas
+
+## Páginas
+
+- [Página inicial](https://sistemadogado.up.railway.app/): apresentação do produto
+- [Login](https://sistemadogado.up.railway.app/login): acesso ao sistema (demo disponível)
+- [Repositório no GitHub](https://github.com/Dom1ng0s/sistema_gado): código-fonte, arquitetura e documentação técnica
