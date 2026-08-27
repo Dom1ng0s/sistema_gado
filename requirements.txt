@@ -9,7 +9,6 @@ Flask-Limiter==4.1.1
 redis>=3.0
 Flask-WTF==1.2.2
 yoyo-migrations==9.0.0
-PyMySQL==1.2.0
 sqlparse==0.6.0
 limits==5.8.0
 WTForms==3.2.2
@@ -23,7 +22,8 @@ idna==3.11
 itsdangerous==2.2.0
 Jinja2==3.1.6
 MarkupSafe==3.0.3
-mysql-connector-python==9.5.0
+psycopg[binary]==3.2.13
+psycopg-pool==3.2.8
 python-dotenv==1.2.1
 requests==2.32.5
 urllib3==2.6.2

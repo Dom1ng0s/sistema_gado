@@ -1,0 +1,25 @@
+# Postgres local para desenvolvimento e testes.
+#   docker compose up -d postgres
+#
+# O app usa o banco `sistema_gado` (DB_* no .env). A suíte de testes
+# (conftest.py) faz DROP/CREATE DATABASE `sistema_gado_test` a cada sessão —
+# por isso o usuário `gado` é o superusuário do container (POSTGRES_USER).
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: gado
+      POSTGRES_PASSWORD: gado123
+      POSTGRES_DB: sistema_gado
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gado -d sistema_gado"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  pgdata:

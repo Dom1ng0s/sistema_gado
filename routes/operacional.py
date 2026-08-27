@@ -5,7 +5,7 @@ import logging
 import csv
 import io
 import re as _re
-from mysql.connector import errors as _mysql_errors
+from db_config import IntegrityError as _IntegrityError
 from datetime import date as _date
 from repositories import animal_repository, reproducao_repository, sanitario_repository
 from routes.validators import validate
@@ -128,7 +128,7 @@ def cadastro():
             )
             flash(f"Animal {brinco} cadastrado com sucesso.", 'success')
             return redirect(url_for('operacional.detalhes', id_animal=new_id))
-        except _mysql_errors.IntegrityError:
+        except _IntegrityError:
             # UNIQUE (brinco, user_id) conta linhas soft-deletadas, que
             # check_brinco_exists ignora — o brinco pode estar na lixeira.
             logger.warning("IntegrityError cadastro (brinco duplicado) user=%s", current_user.id)
@@ -783,29 +783,36 @@ def importar_csv():
             # o mesmo brinco, que o set em memória não pega porque nenhuma das
             # duas foi inserida ainda), refaz esse chunk linha a linha só para
             # isolar e reportar qual(is) linha(s) conflitam.
+            #
+            # No Postgres um erro aborta a transação inteira: cada tentativa passível
+            # de conflito roda dentro de um SAVEPOINT (conn.transaction()) para que
+            # o rollback seja local e a importação prossiga.
+            conn = cursor.connection
             for inicio in range(0, len(linhas_validas), _CSV_CHUNK_SIZE):
                 chunk = linhas_validas[inicio:inicio + _CSV_CHUNK_SIZE]
                 try:
-                    cursor.executemany(
-                        "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
-                        "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                        [(brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.id)
-                         for _, brinco, sexo, raca, data_compra, data_nasc, preco_compra, peso in chunk]
-                    )
+                    with conn.transaction():
+                        cursor.executemany(
+                            "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
+                            "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                            [(brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.id)
+                             for _, brinco, sexo, raca, data_compra, data_nasc, preco_compra, peso in chunk]
+                        )
                     inseridos += len(chunk)
                     inseridos_pesagem += [(brinco, data_compra or data_nasc, peso)
                                           for _, brinco, sexo, raca, data_compra, data_nasc, preco_compra, peso in chunk]
-                except _mysql_errors.IntegrityError:
+                except _IntegrityError:
                     for linha, brinco, sexo, raca, data_compra, data_nasc, preco_compra, peso in chunk:
                         try:
-                            cursor.execute(
-                                "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
-                                "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                                (brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.id)
-                            )
+                            with conn.transaction():
+                                cursor.execute(
+                                    "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
+                                    "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                                    (brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.id)
+                                )
                             inseridos += 1
                             inseridos_pesagem.append((brinco, data_compra or data_nasc, peso))
-                        except _mysql_errors.IntegrityError:
+                        except _IntegrityError:
                             erros.append({'linha': linha, 'msg': f"brinco '{brinco}' já existe (conflito)"})
 
             # Reconsulta os ids recém-criados por brinco (executemany não dá

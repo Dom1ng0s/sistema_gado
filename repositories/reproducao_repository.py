@@ -15,12 +15,12 @@ def _inserir_reproducao(cursor, user_id, vaca_id, touro_id, touro_externo, data_
         "INSERT INTO reproducao "
         "(user_id, vaca_id, touro_id, touro_externo, data_cobertura, "
         " data_parto, resultado, data_parto_prevista) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
         (user_id, vaca_id, touro_id or None, touro_externo or None,
          data_cobertura, data_parto or None, resultado,
          data_parto_prevista)
     )
-    return cursor.lastrowid
+    return cursor.fetchone()[0]
 
 
 def insert_reproducao(user_id, vaca_id, touro_id, touro_externo, data_cobertura, data_parto, resultado):

@@ -25,7 +25,7 @@ def _build_animais_where(user_id, termo=None, status='todos', na_lixeira=False, 
     else:
         conds.append(f"{alias}deleted_at IS NULL")
     if termo:
-        conds.append(f"{alias}brinco LIKE %s")
+        conds.append(f"{alias}brinco ILIKE %s")
         params.append(termo + "%")
     if status == 'ativos':
         conds.append(f"{alias}data_venda IS NULL")
@@ -149,8 +149,8 @@ def get_animais_paginados(user_id, limit, offset, termo=None, status='todos', ra
             ","
             " gmd_calc AS ("
             "  SELECT animal_id, peso_fim AS peso_final,"
-            "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-            "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+            "    CASE WHEN (data_fim - data_ini) > 0"
+            "      THEN ROUND((peso_fim - peso_ini) / (data_fim - data_ini), 3)"
             "      ELSE NULL END AS gmd"
             "  FROM pu"
             " )"
@@ -183,8 +183,8 @@ def get_gmd_lote(animal_ids: list, user_id: int) -> dict:
         "  WHERE p.animal_id IN " + placeholders + " AND p.deleted_at IS NULL"
     ) + (
         " SELECT animal_id, peso_fim,"
-        "  CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-        "    THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+        "  CASE WHEN (data_fim - data_ini) > 0"
+        "    THEN ROUND((peso_fim - peso_ini) / (data_fim - data_ini), 3)"
         "    ELSE NULL END AS gmd"
         " FROM pu"
     )
@@ -372,9 +372,9 @@ def get_gmd_by_animal(animal_id):
             _gmd_ctes("WHERE p.animal_id = %s AND p.deleted_at IS NULL") + (
                 " SELECT peso_fim AS peso_final,"
                 "  (peso_fim - peso_ini) AS ganho_total,"
-                "  DATEDIFF(data_fim, data_ini) AS dias,"
-                "  CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-                "    THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+                "  (data_fim - data_ini) AS dias,"
+                "  CASE WHEN (data_fim - data_ini) > 0"
+                "    THEN ROUND((peso_fim - peso_ini) / (data_fim - data_ini), 3)"
                 "    ELSE 0 END AS gmd"
                 " FROM pu WHERE data_ini <> data_fim"
             ),
@@ -404,8 +404,8 @@ def get_gmd_medio_rebanho(user_id, sexo=None, origem=None):
                 "    AND p.deleted_at IS NULL"
                 f"    {sexo_cond}{origem_cond}"
             ) + (
-                " SELECT AVG(CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-                "   THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini) END)"
+                " SELECT AVG(CASE WHEN (data_fim - data_ini) > 0"
+                "   THEN (peso_fim - peso_ini) / (data_fim - data_ini) END)"
                 " FROM pu WHERE data_ini <> data_fim"
             ),
             tuple(params)
@@ -426,9 +426,9 @@ def get_animais_com_gmd(user_id):
                 ","
                 " gmd_calc AS ("
                 "  SELECT animal_id, peso_fim AS peso_final,"
-                "    DATEDIFF(data_fim, data_ini) AS dias,"
-                "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-                "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+                "    (data_fim - data_ini) AS dias,"
+                "    CASE WHEN (data_fim - data_ini) > 0"
+                "      THEN ROUND((peso_fim - peso_ini) / (data_fim - data_ini), 3)"
                 "      ELSE NULL END AS gmd"
                 "  FROM pu WHERE data_ini <> data_fim"
                 " )"
@@ -466,8 +466,8 @@ def get_animais_abaixo_gmd_medio(user_id, sexo=None, origem=None):
                 ","
                 " gmd_calc AS ("
                 "  SELECT animal_id,"
-                "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-                "      THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini)"
+                "    CASE WHEN (data_fim - data_ini) > 0"
+                "      THEN (peso_fim - peso_ini) / (data_fim - data_ini)"
                 "      ELSE NULL END AS gmd"
                 "  FROM pu WHERE data_ini <> data_fim"
                 " ),"
@@ -501,8 +501,8 @@ def get_animais_abaixo_gmd_meta(user_id, gmd_meta):
                 ","
                 " gmd_calc AS ("
                 "  SELECT animal_id,"
-                "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-                "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+                "    CASE WHEN (data_fim - data_ini) > 0"
+                "      THEN ROUND((peso_fim - peso_ini) / (data_fim - data_ini), 3)"
                 "      ELSE NULL END AS gmd"
                 "  FROM pu WHERE data_ini <> data_fim"
                 " )"
@@ -542,8 +542,8 @@ def get_progenie_by_touro(animal_id, user_id):
                 ","
                 " gmd_calc AS ("
                 "  SELECT animal_id,"
-                "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-                "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
+                "    CASE WHEN (data_fim - data_ini) > 0"
+                "      THEN ROUND((peso_fim - peso_ini) / (data_fim - data_ini), 3)"
                 "      ELSE NULL END AS gmd"
                 "  FROM pu WHERE data_ini <> data_fim"
                 " )"
@@ -587,8 +587,8 @@ def get_ranking_touros(user_id):
                 ","
                 " gmd_filhos AS ("
                 "  SELECT animal_id,"
-                "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-                "      THEN (peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini)"
+                "    CASE WHEN (data_fim - data_ini) > 0"
+                "      THEN (peso_fim - peso_ini) / (data_fim - data_ini)"
                 "      ELSE NULL END AS gmd"
                 "  FROM pu WHERE data_ini <> data_fim"
                 " )"
@@ -666,11 +666,11 @@ def _inserir_animal(cursor, brinco, sexo, data_compra, preco_compra, peso_entrad
     cursor.execute(
         "INSERT INTO animais "
         "(brinco, sexo, raca, data_compra, data_nascimento, preco_compra, user_id, mae_id, pai_id) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
         (brinco, sexo, _normalizar_raca(raca), data_compra or None, data_nascimento or None,
          preco_compra or None, user_id, mae_id or None, pai_id or None)
     )
-    animal_id = cursor.lastrowid
+    animal_id = cursor.fetchone()[0]
     data_ref = data_compra or data_nascimento
     if peso_entrada and data_ref:
         cursor.execute(
@@ -857,10 +857,10 @@ def cadastrar_lote(user_id, codigo_lote, descricao, data_compra, animais_data, r
     """
     with get_db_cursor() as cursor:
         cursor.execute(
-            "INSERT INTO lotes (user_id, codigo_lote, descricao, data_aquisicao) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO lotes (user_id, codigo_lote, descricao, data_aquisicao) VALUES (%s, %s, %s, %s) RETURNING id",
             (user_id, codigo_lote, descricao, data_compra)
         )
-        lote_id = cursor.lastrowid
+        lote_id = cursor.fetchone()[0]
 
         cursor.executemany(
             "INSERT INTO animais (brinco, sexo, raca, data_compra, preco_compra, user_id, lote_id) "

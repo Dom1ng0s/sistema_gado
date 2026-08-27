@@ -7,28 +7,15 @@ preload_app = True
 
 
 def post_fork(server, worker):
-    """Reinitializa o pool MySQL em cada worker após fork — evita compartilhar sockets.
+    """Recria o pool do Postgres em cada worker após o fork — sockets herdados do
+    master não podem ser compartilhados entre processos.
 
     Desativa o scheduler em workers filhos (age > 1). Com preload_app=True o scheduler
     inicia no master antes do fork; threads não sobrevivem ao fork, mas o guard evita
     restart acidental em workers quando preload_app for False.
     """
     import db_config
-    try:
-        import mysql.connector.pooling
-        db_config.connection_pool = mysql.connector.pooling.MySQLConnectionPool(
-            pool_name="gado_pool",
-            pool_size=5,
-            host=os.getenv('DB_HOST'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            database=os.getenv('DB_NAME'),
-            port=int(os.getenv('DB_PORT', 3306)),
-            autocommit=False,
-            connection_timeout=10,
-        )
-    except Exception:
-        db_config.connection_pool = None
+    db_config.reset_pool()
 
     # Apenas o primeiro worker pode iniciar o scheduler (age=1 é o worker inicial)
     if worker.age > 1:
