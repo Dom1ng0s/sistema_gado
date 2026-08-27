@@ -287,10 +287,10 @@ O frontend não usa framework JavaScript. É Jinja2 renderizado no servidor, com
 `static/css/design_system.css` define a identidade visual em CSS custom properties, sob uma estética que o próprio arquivo chama de "rústico-profissional". Os tokens ficam concentrados em `:root` e o resto da folha só os consome, então trocar a paleta ou a escala tipográfica é mexer em um lugar só:
 
 - **Cores** em famílias: verde campo (`--color-primary` e variações), âmbar terra (`--color-accent`) e os semânticos `danger`/`success`/`warning`, cada um com sua variante de fundo.
-- **Tipografia** com duas famílias: Playfair Display para títulos (`--font-display`) e Rubik para corpo (`--font-body`), mais escalas de tamanho (`--text-xs` a `--text-2xl`), peso e altura de linha.
+- **Tipografia** com duas famílias: Fraunces para títulos (`--font-display`) e Inter para corpo (`--font-body`), mais escalas de tamanho (`--text-xs` a `--text-2xl`), peso e altura de linha.
 - **Espaçamento** em escala fixa (`--space-1` a `--space-10`).
 
-As fontes vêm do Google Fonts, carregadas em `base.html` com `preconnect` e `display=swap` para não bloquear a renderização.
+As fontes são **self-hosted** em `static/fonts/` (`.woff2`, subsets latin + latin-ext), declaradas em `static/css/fonts.css` com `font-display: swap`. Não há requisição a `fonts.googleapis.com`/`fonts.gstatic.com`: o IP do produtor não vaza para o Google e a CSP não precisa liberar host de terceiros para estilo/fonte. Para atualizar a versão: `scripts/vendor_fonts.sh`.
 
 ### 5.2 Biblioteca de componentes
 

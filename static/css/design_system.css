@@ -1,10 +1,10 @@
 /* ============================================================
    SGG — Design System
    Estética: rústico-profissional
-   Fontes: Playfair Display (display) + Rubik (corpo)
+   Fontes: Fraunces (display) + Inter (corpo)
    ============================================================ */
 
-/* Fonts loaded via <link> in base.html with preconnect for performance */
+/* Fontes self-hosted — ver static/css/fonts.css (carregado antes deste arquivo) */
 
 /* ── Tokens ─────────────────────────────────────────────── */
 :root {
