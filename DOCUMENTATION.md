@@ -250,7 +250,8 @@ Nenhuma query vive nas rotas. Existe um `repository` por domínio (`repositories
 - **Hashing de senha** com Werkzeug (`generate_password_hash` / `check_password_hash`), nunca em texto plano.
 - **CSRF global** via Flask-WTF (`CSRFProtect`): todo formulário exige token.
 - **Rate limiting** por rota (Flask-Limiter): login `10/min`, geração de PDF `6/min`, exports `10/min`, o que mitiga brute-force e abuso.
-- **Headers de segurança** aplicados em `after_request`: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`.
+- **Headers de segurança** aplicados em `after_request`: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy` e HSTS (fora de debug).
+- **CSP** (`_CSP` em `app.py`): `default-src 'self'` com todo asset servido pelo próprio domínio — fontes (`static/fonts/`) e ECharts (`static/vendor/`) são self-hosted, nenhum host de terceiros. `script-src`/`style-src` ainda carregam `'unsafe-inline'` porque os templates usam `<script>`/handlers inline; removê-lo é issue própria.
 - **Recuperação de senha** via código de 6 dígitos com TTL de 15 min (`password_reset_tokens`).
 - **Segredos** exclusivamente via `os.getenv()`, nunca hardcoded.
 
@@ -302,9 +303,11 @@ As fontes são **self-hosted** em `static/fonts/` (`.woff2`, subsets latin + lat
 
 A rota `/styleguide` (em `app.py`) serve essa página, mas só quando `app.debug` está ligado; em produção responde 404. O CLAUDE.md torna a consulta obrigatória: antes de criar ou editar um template usa-se `/design-ui`, e para um componente novo, `/new-component`.
 
+Os gráficos são **ECharts self-hosted**: o bundle `simple` (Line + Bar + Pie + Scatter + Canvas + componentes básicos, ~45% do bundle completo) fica pinado por versão em `static/vendor/echarts-<versao>.simple.min.js` e é servido pelo próprio domínio — nenhuma requisição a `cdn.jsdelivr.net`, então a CSP fecha `script-src 'self' 'unsafe-inline'` sem host de terceiros. O helper `window.sggGrafico` (em `static/js/sgg.js`) registra o tema `sgg` uma vez e devolve a instância já temada. Para atualizar a versão: `scripts/vendor_echarts.sh`. Se um gráfico novo precisar de um tipo de série fora do bundle `simple` (heatmap, radar, candlestick…), trocar para `echarts.min.js` completo.
+
 ### 5.3 Layout único e navegação
 
-`base.html` é o esqueleto que os 30 templates de página estendem via `{% block content %}`. Ele concentra a barra de navegação (com dropdown "+ Novo" e menu hambúrguer responsivo), o estado ativo do link atual calculado por `request.endpoint`, a área de mensagens `flash` e o carregamento de CSS e fontes. Os gráficos usam ECharts via CDN.
+`base.html` é o esqueleto que os 30 templates de página estendem via `{% block content %}`. Ele concentra a barra de navegação (com dropdown "+ Novo" e menu hambúrguer responsivo), o estado ativo do link atual calculado por `request.endpoint`, a área de mensagens `flash` e o carregamento de CSS e fontes. Os gráficos usam ECharts self-hosted (ver 5.2), carregado no `{% block scripts %}` de cada página que tem gráfico.
 
 ### 5.4 Filtros e context processors do Jinja2
 
