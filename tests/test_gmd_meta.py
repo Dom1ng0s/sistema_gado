@@ -7,6 +7,7 @@ import pytest
 import itertools
 from werkzeug.security import generate_password_hash
 import db_config as dbc
+from tests.dbcompat import connect
 from repositories import animal_repository, configuracao_repository
 
 _seq = itertools.count(10000)
@@ -17,7 +18,7 @@ def _n():
 
 
 def _make_user():
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
@@ -31,7 +32,7 @@ def _make_user():
 def _make_animal_com_gmd(user_id, gmd_alvo, brinco=None):
     """Cria animal com 2 pesagens que produzem exatamente o GMD desejado em 10 dias."""
     brinco = brinco or f"GM{_n()}"
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id)"
@@ -52,22 +53,22 @@ def _make_animal_com_gmd(user_id, gmd_alvo, brinco=None):
 
 
 def _purge(user_id):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
-    cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+    cur.execute("SET session_replication_role = 'replica'")
     for sql in [
-        "DELETE p FROM pesagens p JOIN animais a ON p.animal_id = a.id WHERE a.user_id = %s",
+        "DELETE FROM pesagens p USING animais a WHERE p.animal_id = a.id AND a.user_id = %s",
         "DELETE FROM animais WHERE user_id = %s",
         "DELETE FROM configuracoes WHERE user_id = %s",
         "DELETE FROM usuarios WHERE id = %s",
     ]:
         cur.execute(sql, (user_id,))
-    cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+    cur.execute("SET session_replication_role = 'origin'")
     conn.commit(); cur.close(); conn.close()
 
 
 def _login(client, uid):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT username FROM usuarios WHERE id = %s", (uid,))
     username = cur.fetchone()[0]
@@ -153,7 +154,7 @@ def test_rota_progenie_exibe_gmd_meta_customizada(app):
         touro_id = _make_animal_com_gmd(uid, gmd_alvo=0.7, brinco='TOURO-GM')
 
         # Gráfico de referência só renderiza com >= 2 filhos com GMD calculado
-        conn = dbc.get_db_connection()
+        conn = connect()
         cur = conn.cursor()
         for i in range(2):
             filho_id = _make_animal_com_gmd(uid, gmd_alvo=0.6, brinco=f'FILHO{i}-{_n()}')

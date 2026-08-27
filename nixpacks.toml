@@ -1,4 +1,9 @@
 # Railway usa o builder nixpacks (ver railway.toml) e ignora o Dockerfile.
+#
+# Banco: psycopg[binary] (requirements.txt) traz libpq + libssl embutidos, então
+# não precisa de pacote de sistema. Se o wheel binário falhar no ambiente Nix,
+# trocar para `psycopg[c]` e adicionar `nixPkgs = ["postgresql"]` numa fase aqui.
+#
 # O pacote pip do playwright NÃO traz o binário do Chromium; sem este passo a
 # geração de PDF (routes/api.py::_gerar_pdf_bg) falha em runtime gravando .error.
 #

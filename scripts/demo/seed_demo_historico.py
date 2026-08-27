@@ -3,7 +3,7 @@
 Seed histórico: conta demonstracao — simulação econômica completa 2020-01-01 a 2026-06-30.
 
 Reescrita completa (v2) do seed original. Reconstrói do zero os dados de gestão vinculados
-ao usuário 'demonstracao' (NUNCA altera usuarios/configuracoes). Usa mysql.connector puro —
+ao usuário 'demonstracao' (NUNCA altera usuarios/configuracoes). Usa psycopg puro —
 este projeto não usa SQLAlchemy/ORM (ver CLAUDE.md: "SQL puro — não introduzir SQLAlchemy
 ou ORM"), então app.app_context()/db.session não se aplicam aqui.
 
@@ -55,7 +55,7 @@ import random
 import heapq
 from datetime import date, timedelta
 from dotenv import load_dotenv
-import mysql.connector
+import psycopg
 
 load_dotenv()
 random.seed(20260630)
@@ -80,9 +80,9 @@ RACAS = ['Nelore'] * 8 + ['Angus', 'Brahman', 'Girolando']
 MORTE_CAUSAS = ['Raio', 'Doença respiratória', 'Picada de cobra', 'Complicação no parto',
                 'Afogamento', 'Acidente em cerca']
 
-conn = mysql.connector.connect(
+conn = psycopg.connect(
     host=os.getenv('DB_HOST'), user=os.getenv('DB_USER'), password=os.getenv('DB_PASSWORD'),
-    database=os.getenv('DB_NAME'), port=int(os.getenv('DB_PORT', 3306)), autocommit=False,
+    dbname=os.getenv('DB_NAME'), port=int(os.getenv('DB_PORT', 5432)), autocommit=False,
 )
 cur = conn.cursor()
 
@@ -263,14 +263,14 @@ try:
     for nome, forr, area, cap in pasto_config:
         cur.execute(
             "INSERT INTO pastos (user_id, nome, area_hectares, forrageira, capacidade_ua) "
-            "VALUES (%s, %s, %s, %s, %s)", (uid, nome, area, forr, cap)
+            "VALUES (%s, %s, %s, %s, %s) RETURNING id", (uid, nome, area, forr, cap)
         )
-        pasto_id = cur.lastrowid
+        pasto_id = cur.fetchone()[0]
         cur.execute(
             "INSERT INTO modulos (pasto_id, user_id, nome, area_hectares, capacidade_ua) "
-            "VALUES (%s, %s, %s, %s, %s)", (pasto_id, uid, f"Módulo {nome}", area, cap)
+            "VALUES (%s, %s, %s, %s, %s) RETURNING id", (pasto_id, uid, f"Módulo {nome}", area, cap)
         )
-        modulos.append(cur.lastrowid)
+        modulos.append(cur.fetchone()[0])
     conn.commit()
     print(f"      {len(modulos)} módulos criados")
 
@@ -282,9 +282,9 @@ try:
     def criar_produto(nome, unidade, categoria, minimo):
         cur.execute(
             "INSERT INTO estoque_produtos (user_id, nome, unidade, categoria, estoque_minimo) "
-            "VALUES (%s, %s, %s, %s, %s)", (uid, nome, unidade, categoria, minimo)
+            "VALUES (%s, %s, %s, %s, %s) RETURNING id", (uid, nome, unidade, categoria, minimo)
         )
-        return cur.lastrowid
+        return cur.fetchone()[0]
 
     p_estaca = criar_produto('Estaca de Madeira', 'unidade', 'outro', 80)
     p_arame = criar_produto('Arame Farpado (rolo 250m)', 'rolo', 'outro', 2)
@@ -330,10 +330,10 @@ try:
         preco = round((peso / ARROBA_KG) * compra_arroba, 2)
         cur.execute(
             "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, preco_compra, user_id) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
             (brinco, sexo, raca_nome, data_entrada, data_entrada, preco, uid)
         )
-        aid = cur.lastrowid
+        aid = cur.fetchone()[0]
         registrar_caixa(data_entrada, -preco, 'compra_gado')
         _, data_morte = resolve_destino(data_entrada, None)
         gmd_estavel = round(clamp(random.gauss(0.05, 0.02), 0.0, 0.10), 3)  # mantença, não engorda
@@ -419,11 +419,11 @@ try:
 
         cur.execute(
             "INSERT INTO lotes (user_id, codigo_lote, descricao, data_aquisicao, custo_medio_cabeca) "
-            "VALUES (%s, %s, %s, %s, %s)",
+            "VALUES (%s, %s, %s, %s, %s) RETURNING id",
             (uid, codigo, 'Reposição - lote fundador' if boosted else 'Reposição para engorda',
              data_compra, custo_medio)
         )
-        lote_id = cur.lastrowid
+        lote_id = cur.fetchone()[0]
 
         rows = [(f"{codigo}-{i + 1:02d}", sexos[i], raca(), data_compra, precos[i], uid, lote_id)
                 for i in range(LOTE_SIZE)]
@@ -603,10 +603,10 @@ try:
             brinco = f"CRI-{born_seq:04d}"
             cur.execute(
                 "INSERT INTO animais (brinco, sexo, raca, data_nascimento, mae_id, pai_id, user_id) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
                 (brinco, sexo, 'Nelore', data_parto, cow['id'], touro_id, uid)
             )
-            calf_id = cur.lastrowid
+            calf_id = cur.fetchone()[0]
             conn.commit()
 
             retida = sexo == 'F' and random.random() < 0.55
@@ -739,9 +739,9 @@ try:
     for modulo_id, ids in alocacoes:
         if not ids:
             continue
-        cur.execute("INSERT INTO ocupacoes (modulo_id, user_id, data_entrada) VALUES (%s, %s, %s)",
+        cur.execute("INSERT INTO ocupacoes (modulo_id, user_id, data_entrada) VALUES (%s, %s, %s) RETURNING id",
                     (modulo_id, uid, DATA_ENTRADA))
-        occ_id = cur.lastrowid
+        occ_id = cur.fetchone()[0]
         cur.executemany("INSERT INTO ocupacao_animais (ocupacao_id, animal_id) VALUES (%s, %s)",
                          [(occ_id, aid) for aid in ids])
     conn.commit()

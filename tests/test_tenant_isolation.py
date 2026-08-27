@@ -7,6 +7,7 @@ import pytest
 import itertools
 from werkzeug.security import generate_password_hash
 import db_config as dbc
+from tests.dbcompat import connect
 
 _seq = itertools.count(3000)
 
@@ -20,7 +21,7 @@ def _n():
 def _make_user():
     n = _n()
     username = f"ti_{n}"
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
@@ -34,7 +35,7 @@ def _make_user():
 
 
 def _make_animal(user_id, brinco):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id)"
@@ -53,26 +54,26 @@ def _make_animal(user_id, brinco):
 
 
 def _purge(user_id):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
-    cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+    cur.execute("SET session_replication_role = 'replica'")
     for sql in [
-        "DELETE p FROM pesagens p JOIN animais a ON p.animal_id = a.id WHERE a.user_id = %s",
-        "DELETE m FROM medicacoes m JOIN animais a ON m.animal_id = a.id WHERE a.user_id = %s",
+        "DELETE FROM pesagens p USING animais a WHERE p.animal_id = a.id AND a.user_id = %s",
+        "DELETE FROM medicacoes m USING animais a WHERE m.animal_id = a.id AND a.user_id = %s",
         "DELETE FROM animais WHERE user_id = %s",
         "DELETE FROM custos_operacionais WHERE user_id = %s",
         "DELETE FROM configuracoes WHERE user_id = %s",
         "DELETE FROM usuarios WHERE id = %s",
     ]:
         cur.execute(sql, (user_id,))
-    cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+    cur.execute("SET session_replication_role = 'origin'")
     conn.commit()
     cur.close()
     conn.close()
 
 
 def _fetch_one(sql, params):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(sql, params)
     row = cur.fetchone()
@@ -176,7 +177,7 @@ def test_restaurar_animal_alheio_nao_altera_deleted_at(cenario):
     """POST /restaurar_animal/<id_de_A> como B não deve limpar deleted_at."""
     client_b, aid, brinco_a, uid_a, uid_b = cenario
     # Soft-delete direto no banco para simular animal na lixeira de A
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute("UPDATE animais SET deleted_at = NOW() WHERE id = %s", (aid,))
     conn.commit()

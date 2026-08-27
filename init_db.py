@@ -10,7 +10,6 @@ import os
 import sys
 import time
 
-import mysql.connector
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash
 
@@ -31,29 +30,17 @@ def _seed_admin():
     if not senha:
         raise RuntimeError("SEED_ADMIN=true exige ADMIN_PASSWORD definido no ambiente.")
 
-    conn = mysql.connector.connect(
-        host=os.getenv('DB_HOST'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_NAME'),
-        port=int(os.getenv('DB_PORT', 3306)),
-        connection_timeout=10,
-    )
-    try:
-        cur = conn.cursor()
+    import db_config
+    with db_config.get_db_cursor() as cur:
         cur.execute(
-            "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
+            "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s) "
+            "ON CONFLICT (username) DO NOTHING RETURNING id",
             ('admin', generate_password_hash(senha)),
         )
-        conn.commit()
-        print("   -> Usuário 'admin' criado com a senha de ADMIN_PASSWORD.")
-    except mysql.connector.Error as err:
-        if err.errno == 1062:
-            print("   -> Usuário 'admin' já existe.")
+        if cur.fetchone():
+            print("   -> Usuário 'admin' criado com a senha de ADMIN_PASSWORD.")
         else:
-            raise
-    finally:
-        conn.close()
+            print("   -> Usuário 'admin' já existe.")
 
 
 def main(retries=5, delay=3):

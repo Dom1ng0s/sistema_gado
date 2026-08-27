@@ -1,6 +1,5 @@
 from db_config import get_db_cursor
 from datetime import date
-from repositories.animal_repository import _gmd_ctes
 
 
 # ---- REBANHO ----
@@ -185,33 +184,19 @@ def get_resultado_lote_by_id(lote_id, user_id):
 def get_animais_por_lote(lote_id, user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
-            _gmd_ctes(
-                "JOIN animais a ON a.id = p.animal_id"
-                "    AND a.lote_id = %s AND a.user_id = %s AND a.deleted_at IS NULL"
-            ) + (
-            ","
-            " gmd_calc AS ("
-            "  SELECT animal_id,"
-            "    peso_fim AS peso_final,"
-            "    CASE WHEN DATEDIFF(data_fim, data_ini) > 0"
-            "      THEN ROUND((peso_fim - peso_ini) / DATEDIFF(data_fim, data_ini), 3)"
-            "      ELSE 0 END AS gmd"
-            "  FROM pu WHERE data_ini <> data_fim"
-            " )"
             " SELECT a.brinco, a.sexo, a.raca, a.data_compra, a.preco_compra,"
             "  a.data_venda, a.preco_venda,"
             "  COALESCE(m.custo_med, 0) AS custo_med,"
-            "  COALESCE(g.gmd, 0) AS gmd,"
+            "  COALESCE(ROUND(g.gmd, 3), 0) AS gmd,"
             "  COALESCE(g.peso_final, 0) AS peso_atual"
             " FROM animais a"
             " LEFT JOIN (SELECT animal_id, SUM(custo) AS custo_med"
             "            FROM medicacoes WHERE deleted_at IS NULL GROUP BY animal_id) m"
             "   ON m.animal_id = a.id"
-            " LEFT JOIN gmd_calc g ON g.animal_id = a.id"
+            " LEFT JOIN v_gmd_analitico g ON g.animal_id = a.id"
             " WHERE a.lote_id = %s AND a.user_id = %s AND a.deleted_at IS NULL"
-            " ORDER BY a.brinco ASC"
-            ),
-            (lote_id, user_id, lote_id, user_id)
+            " ORDER BY a.brinco ASC",
+            (lote_id, user_id)
         )
         return cursor.fetchall()
 

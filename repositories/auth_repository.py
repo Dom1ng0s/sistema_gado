@@ -39,9 +39,9 @@ def get_valid_token(email, code):
             WHERE u.email = %s
               AND t.code = %s
               AND t.used = 0
-              -- expires_at é gravado em UTC (datetime.now(timezone.utc) em auth.py);
-              -- NOW() usa o fuso da sessão do servidor e deslocaria a janela — ver #59.
-              AND t.expires_at > UTC_TIMESTAMP()
+              -- expires_at é timestamptz gravado com datetime.now(timezone.utc);
+              -- now() também é timezone-aware, então a comparação é direta (#59).
+              AND t.expires_at > now()
         """, (email, code))
         return cursor.fetchone()
 
@@ -76,8 +76,8 @@ def delete_user_and_data(user_id):
     # Ordem: netos → filhos → tabelas diretas de usuarios → usuarios.
     comandos = [
         # filhos de animais que bloqueiam o DELETE de animais (RESTRICT)
-        "DELETE p FROM pesagens p JOIN animais a ON p.animal_id = a.id WHERE a.user_id = %s",
-        "DELETE m FROM medicacoes m JOIN animais a ON m.animal_id = a.id WHERE a.user_id = %s",
+        "DELETE FROM pesagens p USING animais a WHERE p.animal_id = a.id AND a.user_id = %s",
+        "DELETE FROM medicacoes m USING animais a WHERE m.animal_id = a.id AND a.user_id = %s",
         "DELETE FROM reproducao WHERE user_id = %s",
         # cadeia de pastos (ocupacao_animais cascateia de ocupacoes)
         "DELETE FROM ocupacoes WHERE user_id = %s",

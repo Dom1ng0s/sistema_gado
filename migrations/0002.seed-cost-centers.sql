@@ -1,9 +1,8 @@
 -- 0002.seed-cost-centers
--- Dados de referencia: centros de custo fixos que a UI de custos operacionais
--- assume existir. INSERT IGNORE = convergente (no-op se ja povoado).
--- Espelha o antigo seeder de init_db.criar_schema().
+-- Dados de referência: centros de custo fixos que a UI de custos operacionais
+-- assume existir. ON CONFLICT DO NOTHING = convergente (no-op se já povoado).
 
-INSERT IGNORE INTO `cost_centers` (`nome`, `categoria`) VALUES
+INSERT INTO cost_centers (nome, categoria) VALUES
   ('Arrendamento', 'Fixo'),
   ('Salário',      'Fixo'),
   ('Manutenção',   'Fixo'),
@@ -11,4 +10,5 @@ INSERT IGNORE INTO `cost_centers` (`nome`, `categoria`) VALUES
   ('Nutrição',     'Variavel'),
   ('Sanitário',    'Variavel'),
   ('Frete',        'Variavel'),
-  ('Outros',       'Variavel');
+  ('Outros',       'Variavel')
+ON CONFLICT (nome, categoria) DO NOTHING;

@@ -1,7 +1,10 @@
+# Persistência: adicionar o plugin PostgreSQL no projeto Railway. Ele injeta
+# DATABASE_URL, que db_config.py / db_migrate.py consomem com prioridade.
 [build]
 builder = "nixpacks"
 
 [deploy]
+# init_db.py aplica as migrations (migrations/*.sql via yoyo) e faz o seed opcional.
 preDeployCommand = "python -u init_db.py"
 startCommand = "gunicorn -c gunicorn.conf.py app:app"
 healthcheckPath = "/"

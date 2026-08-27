@@ -13,68 +13,58 @@ Uso:
 """
 import argparse
 import os
-import warnings
 from urllib.parse import quote
-
-from contextlib import contextmanager
 
 from dotenv import load_dotenv
 from yoyo import get_backend, read_migrations
 
 load_dotenv()
 
-
-@contextmanager
-def _quiet_pymysql_deprecations():
-    # yoyo 9.0 passa db=/passwd= ao PyMySQL (kwargs antigos). Ruído, não é problema nosso.
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore", message=r"'(db|passwd)' is deprecated",
-            category=DeprecationWarning,
-        )
-        yield
-
 MIGRATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "migrations")
 
 
 def database_url(host=None, user=None, password=None, port=None, database=None):
-    """Monta a URL mysql:// do yoyo a partir dos parâmetros ou das vars DB_*."""
+    """Monta a URL do yoyo (backend PostgreSQL via psycopg 3) a partir dos
+    parâmetros ou das vars DB_*. Se DATABASE_URL estiver setada (Railway), usa-a."""
+    env_url = os.getenv("DATABASE_URL")
+    if env_url and not any((host, user, password, port, database)):
+        # yoyo precisa do esquema +psycopg para usar o driver psycopg 3
+        return env_url.replace("postgres://", "postgresql://", 1).replace(
+            "postgresql://", "postgresql+psycopg://", 1
+        )
     host = host or os.getenv("DB_HOST", "localhost")
     user = user or os.getenv("DB_USER", "")
     password = os.getenv("DB_PASSWORD", "") if password is None else password
-    port = port or os.getenv("DB_PORT", "3306")
+    port = port or os.getenv("DB_PORT", "5432")
     database = database or os.getenv("DB_NAME", "")
     # senha pode conter @ : / — sempre percent-encode
-    return f"mysql://{user}:{quote(str(password))}@{host}:{port}/{database}"
+    return f"postgresql+psycopg://{user}:{quote(str(password))}@{host}:{port}/{database}"
 
 
 def apply_migrations(url=None, **conn):
     """Aplica todas as migrations pendentes. Retorna a lista aplicada agora."""
     migrations = read_migrations(MIGRATIONS_DIR)
-    with _quiet_pymysql_deprecations():
-        backend = get_backend(url or database_url(**conn))
-        with backend.lock():
-            pending = backend.to_apply(migrations)
-            backend.apply_migrations(pending)
+    backend = get_backend(url or database_url(**conn))
+    with backend.lock():
+        pending = backend.to_apply(migrations)
+        backend.apply_migrations(pending)
     return [m.id for m in pending]
 
 
 def rollback_last(url=None, **conn):
     migrations = read_migrations(MIGRATIONS_DIR)
-    with _quiet_pymysql_deprecations():
-        backend = get_backend(url or database_url(**conn))
-        with backend.lock():
-            applied = backend.to_rollback(migrations)
-            last = applied[-1:] if applied else []
-            backend.rollback_migrations(last)
+    backend = get_backend(url or database_url(**conn))
+    with backend.lock():
+        applied = backend.to_rollback(migrations)
+        last = applied[-1:] if applied else []
+        backend.rollback_migrations(last)
     return [m.id for m in last]
 
 
 def _status(url=None, **conn):
     migrations = read_migrations(MIGRATIONS_DIR)
-    with _quiet_pymysql_deprecations():
-        backend = get_backend(url or database_url(**conn))
-        applied = {m.id for m in backend.to_rollback(migrations)}
+    backend = get_backend(url or database_url(**conn))
+    applied = {m.id for m in backend.to_rollback(migrations)}
     for m in migrations:
         print(f"  [{'x' if m.id in applied else ' '}] {m.id}")
 

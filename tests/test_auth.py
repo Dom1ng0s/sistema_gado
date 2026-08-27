@@ -4,6 +4,7 @@ from flask import session
 from werkzeug.security import generate_password_hash
 
 import db_config as dbc
+from tests.dbcompat import connect
 
 _seq = itertools.count(11000)
 
@@ -13,7 +14,7 @@ def _n():
 
 
 def _fetch_one(sql, params=()):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(sql, params)
     row = cur.fetchone()
@@ -26,7 +27,7 @@ def _make_user_with_email(email):
     """Cria usuário com email definido — necessário para fluxos de reset de senha."""
     n = _n()
     username = f"au_{n}"
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash, email) VALUES (%s, %s, %s)",
@@ -40,13 +41,13 @@ def _make_user_with_email(email):
 
 
 def _purge_user(user_id):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
-    cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+    cur.execute("SET session_replication_role = 'replica'")
     cur.execute("DELETE FROM password_reset_tokens WHERE user_id = %s", (user_id,))
     cur.execute("DELETE FROM configuracoes WHERE user_id = %s", (user_id,))
     cur.execute("DELETE FROM usuarios WHERE id = %s", (user_id,))
-    cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+    cur.execute("SET session_replication_role = 'origin'")
     conn.commit()
     cur.close()
     conn.close()

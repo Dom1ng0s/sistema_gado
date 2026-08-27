@@ -6,11 +6,11 @@ import io
 import itertools
 import smtplib
 
-import mysql.connector
 import pytest
 from werkzeug.security import generate_password_hash
 
 import db_config as dbc
+from tests.dbcompat import connect
 from extensions import limiter
 
 
@@ -35,7 +35,7 @@ def _make_user(sexo_animal='M'):
     """Cria usuário isolado com um animal. Retorna (user_id, username, animal_id)."""
     n = _n()
     username = f"sec_{n}"
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
@@ -55,18 +55,18 @@ def _make_user(sexo_animal='M'):
 
 
 def _purge(user_id):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
-    cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+    cur.execute("SET session_replication_role = 'replica'")
     for sql in [
-        "DELETE p FROM pesagens p JOIN animais a ON p.animal_id=a.id WHERE a.user_id=%s",
-        "DELETE m FROM medicacoes m JOIN animais a ON m.animal_id=a.id WHERE a.user_id=%s",
-        "DELETE r FROM reproducao r WHERE user_id=%s",
+        "DELETE FROM pesagens p USING animais a WHERE p.animal_id = a.id AND a.user_id = %s",
+        "DELETE FROM medicacoes m USING animais a WHERE m.animal_id = a.id AND a.user_id = %s",
+        "DELETE FROM reproducao WHERE user_id = %s",
         "DELETE FROM animais WHERE user_id=%s",
         "DELETE FROM usuarios WHERE id=%s",
     ]:
         cur.execute(sql, (user_id,))
-    cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+    cur.execute("SET session_replication_role = 'origin'")
     conn.commit()
     cur.close()
     conn.close()
@@ -78,7 +78,7 @@ def _login_as(client, username):
 
 
 def _fetch_one(sql, params=()):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(sql, params)
     row = cur.fetchone()
@@ -238,7 +238,7 @@ def test_restaurar_animal_post_funciona(client):
     aid = row[0]
 
     # Soft-delete direto
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute("UPDATE animais SET deleted_at=NOW() WHERE id=%s", (aid,))
     conn.commit(); cur.close(); conn.close()
@@ -265,7 +265,7 @@ def test_baixar_agendamento_valido_exibe_mensagem_sucesso(client):
     login(client)
     uid = _fetch_one("SELECT id FROM usuarios WHERE username='testuser'")[0]
 
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO financial_schedule (user_id, descricao, valor, vencimento, status) "
@@ -445,11 +445,12 @@ def test_csv_import_brinco_ja_existente_reporta_erro_nao_duplica(client):
     uid = _fetch_one("SELECT id FROM usuarios WHERE username='testuser'")[0]
 
     # Garante que o brinco existe no banco
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
-        "INSERT IGNORE INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "
-        "VALUES ('CSV-DUP-001','M','2024-01-01',500,%s)",
+        "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "
+        "VALUES ('CSV-DUP-001','M','2024-01-01',500,%s) "
+        "ON CONFLICT (brinco, user_id) DO NOTHING",
         (uid,),
     )
     conn.commit(); cur.close(); conn.close()
@@ -485,7 +486,7 @@ def test_pesos_atuais_sem_duplicatas_com_duas_pesagens_mesmo_dia(app):
 
     uid, username, aid = _make_user()
     try:
-        conn = dbc.get_db_connection()
+        conn = connect()
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s,'2024-06-01',300)",

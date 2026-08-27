@@ -104,10 +104,10 @@ def novo_usuario():
 
                 hash_s = generate_password_hash(nova_senha)
                 cursor.execute(
-                    "INSERT INTO usuarios (username, password_hash, email) VALUES (%s, %s, %s)",
+                    "INSERT INTO usuarios (username, password_hash, email) VALUES (%s, %s, %s) RETURNING id",
                     (novo_user, hash_s, email)
                 )
-                user_id = cursor.lastrowid
+                user_id = cursor.fetchone()[0]
                 cursor.execute(
                     "INSERT INTO configuracoes (user_id, nome_fazenda, cidade_estado, area_total) VALUES (%s, %s, %s, %s)",
                     (user_id, nome_fazenda, cidade, area)

@@ -1,0 +1,8 @@
+# Arquivos de infraestrutura local/CI que contêm credenciais descartáveis por
+# design — bancos efêmeros que só existem durante `docker compose up` ou uma
+# execução do CI, sem acesso a nada. Não são segredos.
+version: 2
+secret:
+  ignored-paths:
+    - "docker-compose.yml"
+    - ".github/workflows/tests.yml"

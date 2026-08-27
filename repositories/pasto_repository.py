@@ -13,7 +13,7 @@ def get_pastos(user_id, termo=None):
     where = "WHERE p.user_id = %s"
     params = [user_id]
     if termo:
-        where += " AND p.nome LIKE %s"
+        where += " AND p.nome ILIKE %s"
         params.append(termo + "%")
     with get_db_cursor() as cursor:
         cursor.execute(
@@ -36,10 +36,10 @@ def insert_pasto(user_id, nome, area_hectares, forrageira, capacidade_ua):
     with get_db_cursor() as cursor:
         cursor.execute(
             "INSERT INTO pastos (user_id, nome, area_hectares, forrageira, capacidade_ua) "
-            "VALUES (%s, %s, %s, %s, %s)",
+            "VALUES (%s, %s, %s, %s, %s) RETURNING id",
             (user_id, nome, area_hectares, forrageira, capacidade_ua)
         )
-        return cursor.lastrowid
+        return cursor.fetchone()[0]
 
 
 def get_pasto_by_id(pasto_id, user_id):
@@ -75,10 +75,10 @@ def insert_modulo(pasto_id, user_id, nome, area_hectares, capacidade_ua):
     with get_db_cursor() as cursor:
         cursor.execute(
             "INSERT INTO modulos (pasto_id, user_id, nome, area_hectares, capacidade_ua) "
-            "VALUES (%s, %s, %s, %s, %s)",
+            "VALUES (%s, %s, %s, %s, %s) RETURNING id",
             (pasto_id, user_id, nome, area_hectares, capacidade_ua)
         )
-        return cursor.lastrowid
+        return cursor.fetchone()[0]
 
 
 def get_modulo_by_id(modulo_id, user_id):
@@ -124,10 +124,10 @@ def iniciar_ocupacao(modulo_id, user_id, data_entrada, animal_ids):
 
     with get_db_cursor() as cursor:
         cursor.execute(
-            "INSERT INTO ocupacoes (modulo_id, user_id, data_entrada) VALUES (%s, %s, %s)",
+            "INSERT INTO ocupacoes (modulo_id, user_id, data_entrada) VALUES (%s, %s, %s) RETURNING id",
             (modulo_id, user_id, data_entrada)
         )
-        ocupacao_id = cursor.lastrowid
+        ocupacao_id = cursor.fetchone()[0]
 
         validos = set()
         if ids:

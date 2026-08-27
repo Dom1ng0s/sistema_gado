@@ -12,7 +12,7 @@ def get_produtos(user_id, termo=None):
     where = "WHERE user_id = %s"
     params = [user_id]
     if termo:
-        where += " AND nome LIKE %s"
+        where += " AND nome ILIKE %s"
         params.append(termo + "%")
     with get_db_cursor() as cursor:
         cursor.execute(
@@ -27,10 +27,10 @@ def insert_produto(user_id, nome, unidade, categoria, estoque_minimo):
     with get_db_cursor() as cursor:
         cursor.execute(
             "INSERT INTO estoque_produtos (user_id, nome, unidade, categoria, estoque_minimo) "
-            "VALUES (%s, %s, %s, %s, %s)",
+            "VALUES (%s, %s, %s, %s, %s) RETURNING id",
             (user_id, nome, unidade, categoria, estoque_minimo or 0)
         )
-        return cursor.lastrowid
+        return cursor.fetchone()[0]
 
 
 def get_produto_by_id(produto_id, user_id):
@@ -75,9 +75,18 @@ def insert_movimentacao(user_id, produto_id, tipo, quantidade, custo_unitario, m
                         lote_fabricante=None, data_validade=None):
     with get_db_cursor() as cursor:
         if tipo == 'saida':
+            # Serializa saídas concorrentes travando a linha do produto (o
+            # Postgres não permite FOR UPDATE junto de agregação); só então
+            # soma o saldo.
+            cursor.execute(
+                "SELECT 1 FROM estoque_produtos WHERE id = %s AND user_id = %s FOR UPDATE",
+                (produto_id, user_id)
+            )
+            if cursor.fetchone() is None:
+                raise ValueError("Produto não encontrado.")
             cursor.execute(
                 "SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN quantidade ELSE -quantidade END), 0) "
-                "FROM estoque_movimentacoes WHERE produto_id = %s AND user_id = %s FOR UPDATE",
+                "FROM estoque_movimentacoes WHERE produto_id = %s AND user_id = %s",
                 (produto_id, user_id)
             )
             saldo = float(cursor.fetchone()[0])
@@ -87,12 +96,12 @@ def insert_movimentacao(user_id, produto_id, tipo, quantidade, custo_unitario, m
             "INSERT INTO estoque_movimentacoes "
             "(user_id, produto_id, tipo, quantidade, custo_unitario, motivo, data_mov, "
             " lote_fabricante, data_validade) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
             (user_id, produto_id, tipo,
              quantidade, custo_unitario or None, motivo or None, data_mov,
              lote_fabricante or None, data_validade or None)
         )
-        return cursor.lastrowid
+        return cursor.fetchone()[0]
 
 
 def get_vencendo_em_dias(user_id, dias=30):
@@ -102,7 +111,7 @@ def get_vencendo_em_dias(user_id, dias=30):
             "SELECT produto_id, nome, proxima_validade, tem_vencido "
             "FROM vw_saldo_estoque "
             "WHERE user_id = %s AND proxima_validade IS NOT NULL "
-            "AND proxima_validade <= DATE_ADD(CURDATE(), INTERVAL %s DAY) "
+            "AND proxima_validade <= CURRENT_DATE + %s "
             "ORDER BY proxima_validade ASC",
             (user_id, dias)
         )

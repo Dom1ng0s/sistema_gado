@@ -37,17 +37,17 @@ def test_migration_nao_e_destrutiva(path):
 def test_baseline_cria_o_schema_esperado(db_setup):
     """db_setup roda as migrations no banco de teste — confere que as tabelas
     e views centrais existem."""
-    import conftest
-    import mysql.connector
+    from tests.dbcompat import connect
 
-    conn = mysql.connector.connect(**conftest.TEST_DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
+    # tabelas + views + matviews do schema `public`
     cur.execute(
-        "SELECT table_name, table_type FROM information_schema.tables "
-        "WHERE table_schema = %s",
-        (conftest.TEST_DB_NAME,),
+        "SELECT tablename FROM pg_tables WHERE schemaname = 'public' "
+        "UNION SELECT viewname FROM pg_views WHERE schemaname = 'public' "
+        "UNION SELECT matviewname FROM pg_matviews WHERE schemaname = 'public'"
     )
-    objetos = {nome for nome, _ in cur.fetchall()}
+    objetos = {nome for (nome,) in cur.fetchall()}
     conn.close()
 
     for tabela in ("animais", "pesagens", "lotes", "reproducao", "cost_centers",

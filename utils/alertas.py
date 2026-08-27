@@ -32,7 +32,7 @@ def verificar_contas_vencendo(app):
                     "FROM financial_schedule fs "
                     "JOIN usuarios u ON u.id = fs.user_id "
                     "WHERE fs.status = 'pendente' AND fs.deleted_at IS NULL "
-                    "AND fs.vencimento <= DATE_ADD(CURDATE(), INTERVAL 3 DAY) "
+                    "AND fs.vencimento <= CURRENT_DATE + 3 "
                     "AND u.email IS NOT NULL AND u.email != '' "
                     "ORDER BY fs.user_id, fs.vencimento ASC"
                 )
@@ -53,7 +53,7 @@ def verificar_protocolos_vencendo(app):
                     "FROM protocolos_sanitarios ps "
                     "JOIN usuarios u ON u.id = ps.user_id "
                     "WHERE ps.ativo = 1 "
-                    "AND ps.proxima_aplicacao <= DATE_ADD(CURDATE(), INTERVAL 7 DAY) "
+                    "AND ps.proxima_aplicacao <= CURRENT_DATE + 7 "
                     "AND u.email IS NOT NULL AND u.email != '' "
                     "ORDER BY ps.user_id, ps.proxima_aplicacao ASC"
                 )
@@ -72,7 +72,7 @@ def verificar_feedback_7dias(app):
                 cursor.execute(
                     "SELECT username, email FROM usuarios "
                     "WHERE email IS NOT NULL AND email != '' "
-                    "AND DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 7 DAY)"
+                    "AND created_at::date = CURRENT_DATE - 7"
                 )
                 usuarios = cursor.fetchall()
             for username, email in usuarios:

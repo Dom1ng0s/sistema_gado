@@ -2,6 +2,7 @@ import os
 import time
 import logging
 import subprocess as _sp
+from datetime import datetime
 from flask import Flask, redirect, url_for, render_template, session, request
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
@@ -253,6 +254,12 @@ if _sched_permitido:
     scheduler.add_job(verificar_protocolos_vencendo,'cron', hour=8, args=[app])
     scheduler.add_job(verificar_estoque_critico,    'cron', day_of_week='mon', hour=8, args=[app])
     scheduler.add_job(verificar_feedback_7dias,     'cron', hour=9, args=[app])
+
+    # #115 — mantém as materialized views (GMD, fluxo de caixa, P&L por lote)
+    # atualizadas. Janela de staleness de ~5 min é aceitável para gestão de fazenda.
+    from utils.matviews import refresh_matviews
+    scheduler.add_job(refresh_matviews, 'interval', minutes=5, args=[app],
+                      id='refresh_matviews', next_run_time=datetime.now())
 
     # Heartbeat observável: um listener cobre todos os jobs (atuais e futuros).
     # Sem isso, o scheduler parando ou duplicando é silencioso — ver #80.

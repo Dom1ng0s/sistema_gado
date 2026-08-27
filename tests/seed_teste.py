@@ -1,5 +1,5 @@
-import mysql.connector
 import os
+import psycopg
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash
 from datetime import date, timedelta
@@ -8,12 +8,12 @@ import random
 load_dotenv()
 
 try:
-    conn = mysql.connector.connect(
+    conn = psycopg.connect(
         host=os.getenv('DB_HOST'),
         user=os.getenv('DB_USER'),
         password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_NAME'),
-        port=int(os.getenv('DB_PORT', 3306))
+        dbname=os.getenv('DB_NAME'),
+        port=int(os.getenv('DB_PORT', 5432))
     )
     cursor = conn.cursor()
 
@@ -31,8 +31,8 @@ try:
         cursor.execute("DELETE FROM animais WHERE user_id = %s", (user_id,))
     else:
         hash_senha = generate_password_hash(senha_plain)
-        cursor.execute("INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)", (username, hash_senha))
-        user_id = cursor.lastrowid
+        cursor.execute("INSERT INTO usuarios (username, password_hash) VALUES (%s, %s) RETURNING id", (username, hash_senha))
+        user_id = cursor.fetchone()[0]
 
     data_inicio = date.today() - timedelta(days=730)
 

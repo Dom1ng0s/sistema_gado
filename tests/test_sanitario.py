@@ -1,8 +1,7 @@
 import pytest
-import mysql.connector
+from tests.dbcompat import connect
 from datetime import date, timedelta
 
-from conftest import TEST_DB_CONFIG as DB_CONFIG
 
 
 def login(client):
@@ -10,7 +9,7 @@ def login(client):
 
 
 def _get_user_id():
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT id FROM usuarios WHERE username='testuser'")
     uid = cur.fetchone()[0]
@@ -73,7 +72,7 @@ def test_aplicar_protocolo_avanca_data(client):
     hoje = date.today()
     proxima = hoje + timedelta(days=5)
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO protocolos_sanitarios (user_id, nome, intervalo_dias, proxima_aplicacao) "
@@ -88,7 +87,7 @@ def test_aplicar_protocolo_avanca_data(client):
     response = client.post(f'/sanitario/{pid}/aplicar', follow_redirects=True)
     assert response.status_code == 200
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT proxima_aplicacao FROM protocolos_sanitarios WHERE id=%s", (pid,))
     nova_data = cur.fetchone()[0]
@@ -104,7 +103,7 @@ def test_desativar_protocolo(client):
     login(client)
     uid = _get_user_id()
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO protocolos_sanitarios (user_id, nome, intervalo_dias, proxima_aplicacao) "
@@ -118,7 +117,7 @@ def test_desativar_protocolo(client):
 
     client.post(f'/sanitario/{pid}/desativar')
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT ativo FROM protocolos_sanitarios WHERE id=%s", (pid,))
     ativo = cur.fetchone()[0]
@@ -131,7 +130,7 @@ def test_desativar_protocolo(client):
 def test_aplicar_protocolo_outro_usuario_ignorado(client):
     """Aplicar protocolo de outro usuário não altera o banco."""
     login(client)
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("INSERT INTO usuarios (username, password_hash) VALUES ('san_outro','x')")
     outro_id = cur.lastrowid
@@ -148,7 +147,7 @@ def test_aplicar_protocolo_outro_usuario_ignorado(client):
     response = client.post(f'/sanitario/{pid}/aplicar', follow_redirects=True)
     assert response.status_code == 200
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT proxima_aplicacao FROM protocolos_sanitarios WHERE id=%s", (pid,))
     data_nao_alterada = cur.fetchone()[0]
@@ -162,7 +161,7 @@ def test_aplicar_protocolo_outro_usuario_ignorado(client):
 def test_desativar_protocolo_outro_usuario_ignorado(client):
     """Desativar protocolo de outro usuário não deve marcá-lo como inativo."""
     login(client)
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("INSERT INTO usuarios (username, password_hash) VALUES ('san_outro2','x')")
     outro_id = cur.lastrowid
@@ -179,7 +178,7 @@ def test_desativar_protocolo_outro_usuario_ignorado(client):
     response = client.post(f'/sanitario/{pid}/desativar', follow_redirects=True)
     assert response.status_code == 200
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT ativo FROM protocolos_sanitarios WHERE id=%s", (pid,))
     ativo = cur.fetchone()[0]

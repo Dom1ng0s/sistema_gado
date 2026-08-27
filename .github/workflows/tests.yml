@@ -10,25 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      mysql:
-        image: mysql:8
+      postgres:
+        image: postgres:16
         env:
-          MYSQL_ROOT_PASSWORD: root
+          POSTGRES_PASSWORD: postgres
         ports:
-          - 3306:3306
+          - 5432:5432
         # conftest.py faz DROP/CREATE DATABASE a cada sessão, então precisa de um
-        # usuário com privilégio global — daí root em vez de MYSQL_USER.
+        # superusuário — daí o postgres padrão.
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-cmd="pg_isready -U postgres"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=20
 
     env:
       TEST_DB_HOST: 127.0.0.1
-      TEST_DB_USER: root
-      TEST_DB_PASSWORD: root
-      TEST_DB_PORT: 3306
+      TEST_DB_USER: postgres
+      TEST_DB_PASSWORD: postgres
+      TEST_DB_PORT: 5432
       SECRET_KEY: ci-secret-nao-usar-em-producao
       SCHEDULER_ENABLED: 'false'
 

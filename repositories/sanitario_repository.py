@@ -18,10 +18,10 @@ def insert_protocolo(user_id, nome, descricao, intervalo_dias, proxima_aplicacao
         cursor.execute(
             "INSERT INTO protocolos_sanitarios "
             "(user_id, nome, descricao, intervalo_dias, proxima_aplicacao) "
-            "VALUES (%s, %s, %s, %s, %s)",
+            "VALUES (%s, %s, %s, %s, %s) RETURNING id",
             (user_id, nome, descricao or None, intervalo_dias, proxima_aplicacao)
         )
-        return cursor.lastrowid
+        return cursor.fetchone()[0]
 
 
 def get_vencendo_em_dias(user_id, dias=7):
@@ -30,7 +30,7 @@ def get_vencendo_em_dias(user_id, dias=7):
             "SELECT id, nome, proxima_aplicacao, intervalo_dias "
             "FROM protocolos_sanitarios "
             "WHERE user_id = %s AND ativo = 1 "
-            "AND proxima_aplicacao <= DATE_ADD(CURDATE(), INTERVAL %s DAY) "
+            "AND proxima_aplicacao <= CURRENT_DATE + %s "
             "ORDER BY proxima_aplicacao ASC",
             (user_id, dias)
         )
@@ -51,7 +51,7 @@ def registrar_aplicacao(protocolo_id, user_id):
         nome = row[0]
         cursor.execute(
             "UPDATE protocolos_sanitarios "
-            "SET proxima_aplicacao = DATE_ADD(proxima_aplicacao, INTERVAL intervalo_dias DAY) "
+            "SET proxima_aplicacao = proxima_aplicacao + intervalo_dias "
             "WHERE id = %s",
             (protocolo_id,)
         )
