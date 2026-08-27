@@ -5,7 +5,7 @@ Auditoria de QA do seed histórico da conta 'demonstracao' (seed_demo_historico.
 Este projeto não usa SQLAlchemy/ORM (ver CLAUDE.md: "SQL puro — não introduzir SQLAlchemy
 ou ORM") — não há `db = SQLAlchemy(app)` nem modelos declarativos em models.py (só um User
 simples para o Flask-Login). Não existe, portanto, um app.app_context() com sessão ORM para
-consultar. Este script usa a mesma conexão mysql.connector direta que o resto do projeto
+consultar. Este script usa a mesma conexão psycopg direta que o resto do projeto
 (db_config.py / seed_demo_historico.py) para rodar as mesmas checagens pedidas, em SQL puro.
 
 Roda cada checagem, imprime PASSOU/FALHOU com o valor medido, e no fim mostra um resumo.
@@ -16,15 +16,15 @@ Rodar:
 import os
 from datetime import date, timedelta
 from dotenv import load_dotenv
-import mysql.connector
+import psycopg
 
 load_dotenv()
 
 END = date(2026, 6, 30)
 
-conn = mysql.connector.connect(
+conn = psycopg.connect(
     host=os.getenv('DB_HOST'), user=os.getenv('DB_USER'), password=os.getenv('DB_PASSWORD'),
-    database=os.getenv('DB_NAME'), port=int(os.getenv('DB_PORT', 3306)),
+    dbname=os.getenv('DB_NAME'), port=int(os.getenv('DB_PORT', 5432)),
 )
 cur = conn.cursor()
 

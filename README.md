@@ -3,10 +3,10 @@
 [![Em produção](https://img.shields.io/badge/status-produção-22c55e?style=flat)](https://sistemadogado.up.railway.app)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=flat&logo=flask&logoColor=white)](https://flask.palletsprojects.com)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat&logo=mysql&logoColor=white)](https://mysql.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://postgresql.org)
 [![License](https://img.shields.io/badge/licença-MIT-22c55e?style=flat)](LICENSE)
 
-Pecuaristas controlavam rebanho em planilha e tomavam decisões de compra e venda sem saber o GMD real de cada animal. O SGG centraliza rebanho, fluxo de caixa e cotações do dia num único sistema web, com os cálculos pesados rodando direto no MySQL via views SQL.
+Pecuaristas controlavam rebanho em planilha e tomavam decisões de compra e venda sem saber o GMD real de cada animal. O SGG centraliza rebanho, fluxo de caixa e cotações do dia num único sistema web, com os cálculos pesados rodando direto no PostgreSQL via views (e materialized views) SQL.
 
 **Demo ao vivo:** [sistemadogado.up.railway.app](https://sistemadogado.up.railway.app)
 Login: `demonstracao` / `demonstracao`
@@ -25,7 +25,7 @@ O problema concreto: o produtor não sabia quais animais estavam crescendo abaix
 
 ```mermaid
 graph LR
-    A[Gado-Scraper] -->|cotações diárias| B[(MySQL)]
+    A[Gado-Scraper] -->|cotações diárias| B[(PostgreSQL)]
     C[Flask App] -->|queries| B
     B -->|Views SQL + CTEs| D[Painel]
     D -->|GMD · Fluxo de Caixa · Valuation| E[Produtor]
@@ -57,9 +57,9 @@ Introduzir ORM aqui seria trocar uma query de 40 linhas por 10 chamadas de méto
 | Tecnologia | Por que foi escolhida |
 |---|---|
 | Flask | Sem overhead de ORM; SQL puro via views era o requisito central |
-| MySQL 8.0 | Window functions (`LAG`, `ROW_NUMBER`) para o cálculo de GMD |
+| PostgreSQL 16 | Window functions para o GMD + `MATERIALIZED VIEW` para os cálculos pesados (#115) |
 | Playwright | Geração de PDF server-side sem dependência de biblioteca de layout |
-| Railway | Deploy de container com MySQL gerenciado no mesmo provedor |
+| Railway | Deploy de container com PostgreSQL gerenciado no mesmo provedor |
 | Flask-Limiter | Rate limiting em rotas de login e export sem middleware externo |
 
 ## Como rodar localmente
@@ -70,6 +70,8 @@ cd sistema_gado
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
+
+docker compose up -d postgres   # PostgreSQL local (ver docker-compose.yml)
 
 # configure .env a partir de .env-example
 python init_db.py          # aplica migrations/*.sql (schema) + seed do admin
@@ -85,10 +87,12 @@ O banco não armazena dados brutos para o Python calcular. Cada view encapsula u
 
 | View | O que calcula |
 |---|---|
-| `v_gmd_analitico` | GMD por animal via CTE + window functions |
-| `v_fluxo_caixa` | Fluxo anual consolidado (compras, vendas, custos, medicações) |
+| `v_gmd_analitico` * | GMD por animal (materialized view — #115) |
+| `v_fluxo_caixa` * | Fluxo anual consolidado (materialized view) |
 | `vw_ocupacao_atual` | Módulos de pasto com lotação em UA e percentual de capacidade |
-| `vw_gmd_por_touro` | Ranking de touros por GMD médio dos filhos |
+| `vw_resultado_lote` * | P&L por lote (materialized view) |
+
+`*` materialized views: atualizadas a cada 5 min por um job do APScheduler (`utils/matviews.py`). O painel/financeiro podem ficar até ~5 min defasados de uma pesagem ou lançamento novo.
 | `vw_saldo_estoque` | Saldo de estoque com flag de mínimo atingido |
 
 ### Migrações de schema — `yoyo-migrations`, política só-aditiva
@@ -111,14 +115,14 @@ yoyo new -m "descrição"         # cria migrations/NNNN.descrição.sql
   migration pode conter `DROP TABLE` / `DROP COLUMN`. Renomear, mudar tipo ou
   `NOT NULL` sem default em tabela populada exige uma migration de transição
   (adiciona o novo, faz backfill, mantém o antigo) — nunca um `DROP` direto.
-- Dialeto MySQL 8. A migração para PostgreSQL (#115) reescreve `0001`.
+- Dialeto **PostgreSQL 16** (`GENERATED AS IDENTITY`, `timestamptz`, `CHECK` no lugar de `ENUM`).
 
 ## Testes
 
 ### Testes unitários e de integração
 
 ```bash
-# requer MySQL local com usuário gado_test/gado123
+# requer PostgreSQL local (docker compose up -d postgres)
 pytest
 pytest tests/test_tenant_isolation.py   # verifica isolamento multi-tenant por HTTP
 ```
@@ -135,12 +139,9 @@ Os testes E2E em `tests/e2e/` cobrem os 3 fluxos mais frágeis do sistema com um
 # 1. Instalar browser (já incluso no requirements.txt, só precisa do browser)
 playwright install chromium
 
-# 2. Criar usuário MySQL para os testes E2E (mesmas credenciais dos testes unitários)
-# Se gado_test já existe, apenas conceder o banco adicional:
-mysql -u root -p <<'SQL'
-GRANT ALL PRIVILEGES ON sistema_gado_e2e.* TO 'gado_test'@'localhost';
-FLUSH PRIVILEGES;
-SQL
+# 2. PostgreSQL local com um superusuário (docker-compose já cria o usuário `gado`).
+#    Os testes criam/destroem os bancos sistema_gado_test e sistema_gado_e2e.
+docker compose up -d postgres
 ```
 
 **Executar:**
@@ -162,9 +163,9 @@ Os testes E2E criam e destroem o banco `sistema_gado_e2e` automaticamente a cada
 | Variável | Padrão |
 |---|---|
 | `TEST_DB_HOST` | `localhost` |
-| `TEST_DB_USER` | `gado_test` |
+| `TEST_DB_USER` | `gado` |
 | `TEST_DB_PASSWORD` | `gado123` |
-| `TEST_DB_PORT` | `3306` |
+| `TEST_DB_PORT` | `5432` |
 
 ## Licença
 

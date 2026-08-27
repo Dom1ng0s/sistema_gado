@@ -1,6 +1,6 @@
 # Sistema de Gestão de Gado (SGG): Documentação Técnica
 
-> ERP zootécnico multi-tenant para pecuária de corte. Flask + MySQL puro (sem ORM),
+> ERP zootécnico multi-tenant para pecuária de corte. Flask + PostgreSQL puro (sem ORM),
 > com a lógica pesada de cálculo delegada ao banco de dados via *Views* SQL.
 
 ---
@@ -47,8 +47,8 @@ preco = (peso_kg / 30) * valor_arroba      # KG_POR_ARROBA = 30
 |---|---|---|
 | **Linguagem** | Python 3.10+ | Base da aplicação. |
 | **Web framework** | **Flask 3.1** | Núcleo HTTP, roteamento por Blueprints, Jinja2. |
-| **Banco de dados** | **MySQL** (via `mysql-connector-python`) | Persistência. **SQL puro, sem ORM** (decisão deliberada). |
-| **Migrations** | **yoyo-migrations** (SQL-first, via PyMySQL) | Schema versionado em `migrations/*.sql`. Sem ORM, sem autogenerate. |
+| **Banco de dados** | **PostgreSQL 16** (via `psycopg` 3 + `psycopg_pool`) | Persistência. **SQL puro, sem ORM** (decisão deliberada). Cálculo pesado em `MATERIALIZED VIEW`. |
+| **Migrations** | **yoyo-migrations** (SQL-first, backend psycopg 3) | Schema versionado em `migrations/*.sql`. Sem ORM, sem autogenerate. |
 | **Autenticação** | **Flask-Login** | Gestão de sessão e `current_user`. |
 | **Segurança de forms** | **Flask-WTF** (`CSRFProtect`) | Proteção CSRF global. |
 | **Rate limiting** | **Flask-Limiter** | Limite de requisições por rota (com Redis opcional em produção). |
@@ -89,7 +89,7 @@ graph TD
         SCHED["APScheduler (jobs de alerta)"]
     end
 
-    subgraph "Banco de Dados MySQL"
+    subgraph "Banco de Dados PostgreSQL"
         TBL["Tabelas (animais, pesagens, lotes...)"]
         VW["Views (v_gmd_analitico, v_fluxo_caixa...)"]
     end
@@ -210,7 +210,7 @@ sequenceDiagram
     participant BP as operacional_bp.painel
     participant R as animal_repository
     participant V as View v_gmd_analitico
-    participant DB as MySQL (pesagens/animais)
+    participant DB as PostgreSQL (pesagens/animais)
     participant T as Jinja2 (index.html)
 
     U->>B: Acessa /painel
@@ -262,17 +262,19 @@ Todo `SELECT` filtra por `user_id`. Onde não há coluna direta (`ocupacao_anima
 
 ### 4.6 Tratamento de erros e resiliência
 - Acesso a banco via *context manager* `get_db_cursor()` com **commit/rollback automático**: mutações são atômicas por design.
-- **Connection pool** MySQL com *fallback* gracioso para conexão direta se o pool falhar.
+- **Connection pool** psycopg (`psycopg_pool`) com *fallback* gracioso para conexão direta se o pool falhar; recriado por worker no `post_fork` do Gunicorn.
 - Rotas envolvem o acesso a dados em `try/except` com log estruturado e mensagem amigável ao usuário via `flash`.
 
 ### 4.7 Processamento assíncrono sem broker externo (padrão job_id + polling)
-Geração de PDF é lenta (Playwright + Chromium). Em vez de bloquear a requisição, a rota dispara uma `threading.Thread`, grava `.pending`/`.pdf`/`.error` em `/tmp` por `job_id`, e o cliente faz *polling* em `/status`. **Sem Celery, sem Redis, sem fila.** A complexidade só entra se for realmente necessária.
+Geração de PDF é lenta (Playwright + Chromium). Em vez de bloquear a requisição, a rota dispara uma `threading.Thread`, grava `.pending`/`.pdf`/`.error` num diretório temporário por `job_id`, e o cliente faz *polling* em `/status`. **Sem Celery, sem Redis, sem fila.** A complexidade só entra se for realmente necessária.
 
 ### 4.8 Cálculo delegado ao banco via Views
-GMD (`v_gmd_analitico`), fluxo de caixa (`v_fluxo_caixa`), P&L por lote (`vw_resultado_lote`), ocupação de pasto (`vw_ocupacao_atual`) e saldo de estoque (`vw_saldo_estoque`) são **Views SQL** com CTEs e *window functions*. O saldo nunca é uma coluna materializada: é sempre `SUM(entrada) - SUM(saida)`, o que elimina o risco de dessincronização.
+Ocupação de pasto (`vw_ocupacao_atual`), saldo de estoque (`vw_saldo_estoque`), GMD por módulo e histórico de vaca são **Views SQL** normais — recalculadas a cada leitura.
+
+Os três cálculos mais pesados — GMD por animal (`v_gmd_analitico`), fluxo de caixa (`v_fluxo_caixa`) e P&L por lote (`vw_resultado_lote`) — são **`MATERIALIZED VIEW`** (#115). O corpo do `SELECT` vive numa view `*_live` (fonte única de verdade) e a matview faz `SELECT * FROM *_live`. Um job do APScheduler roda `REFRESH MATERIALIZED VIEW CONCURRENTLY` a cada **5 min** (`utils/matviews.py`); o índice `UNIQUE` de cada matview é requisito do `CONCURRENTLY`. Trade-off: o GMD/financeiro do painel pode ficar até ~5 min defasado de uma pesagem ou lançamento novo — aceitável para gestão de fazenda, onde os dados entram em lote. Nos testes o `conftest.py` troca as três por view normal sobre `*_live`, recuperando consistência read-after-write.
 
 ### 4.9 Jobs proativos in-process
-`APScheduler` roda alertas (contas vencendo, protocolos, estoque crítico) dentro do processo Flask, com um *guard* cuidadoso em `app.py` para evitar disparo múltiplo sob vários workers do Gunicorn, cobrindo tanto `preload_app=True` quanto `False`.
+`APScheduler` roda alertas (contas vencendo, protocolos, estoque crítico) e o `REFRESH` das materialized views (5 min) dentro do processo Flask, com um *guard* cuidadoso em `app.py` para evitar disparo múltiplo sob vários workers do Gunicorn, cobrindo tanto `preload_app=True` quanto `False`.
 
 ### 4.10 Cobertura de testes
 Suíte com **pytest** cobrindo autenticação, isolamento de tenant, financeiro, reprodução, estoque, sanitário, alertas e cálculo de GMD, além de testes **E2E com Playwright** (`tests/e2e/`).
@@ -327,7 +329,7 @@ Todo arquivo sob `/static/` recebe `Cache-Control: max-age=31536000` (um ano) vi
 
 ### Pré-requisitos
 - Python 3.10+
-- MySQL 5.7+ / 8.x rodando localmente
+- PostgreSQL 16 local (`docker compose up -d postgres` — ver `docker-compose.yml`)
 
 ### Passo a passo
 
@@ -367,7 +369,7 @@ python app.py
 | Variável | Descrição |
 |---|---|
 | `SECRET_KEY` | Chave de sessão do Flask (obrigatória). |
-| `DB_HOST` / `DB_PORT` | Host e porta do MySQL. |
+| `DB_HOST` / `DB_PORT` | Host e porta do PostgreSQL (5432). `DATABASE_URL` tem prioridade se setada (Railway). |
 | `DB_USER` / `DB_PASSWORD` / `DB_NAME` | Credenciais e nome do banco. |
 | `DB_POOL_SIZE` | Tamanho do pool de conexões (padrão 5). |
 | `FLASK_DEBUG` | `True` para modo dev. |
@@ -383,12 +385,7 @@ gunicorn app:app
 
 ### Rodar os testes
 
-Exige um MySQL local com o usuário de teste:
-
-```sql
-CREATE USER 'gado_test'@'localhost' IDENTIFIED BY 'gado123';
-GRANT ALL PRIVILEGES ON sistema_gado_test.* TO 'gado_test'@'localhost';
-```
+Exige um PostgreSQL local com um superusuário. `docker compose up -d postgres` já cria o usuário `gado` (superusuário do container). O `conftest.py` faz `DROP/CREATE DATABASE sistema_gado_test` a cada sessão e aplica as migrations.
 
 ```bash
 pytest tests/                              # todos os testes
