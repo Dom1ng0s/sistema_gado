@@ -122,6 +122,10 @@ def test_csp_presente_e_restringe_default_src(client):
     assert csp is not None
     assert "default-src 'self'" in csp
     assert "frame-ancestors 'self'" in csp
+    # #116 — fontes self-hosted: nenhum host de terceiros para estilo/fonte
+    assert "fonts.googleapis.com" not in csp
+    assert "fonts.gstatic.com" not in csp
+    assert "font-src 'self'" in csp
 
 
 def test_session_cookie_flags_configurados(app):
