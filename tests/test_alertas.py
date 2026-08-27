@@ -7,6 +7,8 @@ Verifica que as funções não lançam exceção e não chamam send se não há 
 import pytest
 from unittest.mock import patch
 
+from tests.dbcompat import connect
+
 
 @pytest.fixture(autouse=True)
 def disable_smtp(monkeypatch):
@@ -58,11 +60,10 @@ def test_verificar_contas_chama_send_quando_ha_dados(app, db_setup):
     """verificar_contas_vencendo chama send_alert_contas quando há conta vencendo."""
     import itertools
     from werkzeug.security import generate_password_hash
-    import db_config as dbc
 
     seq = itertools.count(88000)
     n = next(seq)
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash, email) VALUES (%s, %s, %s)",
@@ -72,7 +73,7 @@ def test_verificar_contas_chama_send_quando_ha_dados(app, db_setup):
     cur.execute(
         "INSERT INTO financial_schedule "
         "(user_id, descricao, valor, vencimento, status) "
-        "VALUES (%s, 'Ração', 2000.00, CURDATE(), 'pendente')",
+        "VALUES (%s, 'Ração', 2000.00, CURRENT_DATE, 'pendente')",
         (uid,)
     )
     conn.commit(); cur.close(); conn.close()
@@ -87,7 +88,7 @@ def test_verificar_contas_chama_send_quando_ha_dados(app, db_setup):
         mock_send.assert_called_once()
 
     # cleanup
-    conn2 = dbc.get_db_connection()
+    conn2 = connect()
     cur2 = conn2.cursor()
     cur2.execute("DELETE FROM financial_schedule WHERE user_id=%s", (uid,))
     cur2.execute("DELETE FROM usuarios WHERE id=%s", (uid,))
@@ -102,7 +103,7 @@ def test_verificar_contas_vencendo_agrupa_por_usuario(app, db_setup):
 
     seq = itertools.count(89000)
     n1, n2 = next(seq), next(seq)
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash, email) VALUES (%s, %s, %s)",
@@ -116,12 +117,12 @@ def test_verificar_contas_vencendo_agrupa_por_usuario(app, db_setup):
     uid2 = cur.lastrowid
     cur.execute(
         "INSERT INTO financial_schedule (user_id, descricao, valor, vencimento, status) "
-        "VALUES (%s, 'Ração', 2000.00, CURDATE(), 'pendente')",
+        "VALUES (%s, 'Ração', 2000.00, CURRENT_DATE, 'pendente')",
         (uid1,)
     )
     cur.execute(
         "INSERT INTO financial_schedule (user_id, descricao, valor, vencimento, status) "
-        "VALUES (%s, 'Sal Mineral', 500.00, CURDATE(), 'pendente')",
+        "VALUES (%s, 'Sal Mineral', 500.00, CURRENT_DATE, 'pendente')",
         (uid2,)
     )
     conn.commit(); cur.close(); conn.close()
@@ -134,7 +135,7 @@ def test_verificar_contas_vencendo_agrupa_por_usuario(app, db_setup):
         assert chamadas[f"alerta{n1}@test.com"][0][0] == 'Ração'
         assert chamadas[f"alerta{n2}@test.com"][0][0] == 'Sal Mineral'
 
-    conn2 = dbc.get_db_connection()
+    conn2 = connect()
     cur2 = conn2.cursor()
     cur2.execute("DELETE FROM financial_schedule WHERE user_id IN (%s, %s)", (uid1, uid2))
     cur2.execute("DELETE FROM usuarios WHERE id IN (%s, %s)", (uid1, uid2))

@@ -12,6 +12,7 @@ import pytest
 from werkzeug.security import generate_password_hash
 
 import db_config as dbc
+from tests.dbcompat import connect
 from repositories import animal_repository, financeiro_repository
 
 _seq = itertools.count(9000)
@@ -24,7 +25,7 @@ def _n():
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _make_user():
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
@@ -39,7 +40,7 @@ def _make_user():
 
 def _make_animal(user_id, brinco=None, sexo="M", preco=1000.0, vendido=False):
     brinco = brinco or f"OPT{_n()}"
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id)"
@@ -59,7 +60,7 @@ def _make_animal(user_id, brinco=None, sexo="M", preco=1000.0, vendido=False):
 
 
 def _add_pesagem(animal_id, data_str, peso):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
@@ -71,7 +72,7 @@ def _add_pesagem(animal_id, data_str, peso):
 
 
 def _add_medicacao(animal_id, data_str, nome, custo=50.0):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO medicacoes (animal_id, data_aplicacao, nome_medicamento, custo)"
@@ -84,7 +85,7 @@ def _add_medicacao(animal_id, data_str, nome, custo=50.0):
 
 
 def _count_medicacoes(animal_id):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM medicacoes WHERE animal_id=%s", (animal_id,))
     count = cur.fetchone()[0]
@@ -94,7 +95,7 @@ def _count_medicacoes(animal_id):
 
 
 def _count_pesagens(animal_id):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "SELECT COUNT(*) FROM pesagens WHERE animal_id=%s AND deleted_at IS NULL",

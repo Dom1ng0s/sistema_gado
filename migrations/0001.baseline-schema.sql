@@ -253,13 +253,14 @@ SELECT
     p.peso_final,
     (p.peso_final - p.peso_inicial) AS ganho_total,
     (p.data_final - p.data_inicial) AS dias,
+    -- gmd NULL para animal com pesagens só na mesma data (idêntico ao cálculo
+    -- inline que as consultas de rebanho/painel faziam antes do #115).
     CASE WHEN (p.data_final - p.data_inicial) > 0
          THEN (p.peso_final - p.peso_inicial) / (p.data_final - p.data_inicial)
-         ELSE 0 END AS gmd
+         END AS gmd
 FROM primeira_ultima p
 JOIN animais a ON p.animal_id = a.id
-WHERE p.data_inicial <> p.data_final
-  AND a.deleted_at IS NULL;
+WHERE a.deleted_at IS NULL;
 
 CREATE OR REPLACE VIEW v_fluxo_caixa AS
 SELECT user_id, ano,

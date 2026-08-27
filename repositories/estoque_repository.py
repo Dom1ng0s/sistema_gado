@@ -75,9 +75,18 @@ def insert_movimentacao(user_id, produto_id, tipo, quantidade, custo_unitario, m
                         lote_fabricante=None, data_validade=None):
     with get_db_cursor() as cursor:
         if tipo == 'saida':
+            # Serializa saídas concorrentes travando a linha do produto (o
+            # Postgres não permite FOR UPDATE junto de agregação); só então
+            # soma o saldo.
+            cursor.execute(
+                "SELECT 1 FROM estoque_produtos WHERE id = %s AND user_id = %s FOR UPDATE",
+                (produto_id, user_id)
+            )
+            if cursor.fetchone() is None:
+                raise ValueError("Produto não encontrado.")
             cursor.execute(
                 "SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN quantidade ELSE -quantidade END), 0) "
-                "FROM estoque_movimentacoes WHERE produto_id = %s AND user_id = %s FOR UPDATE",
+                "FROM estoque_movimentacoes WHERE produto_id = %s AND user_id = %s",
                 (produto_id, user_id)
             )
             saldo = float(cursor.fetchone()[0])

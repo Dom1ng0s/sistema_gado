@@ -6,6 +6,7 @@ import itertools
 import pytest
 from werkzeug.security import generate_password_hash
 import db_config as dbc
+from tests.dbcompat import connect
 from repositories import configuracao_repository
 
 _seq = itertools.count(13000)
@@ -16,7 +17,7 @@ def _n():
 
 
 def _make_user():
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
@@ -28,23 +29,23 @@ def _make_user():
 
 
 def _purge(user_id):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
-    cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+    cur.execute("SET session_replication_role = 'replica'")
     for sql in [
-        "DELETE p FROM pesagens p JOIN animais a ON p.animal_id = a.id WHERE a.user_id = %s",
+        "DELETE FROM pesagens p USING animais a WHERE p.animal_id = a.id AND a.user_id = %s",
         "DELETE FROM animais WHERE user_id = %s",
         "DELETE FROM custos_operacionais WHERE user_id = %s",
         "DELETE FROM configuracoes WHERE user_id = %s",
         "DELETE FROM usuarios WHERE id = %s",
     ]:
         cur.execute(sql, (user_id,))
-    cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+    cur.execute("SET session_replication_role = 'origin'")
     conn.commit(); cur.close(); conn.close()
 
 
 def _login(client, uid):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT username FROM usuarios WHERE id = %s", (uid,))
     username = cur.fetchone()[0]
@@ -90,7 +91,7 @@ def test_graficos_peso_sem_animais_retorna_zeros(app, um):
 def test_graficos_peso_classifica_por_arroba(app, um):
     with app.test_client() as client:
         _login(client, um)
-        conn = dbc.get_db_connection()
+        conn = connect()
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "
@@ -138,7 +139,7 @@ def test_gmd_lote_mais_de_50_ids_retorna_400(app, um):
 def test_gmd_lote_ids_validos_retorna_dados_do_proprio_usuario(app, um):
     with app.test_client() as client:
         _login(client, um)
-        conn = dbc.get_db_connection()
+        conn = connect()
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "
@@ -161,7 +162,7 @@ def test_gmd_lote_ids_validos_retorna_dados_do_proprio_usuario(app, um):
 def test_gmd_lote_ignora_animal_de_outro_usuario(app):
     with app.test_client() as client:
         uid_a, uid_b = _make_user(), _make_user()
-        conn = dbc.get_db_connection()
+        conn = connect()
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "
@@ -183,7 +184,7 @@ def test_gmd_lote_ignora_animal_de_outro_usuario(app):
 def test_custos_por_ano_retorna_lista_json(app, um):
     with app.test_client() as client:
         _login(client, um)
-        conn = dbc.get_db_connection()
+        conn = connect()
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO custos_operacionais (user_id, categoria, tipo_custo, valor, data_custo, descricao) "

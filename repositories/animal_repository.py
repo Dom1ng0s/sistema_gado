@@ -328,7 +328,7 @@ def get_gmd_by_animal(animal_id):
     with get_db_cursor() as cursor:
         cursor.execute(
             "SELECT peso_final, ganho_total, dias, ROUND(gmd, 3) AS gmd "
-            "FROM v_gmd_analitico WHERE animal_id = %s",
+            "FROM v_gmd_analitico WHERE animal_id = %s AND dias > 0",
             (animal_id,)
         )
         return cursor.fetchone()

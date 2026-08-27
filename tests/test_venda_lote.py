@@ -7,6 +7,7 @@ import pytest
 import itertools
 from werkzeug.security import generate_password_hash
 import db_config as dbc
+from tests.dbcompat import connect
 from repositories import animal_repository
 
 _seq = itertools.count(8000)
@@ -17,7 +18,7 @@ def _n():
 
 
 def _make_user():
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
@@ -30,7 +31,7 @@ def _make_user():
 
 def _make_animal(user_id, brinco=None, peso=None, data_pesagem='2024-01-01'):
     brinco = brinco or f"VL{_n()}"
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id)"
@@ -48,21 +49,21 @@ def _make_animal(user_id, brinco=None, peso=None, data_pesagem='2024-01-01'):
 
 
 def _purge(user_id):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
-    cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+    cur.execute("SET session_replication_role = 'replica'")
     for sql in [
-        "DELETE p FROM pesagens p JOIN animais a ON p.animal_id = a.id WHERE a.user_id = %s",
+        "DELETE FROM pesagens p USING animais a WHERE p.animal_id = a.id AND a.user_id = %s",
         "DELETE FROM animais WHERE user_id = %s",
         "DELETE FROM usuarios WHERE id = %s",
     ]:
         cur.execute(sql, (user_id,))
-    cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+    cur.execute("SET session_replication_role = 'origin'")
     conn.commit(); cur.close(); conn.close()
 
 
 def _login(client, uid):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT username FROM usuarios WHERE id = %s", (uid,))
     username = cur.fetchone()[0]
@@ -90,7 +91,7 @@ def test_registrar_venda_lote_atualiza_animais_e_insere_pesagens(um):
     assert vendidos == 2
     assert invalidos == []
 
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT data_venda, preco_venda FROM animais WHERE id = %s", (a1,))
     data_venda, preco_venda = cur.fetchone()
@@ -143,7 +144,7 @@ def test_registrar_venda_lote_conta_linhas_processadas_com_id_duplicado(um):
 
 def test_get_animais_ativos_com_ultimo_peso(um):
     a1 = _make_animal(um, peso=400, data_pesagem='2024-01-01')
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, '2024-03-01', 480)", (a1,)
@@ -212,7 +213,7 @@ def test_rota_venda_lote_calcula_preco_por_arroba(app):
                 'animal_ids[]': [str(a1)],
                 'pesos_venda[]': ['450'],
             })
-        conn = dbc.get_db_connection()
+        conn = connect()
         cur = conn.cursor()
         cur.execute("SELECT preco_venda FROM animais WHERE id = %s", (a1,))
         preco = float(cur.fetchone()[0])

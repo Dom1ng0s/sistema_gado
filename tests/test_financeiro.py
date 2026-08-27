@@ -1,15 +1,14 @@
 import pytest
-import mysql.connector
+from tests.dbcompat import connect
 from werkzeug.security import generate_password_hash
 
-from conftest import TEST_DB_CONFIG as DB_CONFIG
 
 def login(client):
     return client.post('/login', data={'username': 'testuser', 'password': '123'}, follow_redirects=True)
 
 
 def _make_user(username):
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
@@ -25,7 +24,7 @@ def _login_as(client, username):
 
 
 def _insert_agendamento(user_id, descricao="Conta teste", valor=100.0, vencimento="2024-12-01"):
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO financial_schedule (user_id, descricao, valor, vencimento, status) "
@@ -39,7 +38,7 @@ def _insert_agendamento(user_id, descricao="Conta teste", valor=100.0, venciment
 
 def _criar_lote_com_animais(user_id, codigo="LOTE-PL", com_venda=False):
     """Helper: cria lote + 2 animais no banco de teste, retorna lote_id."""
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO lotes (user_id, codigo_lote, descricao, data_aquisicao) VALUES (%s,%s,%s,'2024-01-10')",
@@ -68,7 +67,7 @@ def _criar_lote_com_animais(user_id, codigo="LOTE-PL", com_venda=False):
 
 
 def _get_user_id():
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT id FROM usuarios WHERE username='testuser'")
     uid = cur.fetchone()[0]
@@ -186,7 +185,7 @@ def test_detalhe_lote_exibe_animais(client):
 def test_detalhe_lote_outro_usuario_redireciona(client):
     """Lote de outro usuário redireciona para lista (não vaza dados)."""
     login(client)
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("INSERT INTO usuarios (username, password_hash) VALUES ('outro','x')")
     outro_id = cur.lastrowid
@@ -213,7 +212,7 @@ def test_financeiro_nao_exibe_dados_de_prenhez(client):
     """Vaca gestante não deve aparecer no Financeiro — o lugar dela é /reproducao."""
     login(client)
     uid = _get_user_id()
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "
@@ -227,7 +226,7 @@ def test_financeiro_nao_exibe_dados_de_prenhez(client):
     cur.execute(
         "INSERT INTO reproducao "
         "(user_id, vaca_id, data_cobertura, resultado, diagnostico, data_diagnostico, data_parto_prevista) "
-        "VALUES (%s, %s, %s, 'vivo', 'positivo', CURDATE(), %s)",
+        "VALUES (%s, %s, %s, 'vivo', 'positivo', CURRENT_DATE, %s)",
         (uid, vaca_id, data_cob, data_prev)
     )
     conn.commit()
@@ -316,7 +315,7 @@ def test_agendamentos_post_sem_valor_retorna_erro(client):
     }, follow_redirects=True)
     assert response.status_code == 200
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "SELECT COUNT(*) FROM financial_schedule WHERE user_id=%s AND descricao='Conta sem valor único XYZ'",
@@ -341,7 +340,7 @@ def test_agendamentos_editar_atualiza_valor(client):
     assert response.status_code == 200
     assert b'Conta editada' in response.data
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT descricao, valor FROM financial_schedule WHERE id=%s", (agend_id,))
     row = cur.fetchone()
@@ -360,7 +359,7 @@ def test_agendamentos_excluir_soft_deleta(client):
     assert response.status_code == 200
     assert b'Conta a excluir' not in response.data
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT deleted_at FROM financial_schedule WHERE id=%s", (agend_id,))
     row = cur.fetchone()
@@ -381,7 +380,7 @@ def test_agendamentos_editar_de_outro_usuario_nao_altera(client):
     }, follow_redirects=True)
     assert response.status_code == 200
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT descricao, valor FROM financial_schedule WHERE id=%s", (agend_id,))
     row = cur.fetchone()
@@ -398,7 +397,7 @@ def test_agendamentos_excluir_de_outro_usuario_nao_altera(client):
 
     client.post(f'/financeiro/agendamentos/{agend_id}/excluir', follow_redirects=True)
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT deleted_at FROM financial_schedule WHERE id=%s", (agend_id,))
     row = cur.fetchone()
@@ -414,7 +413,7 @@ def test_agendamentos_baixar_de_outro_usuario_nao_altera(client):
 
     client.post(f'/financeiro/baixar/{agend_id}', follow_redirects=True)
 
-    conn = mysql.connector.connect(**DB_CONFIG)
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT status FROM financial_schedule WHERE id=%s", (agend_id,))
     row = cur.fetchone()

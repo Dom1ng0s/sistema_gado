@@ -7,6 +7,7 @@ import io
 import itertools
 from werkzeug.security import generate_password_hash
 import db_config as dbc
+from tests.dbcompat import connect
 
 _seq = itertools.count(12000)
 
@@ -16,7 +17,7 @@ def _n():
 
 
 def _make_user():
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
@@ -28,18 +29,18 @@ def _make_user():
 
 
 def _purge(user_id):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
-    cur.execute("SET FOREIGN_KEY_CHECKS = 0")
-    cur.execute("DELETE p FROM pesagens p JOIN animais a ON p.animal_id = a.id WHERE a.user_id = %s", (user_id,))
+    cur.execute("SET session_replication_role = 'replica'")
+    cur.execute("DELETE FROM pesagens p USING animais a WHERE p.animal_id = a.id AND a.user_id = %s", (user_id,))
     cur.execute("DELETE FROM animais WHERE user_id = %s", (user_id,))
     cur.execute("DELETE FROM usuarios WHERE id = %s", (user_id,))
-    cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+    cur.execute("SET session_replication_role = 'origin'")
     conn.commit(); cur.close(); conn.close()
 
 
 def _login(client, uid):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT username FROM usuarios WHERE id = %s", (uid,))
     username = cur.fetchone()[0]
@@ -64,7 +65,7 @@ def test_importar_csv_insere_linhas_validas_em_lote(app):
             assert r.status_code == 200
             assert b"5" in r.data  # inseridos: 5
 
-            conn = dbc.get_db_connection()
+            conn = connect()
             cur = conn.cursor()
             cur.execute("SELECT COUNT(*) FROM animais WHERE user_id = %s", (uid,))
             assert cur.fetchone()[0] == 5
@@ -88,7 +89,7 @@ def test_importar_csv_grava_pesagem_inicial(app):
             r = _upload(client, csv_text)
             assert r.status_code == 200
 
-            conn = dbc.get_db_connection()
+            conn = connect()
             cur = conn.cursor()
             cur.execute(
                 "SELECT p.peso, p.data_pesagem FROM pesagens p "
@@ -122,7 +123,7 @@ def test_importar_csv_brinco_duplicado_no_proprio_arquivo_reporta_conflito(app):
             r = _upload(client, csv_text)
             assert r.status_code == 200
 
-            conn = dbc.get_db_connection()
+            conn = connect()
             cur = conn.cursor()
             cur.execute("SELECT COUNT(*) FROM animais WHERE user_id = %s AND brinco = %s", (uid, brinco_dup))
             assert cur.fetchone()[0] == 1  # só a primeira ocorrência foi inserida

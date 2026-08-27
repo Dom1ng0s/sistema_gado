@@ -6,6 +6,7 @@ import pytest
 import itertools
 from werkzeug.security import generate_password_hash
 import db_config as dbc
+from tests.dbcompat import connect
 from repositories import pasto_repository
 
 _seq = itertools.count(5000)
@@ -18,7 +19,7 @@ def _n():
 # ── helpers de banco ──────────────────────────────────────────────────────────
 
 def _make_user():
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
@@ -30,7 +31,7 @@ def _make_user():
 
 
 def _make_animal(user_id):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id)"
@@ -47,15 +48,15 @@ def _make_animal(user_id):
 
 
 def _purge(user_id):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
-    cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+    cur.execute("SET session_replication_role = 'replica'")
     for sql in [
-        "DELETE oa FROM ocupacao_animais oa JOIN ocupacoes o ON oa.ocupacao_id = o.id JOIN modulos m ON o.modulo_id = m.id WHERE m.user_id = %s",
-        "DELETE o FROM ocupacoes o JOIN modulos m ON o.modulo_id = m.id WHERE m.user_id = %s",
+        "DELETE FROM ocupacao_animais oa USING ocupacoes o, modulos m WHERE oa.ocupacao_id = o.id AND o.modulo_id = m.id AND m.user_id = %s",
+        "DELETE FROM ocupacoes o USING modulos m WHERE o.modulo_id = m.id AND m.user_id = %s",
         "DELETE FROM modulos WHERE user_id = %s",
         "DELETE FROM pastos WHERE user_id = %s",
-        "DELETE p FROM pesagens p JOIN animais a ON p.animal_id = a.id WHERE a.user_id = %s",
+        "DELETE FROM pesagens p USING animais a WHERE p.animal_id = a.id AND a.user_id = %s",
         "DELETE FROM reproducao WHERE user_id = %s",
         "DELETE FROM animais WHERE user_id = %s",
         "DELETE FROM estoque_movimentacoes WHERE user_id = %s",
@@ -63,12 +64,12 @@ def _purge(user_id):
         "DELETE FROM usuarios WHERE id = %s",
     ]:
         cur.execute(sql, (user_id,))
-    cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+    cur.execute("SET session_replication_role = 'origin'")
     conn.commit(); cur.close(); conn.close()
 
 
 def _fetch_one(sql, params):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(sql, params)
     row = cur.fetchone()
@@ -77,7 +78,7 @@ def _fetch_one(sql, params):
 
 
 def _login(client, uid):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute("SELECT username FROM usuarios WHERE id = %s", (uid,))
     username = cur.fetchone()[0]
@@ -261,7 +262,7 @@ def test_get_pastos_agrega_modulos_e_alertas_lotacao(um):
 
 
 def test_get_gmd_por_modulo_calcula_gmd_do_animal_ocupante(um):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "

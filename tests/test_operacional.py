@@ -1,6 +1,7 @@
 import pytest
 
 import db_config as dbc
+from tests.dbcompat import connect
 
 # Helper para logar antes de cada teste
 def login(client):
@@ -8,7 +9,7 @@ def login(client):
 
 
 def _fetch_one(sql, params=()):
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(sql, params)
     row = cur.fetchone()
@@ -68,7 +69,7 @@ def test_cadastro_brinco_na_lixeira_mensagem_amigavel(client):
     })
     row = _fetch_one("SELECT id FROM animais WHERE brinco='LIXO-BRINCO' AND deleted_at IS NULL")
     assert row is not None
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute("UPDATE animais SET deleted_at = NOW() WHERE id = %s", (row[0],))
     conn.commit(); cur.close(); conn.close()
@@ -169,7 +170,7 @@ def test_pesagem_lote_sucesso(client):
 
     # Busca o ID do animal via DB usando o repositório (sem depender de ID fixo)
     import db_config as dbc
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "SELECT a.id FROM animais a JOIN usuarios u ON a.user_id = u.id "
@@ -214,7 +215,7 @@ def test_cadastro_animal_com_raca(client):
     assert response.status_code == 200
 
     import db_config as dbc
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "SELECT raca FROM animais a JOIN usuarios u ON a.user_id = u.id "
@@ -239,7 +240,7 @@ def test_cadastro_animal_com_raca_outra(client):
     assert response.status_code == 200
 
     import db_config as dbc
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "SELECT raca FROM animais a JOIN usuarios u ON a.user_id = u.id "
@@ -308,7 +309,7 @@ def test_export_csv_inclui_raca(client):
 
 def _make_user(username):
     from werkzeug.security import generate_password_hash
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)",
@@ -373,7 +374,7 @@ def test_vacinacao_coletiva_ignora_animal_de_outro_usuario(client):
     """Animal_id de outro usuário incluído no POST não recebe a medicação (multi-tenant)."""
     login(client)
     outro_id = _make_user('vac_outro_user')
-    conn = dbc.get_db_connection()
+    conn = connect()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "

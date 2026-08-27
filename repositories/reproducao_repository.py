@@ -73,10 +73,10 @@ def update_diagnostico(reproducao_id, user_id, diagnostico, data_diagnostico):
     with get_db_cursor() as cursor:
         cursor.execute(
             "UPDATE reproducao r "
-            "JOIN animais v ON r.vaca_id = v.id AND v.user_id = %s "
-            "SET r.diagnostico = %s, r.data_diagnostico = %s "
-            "WHERE r.id = %s",
-            (user_id, diagnostico, data_diagnostico or None, reproducao_id)
+            "SET diagnostico = %s, data_diagnostico = %s "
+            "FROM animais v "
+            "WHERE r.vaca_id = v.id AND v.user_id = %s AND r.id = %s",
+            (diagnostico, data_diagnostico or None, user_id, reproducao_id)
         )
         return cursor.rowcount > 0
 
