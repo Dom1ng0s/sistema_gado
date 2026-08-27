@@ -3,7 +3,7 @@ import pytest
 import mysql.connector
 from app import app as flask_app
 from werkzeug.security import generate_password_hash
-from init_db import criar_schema
+from db_migrate import apply_migrations, database_url
 
 # Credenciais fixas para o banco local de teste — isolado do .env de produção
 # Suportam override via variáveis de ambiente (útil para CI e instâncias temporárias)
@@ -27,18 +27,22 @@ TEST_DB_CONFIG = {**DB_CONFIG, "database": TEST_DB_NAME}
 
 @pytest.fixture(scope='session')
 def db_setup():
-    """Cria o banco de dados de teste e as tabelas/views a partir da mesma
-    fonte de verdade usada em produção (init_db.criar_schema), evitando manter
-    duas cópias manuais do DDL."""
+    """Cria o banco de teste e aplica as MESMAS migrations de produção
+    (migrations/*.sql via yoyo), evitando manter duas cópias do DDL."""
     try:
         conn = mysql.connector.connect(**DB_CONFIG)
         cursor = conn.cursor()
 
         cursor.execute(f"DROP DATABASE IF EXISTS {TEST_DB_NAME}")
         cursor.execute(f"CREATE DATABASE {TEST_DB_NAME}")
-        cursor.execute(f"USE {TEST_DB_NAME}")
+        conn.commit()
 
-        criar_schema(cursor)
+        apply_migrations(url=database_url(
+            host=DB_HOST, user=DB_USER, password=DB_PASSWORD,
+            port=DB_PORT, database=TEST_DB_NAME,
+        ))
+
+        cursor.execute(f"USE {TEST_DB_NAME}")
 
         # v_gmd_analitico simplificada: retorna gmd=0 para todo animal (mesmo sem
         # 2 pesagens), diferente da view real que exige histórico de pesagem.

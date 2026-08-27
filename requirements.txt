@@ -8,6 +8,9 @@ pyee==13.0.1
 Flask-Limiter==4.1.1
 redis>=3.0
 Flask-WTF==1.2.2
+yoyo-migrations==9.0.0
+PyMySQL==1.2.0
+sqlparse==0.6.0
 limits==5.8.0
 WTForms==3.2.2
 certifi==2025.11.12
