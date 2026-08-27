@@ -6,10 +6,8 @@
   <title>{% block title %}SGG{% endblock %} — Sistema de Gestão de Gado</title>
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
-  <!-- Google Fonts — preconnect first, then stylesheet with font-display=swap -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Rubik:wght@400;500;600&display=swap">
+  <!-- Fontes self-hosted (Playfair Display + Rubik) — sem CDN de terceiros -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}?v={{ cache_bust }}">
 
   <!-- Design System único -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}?v={{ cache_bust }}">

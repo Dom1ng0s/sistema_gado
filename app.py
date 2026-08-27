@@ -110,14 +110,15 @@ def set_static_cache(response):
 
 # CSP alinhada ao que o front realmente carrega: scripts/estilos inline (o app
 # usa <script> e handlers inline em vários templates → precisa de 'unsafe-inline'),
-# echarts via jsDelivr, fontes do Google. Toda chamada fetch é same-origin.
+# echarts via jsDelivr. Fontes agora são self-hosted (static/fonts/) — nenhum
+# host de terceiros para estilo/fonte. Toda chamada fetch é same-origin.
 # É defesa em profundidade (bloqueia origens externas não listadas), não substitui
 # o escape de dados — ver issue #48.
 _CSP = (
     "default-src 'self'; "
     "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-    "font-src 'self' https://fonts.gstatic.com; "
+    "style-src 'self' 'unsafe-inline'; "
+    "font-src 'self'; "
     "img-src 'self' data:; "
     "connect-src 'self'; "
     "frame-ancestors 'self'; "
