@@ -126,6 +126,9 @@ def test_csp_presente_e_restringe_default_src(client):
     assert "fonts.googleapis.com" not in csp
     assert "fonts.gstatic.com" not in csp
     assert "font-src 'self'" in csp
+    # #119 — ECharts self-hosted: script-src sem CDN de terceiros
+    assert "cdn.jsdelivr.net" not in csp
+    assert "script-src 'self' 'unsafe-inline';" in csp
 
 
 def test_session_cookie_flags_configurados(app):

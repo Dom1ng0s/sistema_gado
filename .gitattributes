@@ -1,0 +1,4 @@
+# Assets vendorizados (minificados, gerados por scripts/vendor_*.sh) — sem
+# conversão de fim de linha e fora dos diffs, tratados como blob opaco.
+static/vendor/** -text -diff linguist-vendored
+static/fonts/**  binary
