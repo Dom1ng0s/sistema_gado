@@ -72,7 +72,7 @@ pip install -r requirements.txt
 playwright install chromium
 
 # configure .env a partir de .env-example
-python init_db.py          # cria tabelas, views e índices
+python init_db.py          # aplica migrations/*.sql (schema) + seed do admin
 python scripts/demo/seed_demo_historico.py  # popula com dados demo (opcional)
 python app.py
 ```
@@ -91,19 +91,27 @@ O banco não armazena dados brutos para o Python calcular. Cada view encapsula u
 | `vw_gmd_por_touro` | Ranking de touros por GMD médio dos filhos |
 | `vw_saldo_estoque` | Saldo de estoque com flag de mínimo atingido |
 
-### Migrações de schema — política só-aditiva
+### Migrações de schema — `yoyo-migrations`, política só-aditiva
 
-Não há Alembic. O schema vive inteiro em `init_db.py` como DDL idempotente
-(`CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE VIEW`, `ALTER` protegido por errno),
-rodada a cada deploy pelo `railway.toml`. A decisão é **manter esse padrão só-aditivo**:
-sem ORM, ~20 ALTERs convergentes não justificam uma ferramenta de migração.
+O schema vive em `migrations/*.sql` e é aplicado por **yoyo-migrations** (SQL puro,
+sem ORM — ver `db_migrate.py`). O `preDeployCommand` do `railway.toml` roda
+`python -u init_db.py`, que aplica as migrations pendentes e faz o seed opcional do admin.
 
-- **Direto no `init_db.py`:** tabela, view ou índice novos; coluna *nullable* ou com `DEFAULT`.
-- **Exige script one-shot em `migrations/`, rodado à mão, fora do `preDeployCommand`:**
-  renomear, mudar tipo, `NOT NULL` sem default em tabela populada, ou qualquer backfill.
+```bash
+python db_migrate.py            # aplica migrations pendentes (usa DB_* do .env)
+python db_migrate.py --list     # migrations e status
+python db_migrate.py --rollback # desfaz a última (se tiver .rollback.sql)
+yoyo new -m "descrição"         # cria migrations/NNNN.descrição.sql
+```
 
-DDL destrutiva nunca entra no `init_db.py` nem no `preDeployCommand` — como roda a cada
-deploy, seria irreversível. Reavaliar adotar migração versionada na primeira mudança desse tipo.
+- **`0001.baseline-schema`** é o estado consolidado, escrito para ser *convergente*
+  (`CREATE TABLE IF NOT EXISTS` / `CREATE OR REPLACE VIEW`): roda igual num banco
+  vazio e num banco de produção já povoado — o primeiro deploy **não** precisa de `yoyo mark`.
+- Política **só-aditiva** (#78), imposta por `tests/test_migrations.py`: nenhuma
+  migration pode conter `DROP TABLE` / `DROP COLUMN`. Renomear, mudar tipo ou
+  `NOT NULL` sem default em tabela populada exige uma migration de transição
+  (adiciona o novo, faz backfill, mantém o antigo) — nunca um `DROP` direto.
+- Dialeto MySQL 8. A migração para PostgreSQL (#115) reescreve `0001`.
 
 ## Testes
 

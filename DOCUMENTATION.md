@@ -48,6 +48,7 @@ preco = (peso_kg / 30) * valor_arroba      # KG_POR_ARROBA = 30
 | **Linguagem** | Python 3.10+ | Base da aplicação. |
 | **Web framework** | **Flask 3.1** | Núcleo HTTP, roteamento por Blueprints, Jinja2. |
 | **Banco de dados** | **MySQL** (via `mysql-connector-python`) | Persistência. **SQL puro, sem ORM** (decisão deliberada). |
+| **Migrations** | **yoyo-migrations** (SQL-first, via PyMySQL) | Schema versionado em `migrations/*.sql`. Sem ORM, sem autogenerate. |
 | **Autenticação** | **Flask-Login** | Gestão de sessão e `current_user`. |
 | **Segurança de forms** | **Flask-WTF** (`CSRFProtect`) | Proteção CSRF global. |
 | **Rate limiting** | **Flask-Limiter** | Limite de requisições por rota (com Redis opcional em produção). |
@@ -276,6 +277,9 @@ GMD (`v_gmd_analitico`), fluxo de caixa (`v_fluxo_caixa`), P&L por lote (`vw_res
 ### 4.10 Cobertura de testes
 Suíte com **pytest** cobrindo autenticação, isolamento de tenant, financeiro, reprodução, estoque, sanitário, alertas e cálculo de GMD, além de testes **E2E com Playwright** (`tests/e2e/`).
 
+### 4.11 Migrations versionadas (só-aditivas)
+O schema vive em `migrations/*.sql`, aplicado por **yoyo-migrations** (SQL puro, sem ORM — ver `db_migrate.py`). `0001.baseline-schema` é o estado consolidado, escrito para ser *convergente* (`CREATE TABLE IF NOT EXISTS` / `CREATE OR REPLACE VIEW`): roda igual num banco vazio e num banco de produção já povoado, então o primeiro deploy não precisa de `yoyo mark`. yoyo registra o que já aplicou em `_yoyo_migration`. A política **só-aditiva** (#78) é imposta por teste (`tests/test_migrations.py`): nenhuma migration pode conter `DROP TABLE`/`DROP COLUMN`. `init_db.py` (o `preDeployCommand` do Railway) chama as migrations e depois faz o seed opcional do admin.
+
 ---
 
 ## 5. Camada de frontend e design system
@@ -349,8 +353,9 @@ cp .env-example .env
 #   SECRET_KEY, DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT
 #   (MAIL_* são opcionais, só necessários para emails/reset de senha)
 
-# 6. Inicializar o banco (cria tabelas, views e o usuário admin padrão)
+# 6. Inicializar o banco (aplica as migrations de migrations/*.sql + seed do admin)
 python init_db.py
+#   equivale a `python db_migrate.py` (schema) seguido do seed opcional do admin
 
 # 7. Rodar em modo de desenvolvimento
 python app.py
