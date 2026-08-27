@@ -204,11 +204,14 @@ class TestMedicacoesOrdenadas:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# H3 — get_animais_com_gmd: sem dependência de v_gmd_analitico
+# get_animais_com_gmd — LEFT JOIN v_gmd_analitico (materialized view, #115)
+# Nos testes v_gmd_analitico é uma VIEW normal sobre v_gmd_analitico_live
+# (conftest), então o GMD reflete a escrita na hora.
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TestAnimaisComGmd:
-    """H3 — get_animais_com_gmd deve calcular GMD inline sem usar v_gmd_analitico."""
+    """get_animais_com_gmd: GMD correto, LEFT JOIN preserva animais sem pesagem,
+    exclui vendidos e respeita o isolamento multi-tenant."""
 
     def test_retorna_gmd_calculado_corretamente(self, app):
         uid = _make_user()

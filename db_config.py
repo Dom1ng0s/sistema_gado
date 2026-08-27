@@ -86,6 +86,16 @@ def reset_pool():
             pass
 
 
+def connect(autocommit=False):
+    """Conexão avulsa (fora do pool). `autocommit=True` é necessário para
+    comandos que não rodam em transação, como REFRESH MATERIALIZED VIEW
+    CONCURRENTLY."""
+    cfg = _conn_kwargs()
+    return psycopg.connect(
+        cfg.get("conninfo", ""), autocommit=autocommit, **(cfg.get("kwargs") or {})
+    )
+
+
 def get_db_connection():
     """Conexão do pool (ou avulsa, se o pool falhou). Devolve None em erro —
     contrato herdado; models.py e helpers de teste checam `if conn`."""

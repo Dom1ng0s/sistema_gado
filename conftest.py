@@ -46,18 +46,13 @@ def db_setup():
 
         conn = psycopg.connect(**TEST_DB_CONFIG)
         with conn.cursor() as cur:
-            # v_gmd_analitico simplificada: retorna gmd=0 para todo animal (mesmo sem
-            # 2 pesagens), diferente da view real que exige histórico de pesagem.
-            # Repositórios que precisam de GMD real (get_animais_com_gmd, get_gmd_medio_rebanho,
-            # get_ranking_touros) calculam inline sem depender desta view — ver H3 em test_optimizer.py.
-            cur.execute("DROP VIEW IF EXISTS v_gmd_analitico CASCADE")
-            cur.execute("""
-            CREATE VIEW v_gmd_analitico AS
-            SELECT a.user_id, a.id AS animal_id, a.brinco,
-                   0::numeric AS peso_final, 0::numeric AS ganho_total,
-                   0 AS dias, 0::numeric AS gmd
-            FROM animais a
-            """)
+            # As 3 materialized views (migration 0003) viram VIEW normal sobre o
+            # mesmo corpo (`*_live`) só nos testes — recupera consistência
+            # read-after-write sem recopiar SQL. Em produção continuam matview
+            # com REFRESH agendado (app.py). Ver #115.
+            for mv in ("v_gmd_analitico", "v_fluxo_caixa", "vw_resultado_lote"):
+                cur.execute(f"DROP MATERIALIZED VIEW IF EXISTS {mv} CASCADE")
+                cur.execute(f"CREATE VIEW {mv} AS SELECT * FROM {mv}_live")
 
             senha_hash = generate_password_hash('123')
             cur.execute(
