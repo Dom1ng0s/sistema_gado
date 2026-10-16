@@ -127,6 +127,23 @@ pytest
 pytest tests/test_tenant_isolation.py   # verifica isolamento multi-tenant por HTTP
 ```
 
+A suíte precisa que o usuário do banco seja **superusuário**: vários testes usam
+`SET session_replication_role = 'replica'` para apagar linhas sem esbarrar em
+chave estrangeira. No Postgres do `docker compose` isso já vale, porque `gado` é
+o `POSTGRES_USER` do container.
+
+Se você tem um Postgres nativo na 5432 e não quer pará-lo, suba um container só
+para teste em outra porta e aponte a suíte para ele:
+
+```bash
+docker run -d --name sgg-test-pg -e POSTGRES_USER=gado -e POSTGRES_PASSWORD=gado123 \
+  -e POSTGRES_DB=sistema_gado -p 5433:5432 postgres:16
+TEST_DB_PORT=5433 pytest
+```
+
+`TEST_DB_HOST`, `TEST_DB_USER`, `TEST_DB_PASSWORD`, `TEST_DB_PORT` e
+`TEST_DB_NAME` sobrescrevem a configuração do `conftest.py`.
+
 Os testes de `test_tenant_isolation.py` verificam em nível HTTP que um usuário não consegue visualizar, vender, pesar, medicar ou excluir animais de outro usuário.
 
 ### Testes E2E (Playwright)

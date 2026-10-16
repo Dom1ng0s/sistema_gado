@@ -279,5 +279,13 @@ if __name__ == '__main__':
     porta = int(os.getenv('PORT', 5000))
     modo_debug = os.getenv('FLASK_DEBUG', 'False') == 'True'
     
-    print(f"🚀 Servidor rodando! Acesse: http://192.168.2.137:{porta}")
+    # O banner não pode derrubar o servidor. No Windows o console padrão é
+    # cp1252 e o emoji estourava UnicodeEncodeError ANTES do app.run(), então
+    # o processo morria sem abrir a porta — era o que fazia os testes e2e
+    # falharem com "server did not start". Sem console UTF-8, cai no texto puro.
+    try:
+        print(f"🚀 Servidor rodando! Acesse: http://192.168.2.137:{porta}")
+    except UnicodeEncodeError:
+        print(f"Servidor rodando! Acesse: http://192.168.2.137:{porta}")
+
     app.run(host='0.0.0.0', port=porta, debug=modo_debug)

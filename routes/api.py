@@ -6,6 +6,7 @@ import io
 import logging
 import os as _os
 import re as _re
+import tempfile as _tempfile
 import threading
 import time
 import uuid
@@ -51,8 +52,11 @@ _MAPA_ESTADOS = {
     'SP': 'São Paulo',          'SE': 'Sergipe',            'TO': 'Tocantins',
 }
 
-_PDF_DIR = '/tmp'
-_PDF_MAX_AGE = 3600  # 1h — jobs abandonados (.pdf/.error/.pending) viram lixo em /tmp
+# tempfile.gettempdir() devolve '/tmp' no Linux (produção, Railway) e o TEMP do
+# usuário no Windows. Antes era '/tmp' fixo, o que fazia a limpeza e o teste
+# dela quebrarem em máquina de desenvolvimento Windows.
+_PDF_DIR = _tempfile.gettempdir()
+_PDF_MAX_AGE = 3600  # 1h — jobs abandonados (.pdf/.error/.pending) viram lixo no diretório temporário
 _UUID_RE = _re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
 
 
