@@ -783,16 +783,18 @@
   }
 
   function ligarNav() {
+    /* No celular a coluna lateral colapsa numa faixa; o hambúrguer a abre.
+       No desktop o botão fica escondido por CSS e isto não roda. */
     var toggle = document.getElementById('nav-toggle');
-    var links  = document.getElementById('nav-links');
-    if (toggle && links) {
+    var lateral = document.getElementById('barra-lateral');
+    if (toggle && lateral) {
       toggle.addEventListener('click', function () {
-        var aberto = links.classList.toggle('open');
-        this.setAttribute('aria-expanded', aberto);
+        var aberta = lateral.classList.toggle('aberta');
+        this.setAttribute('aria-expanded', aberta);
       });
-      links.querySelectorAll('.nav-link').forEach(function (link) {
+      lateral.querySelectorAll('.nav-item').forEach(function (link) {
         link.addEventListener('click', function () {
-          links.classList.remove('open');
+          lateral.classList.remove('aberta');
           toggle.setAttribute('aria-expanded', 'false');
         });
       });

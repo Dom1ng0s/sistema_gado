@@ -275,142 +275,360 @@ h4 { font-size: var(--text-md);  line-height: var(--leading-snug);  letter-spaci
   color: var(--color-ink-tertiary);
 }
 
-/* ── Navegação ───────────────────────────────────────────── */
-/* Camada translúcida: o conteúdo corre POR BAIXO da barra em vez de a barra
-   comer uma faixa opaca do viewport. `saturate` compensa a dessaturação que
-   o blur causa. Fallback opaco para navegadores sem backdrop-filter. */
-.nav {
-  background: var(--color-surface);
+/* ── Shell: coluna lateral + área de conteúdo ─────────────────
+   A navegação deixou de ser uma barra horizontal porque numa barra
+   todo item pesa igual, e não pesam: Início, Rebanho e Financeiro
+   são uso diário; Pastos, Estoque, Sanidade, Reprodução e Relatórios
+   são quinzenais ou eventuais. Na coluna isso vira diferença de
+   tamanho e tom, sem precisar de rótulo de grupo em caixa alta.
+   ─────────────────────────────────────────────────────────── */
+.app {
   display: flex;
-  align-items: center;
-  padding: 0 var(--space-8);
-  height: 56px;
-  gap: var(--space-8);
-  position: sticky;
-  top: 0;
-  z-index: var(--z-nav);
+  flex-wrap: wrap;
+  align-items: stretch;
+  min-height: 100vh;
 }
 
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .nav {
-    background: rgba(255, 255, 255, 0.72);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    backdrop-filter: blur(20px) saturate(180%);
-    /* aresta clara no topo = luz pegando no material */
-    border-top: 1px solid rgba(255, 255, 255, 0.5);
-  }
+.barra-lateral {
+  flex: 1 1 var(--sidebar-largura);
+  max-width: var(--sidebar-largura);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-4) var(--space-5);
+  background: var(--color-surface-side);
+  border-right: 1px solid var(--color-border);
 }
 
-/* Scroll edge effect: em vez de um divisor de 1px permanente, um degradê curto
-   aparece só onde o conteúdo passa por baixo da barra flutuante. */
-.nav::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  height: 12px;
-  pointer-events: none;
-  background: linear-gradient(to bottom, rgba(60, 52, 30, 0.10), rgba(60, 52, 30, 0));
-  opacity: 0;
-  transition: opacity var(--transition-normal);
+.barra-lateral__marca {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--space-3);
+  text-decoration: none;
+  color: inherit;
 }
 
-body.is-scrolled .nav::after { opacity: 1; }
-
-.nav-logo {
-  font-family: var(--font-display);
-  font-size: var(--text-md);
+.barra-lateral__marca strong {
+  font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
-  color: var(--color-primary);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  text-decoration: none;
-  margin-right: var(--space-4);
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  flex: 1;
-}
-
-.nav-link {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  color: var(--color-ink-secondary);
-  text-decoration: none;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  white-space: nowrap;
-  transition: color var(--transition-fast), background var(--transition-fast);
-}
-
-.nav-link:hover {
+  letter-spacing: var(--tracking-title);
   color: var(--color-ink);
-  background: var(--color-surface-raised);
 }
 
-.nav-link.active {
-  color: var(--color-primary);
+.barra-lateral__marca span {
+  font-size: var(--text-xs);
+  color: var(--color-ink-tertiary);
+}
+
+/* ── Botão Registrar: a única porta de escrita ──────────────
+   Antes, escrever estava em três superfícies que competiam — o
+   dropdown "+ Novo", a barra de ações do painel e a ficha do animal.
+   Por isso "Importar CSV" aparecia em dois lugares. A navbar passa a
+   só navegar; este botão é o que escreve. */
+.registrar { position: relative; }
+
+.registrar__gatilho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: var(--space-3) 14px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.registrar__gatilho:hover { background: var(--color-primary-dark); }
+
+/* Abre abaixo e alinhado à esquerda, ao contrário do .action-menu padrão,
+   que abre alinhado à direita porque vive em barra de ações. */
+.registrar .action-menu__panel {
+  left: 0;
+  right: auto;
+  width: 248px;
+  transform-origin: top left;
+}
+
+.registrar__item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-ink);
+  transition: background var(--transition-fast);
+}
+
+.registrar__item:hover { background: var(--color-primary-bg); }
+
+.registrar__item strong {
+  display: block;
+  font-size: var(--text-base);
   font-weight: var(--weight-medium);
-  background: var(--color-primary-bg);
+  line-height: 1.3;
 }
 
-.nav-dropdown {
+.registrar__item small {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-ink-tertiary);
+}
+
+/* ── Itens de navegação ───────────────────────────────────── */
+.nav-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.nav-grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.nav-grupos hr {
+  margin: 0 var(--space-3);
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.nav-item {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  min-height: 40px;
+  box-sizing: border-box;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  line-height: 24px;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+/* Rotina: diário. Maior, tinta cheia. */
+.nav-item--rotina {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--color-ink);
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+/* Periódico: quinzenal ou eventual. Menor, tinta fraca. */
+.nav-item--periodico {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  color: var(--color-ink-tertiary);
+}
+
+.nav-item:hover { background: rgba(23, 37, 28, 0.05); color: var(--color-ink); }
+
+.nav-item.active,
+.nav-item[aria-current="page"] {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: var(--weight-semibold);
+  box-shadow: inset 2px 0 0 var(--color-primary);
+}
+
+/* ── Conta, no pé da coluna ───────────────────────────────── */
+.barra-lateral__conta {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
   position: relative;
 }
 
-.nav-dropdown-toggle {
-  font-family: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  color: var(--color-ink-secondary);
-  background: none;
-  border: none;
-  cursor: pointer;
+.conta__gatilho {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
   padding: var(--space-2) var(--space-3);
+  border: 0;
   border-radius: var(--radius-md);
-  transition: color var(--transition-fast), background var(--transition-fast);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-ink-tertiary);
+  text-align: left;
+  cursor: pointer;
 }
 
-.nav-dropdown-toggle:hover,
-.nav-dropdown-toggle[aria-expanded="true"] {
-  color: var(--color-ink);
-  background: var(--color-surface-raised);
+.conta__gatilho:hover { background: rgba(23, 37, 28, 0.05); }
+
+.conta__avatar {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: #fff;
+  font-family: var(--font-dado);
+  font-size: var(--text-xs);
 }
 
-/* Toggle de seção (ex.: "Manejo") sinaliza a página atual como um .nav-link faria. */
-.nav-dropdown-toggle.active {
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
-}
-
-.nav-dropdown-menu {
-  display: none;
-  position: absolute;
-  top: calc(100% + var(--space-1));
+/* No pé da coluna, então abre para CIMA. */
+.barra-lateral__conta .action-menu__panel {
+  top: auto;
+  bottom: calc(100% + 6px);
   left: 0;
-  min-width: 200px;
-  background: var(--color-surface);
+  right: auto;
+  width: 216px;
+  transform-origin: bottom left;
+  transform: translateY(8px) scale(0.94);
+}
+
+.barra-lateral__conta .action-menu__panel.open { transform: translateY(0) scale(1); }
+
+.conta__identidade {
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 5px;
+}
+
+.conta__identidade strong { display: block; font-size: var(--text-base); font-weight: var(--weight-medium); }
+.conta__identidade span { display: block; font-size: var(--text-xs); color: var(--color-ink-tertiary); }
+
+.conta__item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-ink);
+  font-size: var(--text-base);
+}
+
+.conta__item:hover { background: rgba(23, 37, 28, 0.05); }
+
+/* ── Área de conteúdo ─────────────────────────────────────── */
+.conteudo {
+  flex: 999 1 560px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface-sunken);
+}
+
+/* ── Busca global: o brinco é a chave de tudo ───────────────
+   Fica no topo de QUALQUER tela. Com uso que varia de um dia para
+   o outro, obrigar a passar pelo Rebanho para achar um animal é o
+   atalho mais caro do sistema. */
+.busca-global {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 14px var(--space-8);
+  background: var(--color-surface-sunken);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.busca-global__campo {
+  position: relative;
+  flex: 1 1 auto;
+  max-width: 440px;
+  display: flex;
+  align-items: center;
+}
+
+.busca-global__campo .icon {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--color-ink-tertiary);
+  pointer-events: none;
+}
+
+.busca-global__campo input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px 44px 10px 34px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  padding: var(--space-1);
-  z-index: var(--z-nav);
-  flex-direction: column;
-  gap: 0;
+  background: var(--color-surface);
+  font-family: var(--font-dado);
+  font-size: var(--text-sm);
+  color: var(--color-ink);
 }
 
-.nav-dropdown-menu.open {
-  display: flex;
+.busca-global__campo input::placeholder { color: var(--color-ink-placeholder); }
+
+.busca-global__campo input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  border-color: var(--color-primary);
 }
 
-.nav-dropdown-item {
-  display: block;
-  white-space: nowrap;
+.busca-global__atalho {
+  position: absolute;
+  right: 10px;
+  padding: 2px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken);
+  font-family: var(--font-dado);
+  font-size: 11px;
+  color: var(--color-ink-tertiary);
+}
+
+.busca-global__dica { font-size: var(--text-xs); color: var(--color-ink-tertiary); }
+
+/* ── Abrir a coluna no celular ────────────────────────────── */
+.barra-lateral__hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+@media (max-width: 860px) {
+  .barra-lateral {
+    max-width: none;
+    flex-basis: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .barra-lateral .nav-grupos,
+  .barra-lateral .barra-lateral__conta { display: none; }
+  .barra-lateral.aberta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .barra-lateral.aberta .nav-grupos,
+  .barra-lateral.aberta .barra-lateral__conta { display: flex; }
+  .barra-lateral__marca { flex: 1 1 auto; padding: 0; }
+  .barra-lateral__hamburger { display: inline-flex; }
+  .registrar { flex: 0 0 auto; }
+  .registrar__gatilho { width: auto; }
+  .busca-global { padding: var(--space-3) var(--space-4); flex-wrap: wrap; }
+  .busca-global__dica { display: none; }
 }
 
 /* ── Menu de ações animado (painel "Mais ações") ─────────────
@@ -652,27 +870,24 @@ body.is-scrolled .nav::after { opacity: 1; }
 .trend-flat { background: var(--n-100); color: var(--color-ink-tertiary); }
 
 /* ── Herói ───────────────────────────────────────────────────
-   O GMD é o indicador que justifica o sistema inteiro; quatro cartões
-   de peso igual faziam nenhum se destacar. Este ocupa o dobro e inverte
-   para fundo escuro. A barra mostra a distância até a meta configurada
-   — dado que já existia e que nenhum cartão exibia. */
+   O GMD é o indicador que justifica o sistema inteiro, e continua
+   ocupando o dobro da largura. O que mudou: a ênfase saiu do
+   preenchimento escuro e passou para o numeral. Num conceito onde
+   cor só marca limite cruzado, pintar um cartão inteiro de verde
+   dizia "atenção" sem que nada estivesse fora da linha.
+   A barra mostra a distância até a meta configurada. */
 .metric-hero {
   grid-column: span 2;
-  background: linear-gradient(160deg, var(--g-800) 0%, var(--g-900) 100%);
-  color: #fff;
+  background: var(--color-surface);
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: var(--space-5);
-  box-shadow: var(--shadow-md);
 }
 
-.metric-hero:hover { box-shadow: var(--shadow-lg); }
-.metric-hero .label { color: var(--g-300); }
-.metric-hero .metric-value { color: #fff; font-size: 3.25rem; letter-spacing: -0.04em; }
-.metric-hero .metric-unit  { color: var(--g-200); font-size: var(--text-md); }
-.metric-hero .metric-delta { color: var(--g-200); }
+.metric-hero .metric-value { font-size: var(--text-3xl); letter-spacing: -0.03em; }
+.metric-hero .metric-unit  { font-size: var(--text-md); }
 
 .metric-hero__topo {
   display: flex;
@@ -684,7 +899,7 @@ body.is-scrolled .nav::after { opacity: 1; }
 .meta-bar {
   height: 6px;
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--n-100);
   overflow: hidden;
 }
 
@@ -692,7 +907,7 @@ body.is-scrolled .nav::after { opacity: 1; }
   display: block;
   height: 100%;
   border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, var(--g-400), var(--g-300));
+  background: var(--color-primary);
   transition: width var(--transition-slow);
 }
 
@@ -702,8 +917,8 @@ body.is-scrolled .nav::after { opacity: 1; }
   gap: var(--space-3);
   font-size: var(--text-xs);
   margin-top: var(--space-2);
-  color: var(--g-200);
-  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-tertiary);
+  font-family: var(--font-dado);
 }
 
 /* Distribuição (macho/fêmea, faixas de arroba) */
@@ -729,7 +944,6 @@ body.is-scrolled .nav::after { opacity: 1; }
 
 @media (max-width: 820px) {
   .metric-hero { grid-column: 1 / -1; }
-  .metric-hero .metric-value { font-size: 2.75rem; }
 }
 
 /* ── Badges / Status ─────────────────────────────────────── */

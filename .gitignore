@@ -12,3 +12,6 @@ photos/demo_*.png
 .vscode
 # Ambiente virtual local
 .venv/
+
+# Credencial da conta local de desenvolvimento (nunca versionar)
+.dev-ui-credencial

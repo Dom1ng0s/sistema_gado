@@ -152,32 +152,14 @@
 <!-- ── Alertas de GMD ──────────────────────────────────── -->
 <div id="alertas-gmd" class="stack-2 mb-6" role="status"></div>
 
-<!-- ── Busca ───────────────────────────────────────────── -->
-<form action="{{ url_for('operacional.painel') }}" method="GET"
-      class="toolbar mb-4" role="search" aria-label="Buscar animal por brinco">
-  <input type="hidden" name="status" value="{{ status }}">
-  <input type="hidden" name="raca" value="{{ raca_filtro }}">
-  <input type="hidden" name="origem" value="{{ origem_filtro }}">
-  <input type="hidden" name="sexo" value="{{ sexo_filtro }}">
-  <input type="hidden" name="ord" value="{{ ordenacao }}">
-
-  <div class="combo">
-    <label class="sr-only" for="busca-brinco">Número do brinco</label>
-    <input type="text" name="busca" id="busca-brinco" class="form-input"
-           placeholder="Buscar pelo número do brinco..."
-           value="{{ busca }}">
-    <ul class="combo__list" id="combo-brincos" role="listbox"
-        aria-label="Sugestões de brinco" hidden></ul>
-  </div>
-
-  <button type="submit" class="btn btn-secondary btn-sm">
-    <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    Buscar
-  </button>
-  {% if busca or status != 'todos' or raca_filtro or origem_filtro or sexo_filtro %}
-    <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">Limpar filtros</a>
-  {% endif %}
-</form>
+{# A busca por brinco subiu para o shell (base.html): ela vale em qualquer
+   tela, não só aqui. O que sobrou desta seção é o que é específico do
+   Rebanho — limpar os filtros e a tolerância a erro de digitação. #}
+{% if busca or status != 'todos' or raca_filtro or origem_filtro or sexo_filtro %}
+<div class="toolbar mb-4">
+  <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">Limpar filtros</a>
+</div>
+{% endif %}
 
 {# Tolerância a erro de digitação: se a busca não devolveu nada, o sgg.js
    procura o brinco mais próximo e oferece o link já pronto. #}
