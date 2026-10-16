@@ -1,7 +1,7 @@
 /* ============================================================
    SGG — Design System
-   Estética: rústico-profissional
-   Fontes: Fraunces (display) + Inter (corpo)
+   Conceito: instrumento de medição
+   Fontes: Archivo (texto) + IBM Plex Mono (todo número)
    ============================================================ */
 
 /* Fontes self-hosted — ver static/css/fonts.css (carregado antes deste arquivo) */
@@ -11,132 +11,131 @@
 
   /* ══════════════════════════════════════════════════════
      RAMPAS
-     Três escalas de dez passos no lugar de cinco tons soltos: quando
-     falta um tom, ele já existe — ninguém precisa inventar um hex novo.
-     O neutro é QUENTE de propósito; cinza puro deixa um produto
-     agrícola com cara de painel de banco.
+     A referência é papel de registrador gráfico: superfície
+     pálida e fria, uma tinta escura, e UMA tinta de dados.
+     O neutro é levemente VERDE, não cinza puro nem creme —
+     é o que liga a interface ao pasto sem pintar nada de verde.
      ══════════════════════════════════════════════════════ */
 
-  /* Pasto — estrutura, ação, sucesso */
-  --g-50:  #F3F8EC;
-  --g-100: #E2EFCF;
-  --g-200: #C6DFA3;
-  --g-300: #A3CB70;
-  --g-400: #82B345;
-  --g-500: #649628;
-  --g-600: #4E781D;
-  --g-700: #3B5C17;
-  --g-800: #2C4512;
-  --g-900: #1A2A0A;
-
-  /* Terra — dinheiro, arroba, atenção */
-  --a-50:  #FEF6E9;
-  --a-100: #FBE7C2;
-  --a-200: #F7CE86;
-  --a-300: #F0B049;
-  --a-400: #DE9114;
-  --a-500: #B87309;
-  --a-600: #92590A;
-  --a-700: #74450C;
-
-  /* Neutro quente. Do 400 para baixo (mais escuro) é seguro para texto:
-     todos verificados ≥ 4,5:1 sobre branco. Do 300 para cima é só
-     superfície, borda e decoração. */
+  /* Papel — superfícies, fios, fundos */
   --n-0:   #FFFFFF;
-  --n-25:  #FBFAF7;
-  --n-50:  #F6F4EF;
-  --n-100: #EDEAE2;
-  --n-200: #DEDACE;
-  --n-300: #C3BEAE;
-  /* 3,3:1 sobre branco — mínimo do WCAG 1.4.11 para borda de campo.
-     O 300 (1,9:1) é bonito mas reprova; este é o tom mais claro que passa. */
-  --n-350: #928D7C;
-  --n-400: #767260;
-  --n-500: #5C5949;
-  --n-600: #454334;
-  --n-700: #33312A;
-  --n-800: #232219;
-  --n-900: #15140F;
+  --n-25:  #F5F7F3;
+  --n-50:  #EEF1EC;
+  --n-100: #E4E9E0;
+  --n-200: #D6DCD3;
+  --n-300: #C2CABF;
+  /* Do 350 para baixo (mais escuro) é seguro para texto:
+     #8A9890 dá 3,1:1 sobre branco — serve para borda de campo
+     (mínimo 3:1 do WCAG 1.4.11), nunca para conteúdo. */
+  --n-350: #8A9890;
+  --n-400: #6E7D73;
+  --n-500: #5B6A5F;
+  --n-600: #44514A;
+  --n-700: #33403A;
+  --n-800: #233029;
+  --n-900: #17251C;
 
-  /* ── Papéis semânticos (mapeados nas rampas) ───────────── */
-  --color-primary:        var(--g-600);
+  /* Dado — a tinta do traço. Verde-pinheiro, usada quando o
+     número está dentro da meta e em nada mais. */
+  --g-50:  #E3F0E9;
+  --g-100: #C8E2D4;
+  --g-200: #9BCBB2;
+  --g-300: #6BB18E;
+  --g-400: #35916A;
+  --g-500: #0B6E4F;
+  --g-600: #0B6E4F;
+  --g-700: #084F39;
+  --g-800: #063B2B;
+  --g-900: #04271D;
+
+  /* Limite cruzado — óxido. Aparece quando um valor passou de
+     um limiar: GMD abaixo da meta, conta vencida, erro. */
+  --a-50:  #F7E9E6;
+  --a-100: #EFD2CC;
+  --a-200: #DFA79C;
+  --a-300: #C86B59;
+  --a-400: #B04A37;
+  --a-500: #9C3328;
+  --a-600: #9C3328;
+  --a-700: #7A281F;
+
+  /* ── Papéis semânticos ─────────────────────────────────── */
+  --color-primary:        var(--g-500);
   --color-primary-dark:   var(--g-700);
   --color-primary-mid:    var(--g-500);
-  --color-primary-light:  var(--g-300);
+  --color-primary-light:  #A3D6BC;   /* só sobre fundo escuro */
   --color-primary-bg:     var(--g-50);
 
-  /* `--color-accent` é PREENCHIMENTO (fundo, barra, borda decorativa).
-     Para texto ou ícone sobre fundo claro use accent-dark ou mais escuro. */
-  --color-accent:         var(--a-300);
-  --color-accent-dark:    var(--a-600);
+  /* Não existe mais uma terceira cor "de atenção": o sistema tem
+     dois estados de dado, dentro e fora do limite. O que era âmbar
+     virou óxido, de propósito — ver nota no fim deste bloco. */
+  --color-accent:         var(--a-500);
+  --color-accent-dark:    var(--a-700);
   --color-accent-deeper:  var(--a-700);
-  --color-accent-light:   var(--a-200);
+  --color-accent-light:   var(--a-100);
   --color-accent-bg:      var(--a-50);
 
-  --color-danger:         #C0342F;
-  --color-danger-strong:  #D9483F;   /* só preenchimento/borda */
-  --color-danger-dark:    #9A2823;
-  --color-danger-bg:      #FDEEED;
+  --color-danger:         var(--a-500);
+  --color-danger-strong:  var(--a-500);
+  --color-danger-dark:    var(--a-700);
+  --color-danger-bg:      var(--a-50);
 
-  --color-success:        var(--g-600);
+  --color-success:        var(--g-500);
   --color-success-bg:     var(--g-50);
 
-  --color-warning:        var(--a-600);   /* texto/ícone */
-  --color-warning-fill:   var(--a-300);   /* preenchimento/borda */
+  --color-warning:        var(--a-500);
+  --color-warning-fill:   var(--a-500);
   --color-warning-bg:     var(--a-50);
 
   --color-ink:            var(--n-900);
-  --color-ink-secondary:  var(--n-700);
+  --color-ink-secondary:  var(--n-600);
   --color-ink-tertiary:   var(--n-500);
-  --color-ink-disabled:   var(--n-400);   /* dado ausente ("—") */
-  --color-ink-placeholder:#8B8778;        /* só placeholder, nunca conteúdo */
+  --color-ink-disabled:   var(--n-400);
+  --color-ink-placeholder: var(--n-500);
 
   --color-surface:        var(--n-0);
   --color-surface-raised: var(--n-25);
   --color-surface-sunken: var(--n-50);
-  --color-border:         var(--n-100);
+  --color-surface-side:   var(--n-100);  /* coluna lateral */
+  --color-border:         var(--n-200);
   --color-border-strong:  var(--n-350);
 
   /* ══════════════════════════════════════════════════════
      TIPOGRAFIA
-     Fraunces é variável e tem eixo óptico (opsz): a forma da letra muda
-     com o tamanho, em vez de a mesma forma ser esticada. Os eixos SOFT e
-     WONK dão calor agrícola sem virar rústico caricato.
-     Inter entra pelos ALGARISMOS: com `tabular-nums` a vírgula fica na
-     mesma vertical linha após linha, e o olho compara a coluna de GMD
-     sem precisar ler valor por valor.
+     Archivo em todo texto; IBM Plex Mono em TODO número.
+     A monoespaçada não é enfeite técnico: a tarefa do sistema
+     é comparar colunas de GMD, peso e dinheiro linha a linha,
+     e dígito de largura fixa alinha a vírgula sozinho.
      ══════════════════════════════════════════════════════ */
-  --font-display:  'Fraunces', 'Playfair Display', Georgia, serif;
-  --font-body:     'Inter', 'Rubik', system-ui, sans-serif;
+  --font-display:  'Archivo', system-ui, sans-serif;
+  --font-body:     'Archivo', system-ui, sans-serif;
+  --font-dado:     'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
 
-  /* Escala tipográfica em rem: acompanha a preferência de tamanho de fonte
-     do usuário (Dynamic Type). 1rem = 16px por padrão do navegador. */
-  --text-xs:   0.8125rem;  /* 13px */
-  --text-sm:   0.9375rem;  /* 15px */
-  --text-base: 1.0625rem;  /* 17px */
-  --text-md:   1.1875rem;  /* 19px */
-  --text-lg:   1.375rem;   /* 22px */
-  --text-xl:   1.75rem;    /* 28px */
-  --text-2xl:  2.3125rem;  /* 37px */
+  /* Escala em rem: acompanha a preferência de tamanho de fonte do
+     usuário. Mais fechada que a anterior — instrumento é denso. */
+  --text-xs:   0.75rem;    /* 12px */
+  --text-sm:   0.8125rem;  /* 13px */
+  --text-base: 0.875rem;   /* 14px */
+  --text-md:   0.9375rem;  /* 15px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.375rem;   /* 22px */
+  --text-2xl:  1.625rem;   /* 26px */
+  --text-3xl:  2.125rem;   /* 34px — mostrador */
 
-  /* Quatro pesos reais, quatro nomes. */
   --weight-regular:  400;
   --weight-medium:   500;
   --weight-semibold: 600;
   --weight-bold:     700;
 
-  /* Leading acompanha o tamanho de forma inversa: apertado no display,
-     folgado no corpo (WWDC "The Details of UI Typography"). */
-  --leading-tight:  1.15;
+  --leading-tight:  1.2;
   --leading-snug:   1.3;
   --leading-normal: 1.6;
   --leading-loose:  1.8;
 
-  /* Tracking é específico do tamanho — nunca um valor único para tudo. */
-  --tracking-display: -0.022em;  /* texto grande: letras "afastam" ao crescer */
-  --tracking-title:   -0.014em;
+  --tracking-display: -0.02em;
+  --tracking-title:   -0.01em;
   --tracking-body:    0;
-  --tracking-caps:    0.07em;    /* versalete pequeno pede abertura */
+  --tracking-caps:    0.02em;
 
   /* Espaçamento */
   --space-1:  4px;
@@ -150,27 +149,23 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  /* Bordas — geometria mais macia e maior */
-  --radius-sm:   6px;
-  --radius-md:   10px;
-  --radius-lg:   14px;
-  --radius-xl:   20px;
+  /* Bordas — geometria fechada. O que separa blocos é fio, não curva. */
+  --radius-sm:   3px;
+  --radius-md:   4px;
+  --radius-lg:   6px;
+  --radius-xl:   8px;
   --radius-pill: 999px;
 
-  /* Sombras com tinta QUENTE (42,38,26), não cinza morto. Cada nível
-     empilha um contato curto + uma difusão longa + um anel de 1px que
-     substitui a borda: assim o cartão se separa do fundo sem risco. */
-  --shadow-xs: 0 1px 2px rgba(42, 38, 26, 0.05),
-               0 0 0 1px rgba(42, 38, 26, 0.05);
-  --shadow-sm: 0 1px 2px rgba(42, 38, 26, 0.05),
-               0 4px 10px -4px rgba(42, 38, 26, 0.08),
-               0 0 0 1px rgba(42, 38, 26, 0.05);
-  --shadow-md: 0 2px 4px rgba(42, 38, 26, 0.05),
-               0 8px 20px -6px rgba(42, 38, 26, 0.10),
-               0 0 0 1px rgba(42, 38, 26, 0.05);
-  --shadow-lg: 0 4px 8px rgba(42, 38, 26, 0.06),
-               0 20px 40px -12px rgba(42, 38, 26, 0.16),
-               0 0 0 1px rgba(42, 38, 26, 0.06);
+  /* Sombra quase não existe neste conceito: painel se separa do fundo
+     por fio de 1px. A sombra fica reservada ao que flutua de verdade —
+     menu aberto, folha de registro, modal. */
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: 0 12px 28px -10px rgba(23, 37, 28, 0.28);
+  --shadow-lg: 0 18px 40px -12px rgba(23, 37, 28, 0.32);
+
+  /* Estrutura do shell */
+  --sidebar-largura: 232px;
 
   /* Z-index scale */
   --z-base:     1;
@@ -184,8 +179,8 @@
   --transition-normal: 200ms ease;
   --transition-slow:   350ms ease;
 
-  /* Textura — grain sutil */
-  --texture-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  /* O grain saiu com o papel creme: a superfície agora é lisa. */
+  --texture-grain: none;
 }
 
 /* ── Skip link (acessibilidade) ──────────────────────────── */
