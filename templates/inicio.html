@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Início{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Início</h1>
+    <p class="page-subtitle">O que está fora da linha hoje. Quando esta lista está vazia, não há nada pedindo decisão.</p>
+  </div>
+  <span class="dado text-sm text-muted">{{ hoje|date_br }}</span>
+</div>
+
+{# ── Leituras ────────────────────────────────────────────────
+   Quatro mostradores separados por fio dentro de um painel só, em vez
+   de quatro cartões soltos: a comparação entre eles é a informação. #}
+<div class="leituras mb-6">
+  <div class="leitura">
+    <div class="leitura__valor">
+      {% if leituras.gmd_medio is not none %}
+        {# Separador decimal brasileiro, como no resto do sistema. #}
+        {{ ('%.3f'|format(leituras.gmd_medio))|replace('.', ',') }}<span class="metric-unit">kg/dia</span>
+      {% else %}
+        <span class="text-muted">—</span>
+      {% endif %}
+    </div>
+    <div class="leitura__rotulo">GMD médio do rebanho</div>
+  </div>
+
+  <div class="leitura">
+    <div class="leitura__valor">{{ leituras.total_animais }}</div>
+    <div class="leitura__rotulo">Animais ativos</div>
+  </div>
+
+  <div class="leitura">
+    <div class="leitura__valor {% if leituras.abaixo_gmd %}leitura__valor--limite{% endif %}">{{ leituras.abaixo_gmd }}</div>
+    <div class="leitura__rotulo">Com ganho abaixo do lote</div>
+  </div>
+
+  <div class="leitura">
+    <div class="leitura__valor {% if leituras.a_pagar_30d %}leitura__valor--limite{% endif %}">{{ leituras.a_pagar_30d|brl }}</div>
+    <div class="leitura__rotulo">A pagar nos próximos 30 dias</div>
+  </div>
+</div>
+
+{# ── Fora da linha ───────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header">
+    <span>Fora da linha</span>
+    {% if ocorrencias %}<span class="dado text-xs text-muted">{{ ocorrencias|length }} ocorrência{{ 's' if ocorrencias|length != 1 }}</span>{% endif %}
+  </div>
+
+  {% if ocorrencias %}
+    {% for o in ocorrencias %}
+    <div class="ocorrencia">
+      <span class="ocorrencia__marca ocorrencia__marca--{{ o.tom }}" aria-hidden="true"></span>
+      <div class="ocorrencia__texto">
+        <strong>{{ o.titulo }}</strong>
+        <span>{{ o.detalhe }}</span>
+      </div>
+      <span class="ocorrencia__numero ocorrencia__numero--{{ o.tom }}">
+        {%- if o.moeda %}{{ o.numero|brl }}{% else %}{{ o.numero }}{% endif -%}
+      </span>
+      <a href="{{ o.href }}" class="btn btn-secondary btn-sm shrink-0">{{ o.acao }}</a>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="card-body">
+      <div class="empty-state">
+        <p class="empty-state__title">Nada fora da linha</p>
+        <p class="empty-state__desc">
+          Nenhum animal com ganho muito abaixo do lote, nenhum parto vencido,
+          nenhum protocolo a vencer nesta semana e nenhuma conta vencendo em 30 dias.
+        </p>
+        <a href="{{ url_for('operacional.painel') }}" class="btn btn-secondary btn-sm">Abrir o rebanho</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

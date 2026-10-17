@@ -2041,6 +2041,88 @@ textarea:not(.form-textarea):focus {
    COMPONENTES DE ESTADO
    ══════════════════════════════════════════════════════════ */
 
+/* ── Leituras do Início ──────────────────────────────────────
+   Quatro valores lado a lado dentro de um painel só, separados por fio.
+   Em cartões soltos cada número vira uma ilha; aqui a comparação entre
+   eles é parte da leitura, que é o que um painel de instrumento faz. */
+.leituras {
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.leitura {
+  flex: 1 1 190px;
+  min-width: 0;
+  padding: var(--space-5);
+  border-left: 1px solid var(--color-border);
+}
+
+.leitura:first-child { border-left: 0; }
+
+.leitura__valor {
+  font-family: var(--font-dado);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  font-feature-settings: 'tnum' 1;
+}
+
+.leitura__valor--limite { color: var(--color-danger); }
+
+.leitura__rotulo {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-ink-tertiary);
+}
+
+/* ── Ocorrência: uma linha do "Fora da linha" ──────────────── */
+.ocorrencia {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 14px var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ocorrencia:last-child { border-bottom: 0; }
+
+.ocorrencia__marca {
+  flex: 0 0 auto;
+  width: 3px;
+  align-self: stretch;
+  min-height: 30px;
+  border-radius: 2px;
+}
+
+.ocorrencia__marca--limite { background: var(--color-danger); }
+.ocorrencia__marca--dado   { background: var(--color-primary); }
+
+.ocorrencia__texto { flex: 1 1 auto; min-width: 0; }
+.ocorrencia__texto strong { display: block; font-size: var(--text-base); font-weight: var(--weight-medium); color: var(--color-ink); }
+.ocorrencia__texto span   { display: block; font-size: var(--text-xs); color: var(--color-ink-tertiary); }
+
+.ocorrencia__numero {
+  flex: 0 0 auto;
+  font-family: var(--font-dado);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  font-feature-settings: 'tnum' 1;
+}
+
+.ocorrencia__numero--limite { color: var(--color-danger); }
+.ocorrencia__numero--dado   { color: var(--color-primary); }
+
+@media (max-width: 640px) {
+  .ocorrencia { flex-wrap: wrap; }
+  .ocorrencia__texto { flex-basis: 100%; }
+}
+
 /* ── Estado vazio ────────────────────────────────────────── */
 .empty-state {
   display: flex;

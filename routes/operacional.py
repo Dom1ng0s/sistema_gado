@@ -7,13 +7,103 @@ import io
 import re as _re
 from db_config import IntegrityError as _IntegrityError
 from datetime import date as _date
-from repositories import animal_repository, reproducao_repository, sanitario_repository
+from repositories import (animal_repository, financeiro_repository, reproducao_repository,
+                          sanitario_repository)
 from routes.validators import validate
 from utils.calculo import preco_por_arroba
 from decimal import Decimal
 
 operacional_bp = Blueprint('operacional', __name__)
 logger = logging.getLogger(__name__)
+
+@operacional_bp.route('/inicio')
+@login_required
+def inicio():
+    """O que precisa de atenção hoje, reunido num lugar só.
+
+    Os quatro sinais já existiam, cada um escondido numa tela diferente:
+    GMD fora da faixa no painel, parto vencido em Reprodução, protocolo
+    a vencer em Sanidade e conta a vencer em Financeiro. Nenhuma tela
+    respondia "o que precisa de mim agora", que é a pergunta de quem
+    abre o sistema sem uma tarefa específica em mente.
+
+    Cada fonte é isolada: uma consulta que falhe não leva a tela junto,
+    só perde a sua linha.
+    """
+    hoje = _date.today()
+    leituras = {'gmd_medio': None, 'total_animais': 0, 'abaixo_gmd': 0, 'a_pagar_30d': Decimal('0')}
+    ocorrencias = []
+
+    try:
+        leituras['gmd_medio'] = animal_repository.get_gmd_medio_rebanho(current_user.id)
+        leituras['total_animais'] = animal_repository.count_animais(current_user.id, status='ativos')
+        abaixo = animal_repository.get_animais_abaixo_gmd_medio(current_user.id)
+        leituras['abaixo_gmd'] = len(abaixo)
+        if abaixo:
+            ocorrencias.append({
+                'tom': 'limite',
+                'titulo': 'Animais com ganho muito abaixo do lote',
+                'detalhe': 'Crescem significativamente menos que os demais; verifique saúde, nutrição e parasitas',
+                'numero': len(abaixo),
+                'acao': 'Ver no rebanho',
+                'href': url_for('operacional.painel'),
+            })
+    except Exception as e:
+        logger.error(f"Erro Início (rebanho): {e}", exc_info=True)
+
+    try:
+        partos = reproducao_repository.get_partos_previstos(current_user.id, dias=285)
+        atrasados = [p for p in partos if p[4] <= 0]
+        if atrasados:
+            ocorrencias.append({
+                'tom': 'limite',
+                'titulo': 'Partos previstos já vencidos',
+                'detalhe': 'Confirme o parto na ficha reprodutiva — o bezerro entra no rebanho automaticamente',
+                'numero': len(atrasados),
+                'acao': 'Abrir agenda',
+                'href': url_for('operacional.reproducao_painel'),
+            })
+    except Exception as e:
+        logger.error(f"Erro Início (reprodução): {e}", exc_info=True)
+
+    try:
+        protocolos = sanitario_repository.get_vencendo_em_dias(current_user.id, dias=7)
+        for p in protocolos:
+            dias = (p[2] - hoje).days if p[2] else None
+            ocorrencias.append({
+                'tom': 'limite' if (dias is not None and dias <= 3) else 'dado',
+                'titulo': p[1],
+                'detalhe': 'Protocolo sanitário a vencer',
+                'numero': f'{dias} d' if dias is not None else '—',
+                'acao': 'Ver protocolo',
+                'href': url_for('sanitario.lista_protocolos'),
+            })
+    except Exception as e:
+        logger.error(f"Erro Início (sanidade): {e}", exc_info=True)
+
+    try:
+        for ag in financeiro_repository.get_agendamentos(current_user.id):
+            if (ag[4] or '').lower() == 'pago' or not ag[3]:
+                continue
+            dias = (ag[3] - hoje).days
+            if dias > 30:
+                continue
+            leituras['a_pagar_30d'] += (ag[2] or Decimal('0'))
+            if dias <= 0:
+                ocorrencias.append({
+                    'tom': 'limite',
+                    'titulo': ag[1],
+                    'detalhe': 'Conta vencida' if dias < 0 else 'Conta vence hoje',
+                    'numero': ag[2],
+                    'moeda': True,
+                    'acao': 'Dar baixa',
+                    'href': url_for('financeiro.agendamentos'),
+                })
+    except Exception as e:
+        logger.error(f"Erro Início (financeiro): {e}", exc_info=True)
+
+    return render_template('inicio.html', leituras=leituras, ocorrencias=ocorrencias, hoje=hoje)
+
 
 @operacional_bp.route('/painel')
 @login_required

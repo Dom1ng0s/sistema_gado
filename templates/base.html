@@ -31,7 +31,7 @@
 {# Páginas que pertencem a outra seção da navegação apesar do prefixo do blueprint. #}
 {% set _ep_reproducao = _ep in ('operacional.reproducao_painel', 'operacional.reproducao_animal', 'operacional.registrar_reproducao') %}
 {% set _ep_relatorios = _ep in ('api.graficos_page', 'operacional.ranking_touros', 'pastos.gmd_por_modulo') %}
-{% set _at_rebanho = _ep.startswith('operacional') and not _ep_reproducao and not _ep_relatorios %}
+{% set _at_rebanho = _ep.startswith('operacional') and not _ep_reproducao and not _ep_relatorios and _ep != 'operacional.inicio' %}
 {% set _at_pastos = _ep.startswith('pastos') and not _ep_relatorios %}
 
 <div class="app">
@@ -42,7 +42,7 @@
      tom do tipo, não num rótulo de grupo em caixa alta. #}
   <aside class="barra-lateral" id="barra-lateral">
 
-    <a class="barra-lateral__marca" href="{{ url_for('operacional.painel') }}">
+    <a class="barra-lateral__marca" href="{{ url_for('operacional.inicio') }}">
       <strong>SGG</strong>
       <span>{{ nome_fazenda_header or 'Sistema de Gestão de Gado' }}</span>
     </a>
@@ -92,6 +92,9 @@
     <nav class="nav-grupos" aria-label="Navegação principal">
       {# Rotina — uso diário #}
       <div class="nav-grupo">
+        <a href="{{ url_for('operacional.inicio') }}"
+           class="nav-item nav-item--rotina{% if _ep == 'operacional.inicio' %} active{% endif %}"
+           {% if _ep == 'operacional.inicio' %}aria-current="page"{% endif %}>Início</a>
         <a href="{{ url_for('operacional.painel') }}"
            class="nav-item nav-item--rotina{% if _at_rebanho %} active{% endif %}"
            {% if _at_rebanho %}aria-current="page"{% endif %}>Rebanho</a>
