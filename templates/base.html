@@ -17,10 +17,6 @@
   <!-- Design System único -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}?v={{ cache_bust }}">
 
-  <!-- Kit de interface: validação, diálogos, toasts, autocomplete.
-       `defer` mantém o parser livre e garante execução após o DOM. -->
-  <script defer src="{{ url_for('static', filename='js/sgg.js') }}?v={{ cache_bust }}"></script>
-
   {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -201,8 +197,6 @@
   </div>
 </div>
 
-{% block scripts %}{% endblock %}
-
 <!-- ── Componentes globais: modal de confirmação + toast ── -->
 <div id="sggConfirmModal" class="modal-overlay modal-confirm" role="dialog"
      aria-modal="true" aria-labelledby="sgg-confirm-title" aria-describedby="sgg-confirm-msg"
@@ -221,6 +215,20 @@
 
 <!-- Região viva para anúncios do autocomplete (quantidade de resultados). -->
 <div id="combo-status" class="sr-only" role="status" aria-live="polite"></div>
+
+{# Kit de interface: validação, diálogos, toasts, autocomplete, tema de
+   gráfico. Fica no fim do body e SEM defer, de propósito.
+
+   Com `defer` no <head>, ele executava depois da página inteira ser
+   lida — ou seja, DEPOIS dos <script> inline de cada tela. Seis telas
+   chamam window.sggGrafico() inline e recebiam "sggGrafico is not
+   defined": o gráfico de peso da ficha, o da progênie, o do estoque, o
+   do financeiro, o de GMD por módulo e o de ranking de touros
+   simplesmente não desenhavam. Aqui no fim do body ele roda antes do
+   bloco de scripts da página, que é o que esses templates esperam. #}
+<script src="{{ url_for('static', filename='js/sgg.js') }}?v={{ cache_bust }}"></script>
+
+{% block scripts %}{% endblock %}
 
 </body>
 </html>
