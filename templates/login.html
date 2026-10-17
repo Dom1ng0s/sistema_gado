@@ -26,7 +26,9 @@
 
         /* ── Brand Panel ─────────────────────────── */
         .brand {
-            background: #162D06;
+            /* Tinta do sistema (--n-900), não um verde próprio: o painel de
+               marca passou a ser a mesma superfície escura usada em tudo. */
+            background: var(--n-900);
             position: relative;
             overflow: hidden;
             display: flex;
@@ -121,7 +123,7 @@
             font-weight: var(--weight-medium);
             letter-spacing: 0.12em;
             text-transform: uppercase;
-            /* primary-mid sobre #162D06 dá 4,6:1; primary-light sobe a 10:1 */
+            /* primary-light sobre a tinta escura passa de 9:1 */
             color: var(--color-primary-light);
             margin-bottom: var(--space-4);
         }
