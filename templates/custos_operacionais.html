@@ -13,6 +13,8 @@
   <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-ghost btn-sm">← Financeiro</a>
 </div>
 
+{{ m.financeiro_abas() }}
+
 <div style="max-width:480px;">
   <form action="{{ url_for('financeiro.custos_operacionais') }}" method="POST" class="form-container">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

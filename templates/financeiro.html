@@ -27,10 +27,7 @@
   </div>
 </div>
 
-{{ m.tab_nav([
-  ('Fluxo de caixa', url_for('financeiro.financeiro'), request.endpoint == 'financeiro.financeiro'),
-  ('Resultado por lote', url_for('financeiro.resultado_lotes'), request.endpoint in ('financeiro.resultado_lotes', 'financeiro.detalhe_lote')),
-]) }}
+{{ m.financeiro_abas() }}
 
 <!-- ── Métricas absolutas ─────────────────────────────── -->
 <div class="grid-metrics">

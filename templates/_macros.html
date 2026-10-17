@@ -129,3 +129,32 @@
   ('Reprodução', url_for('operacional.reproducao_animal', id_animal=animal[0]), aba_ativa == 'reproducao'),
 ]) }}
 {% endmacro %}
+
+
+{# Abas do Financeiro.
+
+   Eram cinco telas soltas — fluxo de caixa, lançamentos de custo, contas
+   a pagar, resultado por lote e simulador — e só duas delas se
+   conheciam. Um lugar só para o dinheiro, com cinco recortes.
+   A lista mora aqui para não ser repetida em cinco arquivos. #}
+{% macro financeiro_abas() %}
+{% set _ep = request.endpoint or '' %}
+{{ tab_nav([
+  ('Fluxo de caixa',     url_for('financeiro.financeiro'),          _ep == 'financeiro.financeiro'),
+  ('Lançamentos',        url_for('financeiro.custos_operacionais'), _ep == 'financeiro.custos_operacionais'),
+  ('Contas a pagar',     url_for('financeiro.agendamentos'),        _ep == 'financeiro.agendamentos'),
+  ('Resultado por lote', url_for('financeiro.resultado_lotes'),     _ep in ('financeiro.resultado_lotes', 'financeiro.detalhe_lote')),
+  ('Simulador',          url_for('financeiro.simulador_custo'),     _ep == 'financeiro.simulador_custo'),
+]) }}
+{% endmacro %}
+
+
+{# Abas de Estoque e Sanidade — mesma ideia, aplicada também ao detalhe
+   do produto, que antes só sabia voltar para a lista. #}
+{% macro estoque_abas() %}
+{% set _ep = request.endpoint or '' %}
+{{ tab_nav([
+  ('Estoque',    url_for('estoque.lista_estoque'),      _ep.startswith('estoque')),
+  ('Protocolos', url_for('sanitario.lista_protocolos'), _ep.startswith('sanitario')),
+]) }}
+{% endmacro %}

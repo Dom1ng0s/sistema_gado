@@ -15,6 +15,8 @@
   <a href="{{ url_for('financeiro.financeiro') }}" class="btn btn-ghost btn-sm">← Financeiro</a>
 </div>
 
+{{ m.financeiro_abas() }}
+
 <!-- ── Formulário de novo / editar agendamento ─────────── -->
 <div style="max-width:580px; margin-bottom:var(--space-8);">
   {% if editando %}
