@@ -61,6 +61,16 @@ def detalhe_pasto(pasto_id):
     modulos       = pasto_repository.get_modulos_by_pasto(pasto_id, current_user.id)
     animais_ativos = animal_repository.get_animais_ativos(current_user.id)
 
+    # A lista de pastos vem junto para o detalhe abrir ao LADO dela, e não
+    # no lugar dela: trocar de pasto era voltar à lista e entrar de novo,
+    # o que atrapalha justamente quando se está comparando lotação entre
+    # pastos. São poucas linhas e a consulta já é agregada numa query só.
+    try:
+        pastos = pasto_repository.get_pastos(current_user.id)
+    except Exception as e:
+        logger.error(f"Erro ao listar pastos no detalhe: {e}", exc_info=True)
+        pastos = []
+
     animais_raw = pasto_repository.get_animais_ocupacoes_ativas(pasto_id, current_user.id)
     animais_por_ocupacao = {}
     for row in animais_raw:
@@ -71,6 +81,7 @@ def detalhe_pasto(pasto_id):
 
     return render_template('pasto_detalhe.html',
                            pasto=pasto,
+                           pastos=pastos,
                            modulos=modulos,
                            animais_ativos=animais_ativos,
                            animais_por_ocupacao=animais_por_ocupacao,

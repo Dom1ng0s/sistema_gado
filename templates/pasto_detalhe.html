@@ -35,6 +35,23 @@ details summary {
 {% block content %}
 
 <!-- ── Cabeçalho ─────────────────────────────────────── -->
+{# Mestre-detalhe: a lista de pastos fica à esquerda enquanto este pasto
+   abre à direita. O botão "← Todos os Pastos" saiu junto — a lista nunca
+   deixa de estar à vista, então não há para onde voltar. #}
+<div class="mestre-detalhe">
+
+  <aside class="mestre-detalhe__lista">
+    <div class="card">
+      <div class="card-header">
+        <span>Pastos</span>
+        <a href="{{ url_for('pastos.listar_pastos') }}" class="btn btn-ghost btn-sm">Novo</a>
+      </div>
+      {{ ui.pastos_lista_mestre(pastos, atual=pasto[0]) }}
+    </div>
+  </aside>
+
+  <div class="mestre-detalhe__conteudo">
+
 <div class="page-header">
   <div>
     {{ ui.breadcrumb([('Pastos', url_for('pastos.listar_pastos')), (pasto[1], '')]) }}
@@ -45,7 +62,6 @@ details summary {
       {% if pasto[4] %}<span class="tag">Cap. {{ pasto[4] }} UA</span>{% endif %}
     </div>
   </div>
-  <a href="{{ url_for('pastos.listar_pastos') }}" class="btn btn-ghost btn-sm">← Todos os Pastos</a>
 </div>
 
 
@@ -219,6 +235,9 @@ details summary {
   <p style="font-size:var(--text-sm);">Use o formulário acima para adicionar.</p>
 </div>
 {% endif %}
+
+  </div><!-- .mestre-detalhe__conteudo -->
+</div><!-- .mestre-detalhe -->
 
 {% endblock %}
 

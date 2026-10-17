@@ -158,3 +158,37 @@
   ('Protocolos', url_for('sanitario.lista_protocolos'), _ep.startswith('sanitario')),
 ]) }}
 {% endmacro %}
+
+
+{# Lista mestre do Pastos — a coluna que fica ao lado do detalhe.
+
+   Antes, trocar de pasto era voltar à lista e entrar de novo. Como a
+   pergunta frequente é comparativa ("qual pasto está mais carregado?"),
+   a lista fica visível enquanto o detalhe abre ao lado. `atual` é o id
+   do pasto aberto, ou none na tela de lista. #}
+{% macro pastos_lista_mestre(pastos, atual=none) %}
+<nav class="mestre" aria-label="Pastos">
+  {% for p in pastos %}
+  {% set superlotado = p[6] > 0 %}
+  {% set em_alerta   = p[7] > 0 %}
+  <a href="{{ url_for('pastos.detalhe_pasto', pasto_id=p[0]) }}"
+     class="mestre__item{% if atual == p[0] %} mestre__item--atual{% endif %}"
+     {% if atual == p[0] %}aria-current="page"{% endif %}>
+    <span class="mestre__texto">
+      <strong>{{ p[1] }}</strong>
+      <span>
+        {%- if p[2] %}{{ p[2] }} ha · {% endif -%}
+        {{ p[5] }} módulo{{ 's' if p[5] != 1 }}
+      </span>
+    </span>
+    {% if superlotado %}
+      <span class="badge badge-danger">Superlotado</span>
+    {% elif em_alerta %}
+      <span class="badge badge-warning">Em alerta</span>
+    {% else %}
+      <span class="badge badge-success">OK</span>
+    {% endif %}
+  </a>
+  {% endfor %}
+</nav>
+{% endmacro %}

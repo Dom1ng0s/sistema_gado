@@ -2595,3 +2595,52 @@ summary:focus-visible,
   gap: var(--space-3);
   flex-wrap: wrap;
 }
+
+/* ── Mestre-detalhe ──────────────────────────────────────────
+   Lista à esquerda, item aberto à direita. Serve a telas onde a
+   pergunta é comparativa — "qual pasto está mais carregado?" — e
+   onde trocar de item não deveria custar voltar à lista. */
+.mestre-detalhe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.mestre-detalhe__lista {
+  flex: 1 1 300px;
+  max-width: 340px;
+  position: sticky;
+  top: var(--space-4);
+}
+
+.mestre-detalhe__conteudo { flex: 999 1 540px; min-width: 0; }
+
+.mestre__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--transition-fast);
+}
+
+.mestre__item:last-child { border-bottom: 0; }
+.mestre__item:hover { background: var(--color-surface-raised); }
+
+/* Item aberto: filete na tinta de dado, mesma marca do item ativo da
+   coluna lateral — é a mesma ideia de "você está aqui". */
+.mestre__item--atual {
+  background: var(--color-primary-bg);
+  box-shadow: inset 2px 0 0 var(--color-primary);
+}
+
+.mestre__texto { flex: 1 1 auto; min-width: 0; }
+.mestre__texto strong { display: block; font-size: var(--text-base); font-weight: var(--weight-medium); }
+.mestre__texto span   { display: block; font-size: var(--text-xs); color: var(--color-ink-tertiary); }
+
+@media (max-width: 900px) {
+  .mestre-detalhe__lista { position: static; max-width: none; flex-basis: 100%; }
+}
