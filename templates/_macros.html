@@ -97,3 +97,35 @@
 </nav>
 {% endmacro %}
 
+
+
+{# Cabeçalho único da ficha do animal.
+
+   Resumo, Progênie e Reprodução eram três telas separadas, cada uma com
+   seu próprio título e um botão "← Ficha do Animal" para voltar. São três
+   recortes do MESMO animal, então passam a se apresentar como abas de uma
+   tela só. As rotas continuam separadas — o que muda é a leitura. #}
+{% macro ficha_cabecalho(animal, aba_ativa, acoes=none) %}
+<div class="page-header">
+  <div>
+    {{ breadcrumb([('Rebanho', url_for('operacional.painel')), ('Brinco ' ~ animal[1], '')]) }}
+    <h1 class="page-title ficha-titulo">
+      <span class="dado">{{ animal[1] }}</span>
+      {% if animal[6] %}
+        <span class="badge badge-neutral">Vendido</span>
+      {% else %}
+        <span class="badge badge-success">Ativo</span>
+      {% endif %}
+      <span class="badge badge-neutral">{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</span>
+      {% if animal[3] %}<span class="badge badge-neutral">{{ animal[3] }}</span>{% endif %}
+    </h1>
+  </div>
+  {% if acoes %}<div class="toolbar">{{ acoes }}</div>{% endif %}
+</div>
+
+{{ tab_nav([
+  ('Resumo',     url_for('operacional.detalhes', id_animal=animal[0]),          aba_ativa == 'resumo'),
+  ('Progênie',   url_for('operacional.progenie_animal', id_animal=animal[0]),   aba_ativa == 'progenie'),
+  ('Reprodução', url_for('operacional.reproducao_animal', id_animal=animal[0]), aba_ativa == 'reproducao'),
+]) }}
+{% endmacro %}

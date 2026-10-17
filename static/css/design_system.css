@@ -2677,3 +2677,10 @@ summary:focus-visible,
   .card, .metric-card, .table-wrapper { box-shadow: none; border: 1px solid #ccc; }
   a[href]::after { content: ''; }
 }
+/* ── Título da ficha: brinco + etiquetas na mesma linha ───── */
+.ficha-titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}

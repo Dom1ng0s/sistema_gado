@@ -8,28 +8,15 @@
 {% if animal %}
 
 <!-- ── Cabeçalho ─────────────────────────────────────── -->
-<div class="page-header">
-  <div>
-    {{ m.breadcrumb([('Rebanho', url_for('operacional.painel')), ('Brinco ' ~ animal[1], '')]) }}
-    <h1 class="page-title" style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap;">
-      Brinco {{ animal[1] }}
-      {% if animal[6] %}
-        <span class="badge badge-neutral">Vendido</span>
-      {% else %}
-        <span class="badge badge-success">Ativo</span>
-      {% endif %}
-      <span class="badge badge-neutral">{{ 'Macho' if animal[2] == 'M' else 'Fêmea' }}</span>
-      {% if animal[3] %}<span class="badge badge-neutral">{{ animal[3] }}</span>{% endif %}
-    </h1>
-  </div>
-  <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
-    <a href="{{ url_for('operacional.painel') }}" class="btn btn-ghost btn-sm">← Rebanho</a>
-    {% if not animal[6] %}
-      <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}" class="btn btn-secondary btn-sm">+ Medicação</a>
-      <a href="{{ url_for('operacional.nova_pesagem', id_animal=animal[0]) }}" class="btn btn-primary btn-sm">+ Pesagem</a>
-    {% endif %}
-  </div>
-</div>
+{% set _acoes %}
+  {% if not animal[6] %}
+    {# Contextual, não duplicata do Registrar global: estes dois já chegam
+       com o animal escolhido, enquanto o da coluna lateral começa vazio. #}
+    <a href="{{ url_for('operacional.medicar', id_animal=animal[0]) }}" class="btn btn-secondary btn-sm">Medicar</a>
+    <a href="{{ url_for('operacional.nova_pesagem', id_animal=animal[0]) }}" class="btn btn-primary btn-sm">Pesar {{ animal[1] }}</a>
+  {% endif %}
+{% endset %}
+{{ m.ficha_cabecalho(animal, 'resumo', _acoes) }}
 
 <!-- ── Cards de métrica ────────────────────────────────── -->
 {% set gmd_val = indicadores.gmd | float %}
@@ -210,24 +197,9 @@
       </div>
     </div>
 
-    <!-- Genealogia -->
-    <div class="card">
-      <div class="card-body">
-        <p class="label" style="margin-bottom:var(--space-3);">Genealogia</p>
-        <div style="display:flex; flex-direction:column; gap:var(--space-2);">
-          <a href="{{ url_for('operacional.progenie_animal', id_animal=animal[0]) }}"
-             class="btn btn-secondary btn-sm">
-            <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="20" cy="8" r="2"/><path d="M20 14c1.7.7 3 2.3 3 4"/></svg>
-            Ver Progênie
-          </a>
-          <a href="{{ url_for('operacional.reproducao_animal', id_animal=animal[0]) }}"
-             class="btn btn-secondary btn-sm">
-            <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><circle cx="11" cy="11" r="3"/><path d="m21 21-4.35-4.35"/></svg>
-            Reprodução
-          </a>
-        </div>
-      </div>
-    </div>
+    {# O cartão "Genealogia" saiu: ele levava a Progênie e a Reprodução,
+       que agora são abas no topo desta mesma tela. Manter os dois era
+       oferecer o mesmo destino duas vezes na mesma página. #}
 
     <!-- Status de venda -->
     {% if animal[6] %}
