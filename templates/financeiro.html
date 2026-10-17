@@ -207,28 +207,28 @@ const custosOp   = parseVal("{{ financeiro.custos_op_ano }}");
 
 const chart = sggGrafico(document.getElementById('chartFinanceiro'));
 chart.setOption({
-  textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#3D3D3A' },
+  textStyle: { fontFamily: 'Archivo, system-ui, sans-serif', color: '#33403A' },
   grid: { top: 20, right: 20, bottom: 55, left: 80, containLabel: false },
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'shadow' },
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 13 },
+    textStyle: { color: '#FFFFFF', fontFamily: 'Archivo, system-ui, sans-serif', fontSize: 13 },
     formatter: params => params.map(p => `${p.marker} ${p.name}: <strong>R$ ${Number(p.value).toLocaleString('pt-BR', {minimumFractionDigits:2})}</strong>`).join('<br>')
   },
   xAxis: {
     type: 'category',
     data: ['Entradas', 'Reposição', 'Medicações', 'Custos Op.'],
-    axisLabel: { color: '#6B6B68', fontSize: 12 },
+    axisLabel: { color: '#5B6A5F', fontSize: 12 },
     axisLine: { lineStyle: { color: '#D6D6D0' } }
   },
   yAxis: {
     type: 'value',
     name: 'R$',
-    nameTextStyle: { color: '#6B6B68', fontSize: 11 },
+    nameTextStyle: { color: '#5B6A5F', fontSize: 11 },
     axisLabel: {
-      color: '#6B6B68', fontSize: 11,
+      color: '#5B6A5F', fontSize: 11,
       formatter: v => 'R$ ' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v)
     },
     splitLine: { lineStyle: { color: '#EDEDE8' } }
@@ -237,13 +237,13 @@ chart.setOption({
     type: 'bar',
     barMaxWidth: 72,
     data: [
-      { value: entradas,  itemStyle: { color: '#3B6D11' } },
+      { value: entradas,  itemStyle: { color: '#0B6E4F' } },
       { value: reposicao, itemStyle: { color: '#EF9F27' } },
-      { value: med,       itemStyle: { color: '#9B9B99' } },
+      { value: med,       itemStyle: { color: '#8A9890' } },
       { value: custosOp,  itemStyle: { color: '#C0DD97' } },
     ],
     label: {
-      show: true, position: 'top', fontSize: 11, color: '#3D3D3A',
+      show: true, position: 'top', fontSize: 11, color: '#33403A',
       formatter: p => p.value > 0 ? 'R$ ' + Number(p.value).toLocaleString('pt-BR', {minimumFractionDigits:2}) : ''
     }
   }]

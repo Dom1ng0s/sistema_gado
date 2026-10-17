@@ -235,10 +235,10 @@ const catMap = {};
 estoqueItems.forEach(i => { catMap[i.cat] = (catMap[i.cat] || 0) + 1; });
 
 const catColors = {
-  medicamento: '#3B6D11',
+  medicamento: '#0B6E4F',
   vacina:      '#EF9F27',
   suplemento:  '#C0DD97',
-  mineral:     '#9B9B99',
+  mineral:     '#8A9890',
   outro:       '#B8A88A'
 };
 const catLabels = {
@@ -252,17 +252,17 @@ const catLabels = {
 const catData = Object.entries(catMap).map(([k, v]) => ({
   name: catLabels[k] || k,
   value: v,
-  itemStyle: { color: catColors[k] || '#9B9B99' }
+  itemStyle: { color: catColors[k] || '#8A9890' }
 }));
 
 const chart = sggGrafico(document.getElementById('chartCategorias'));
 chart.setOption({
-  textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#3D3D3A' },
+  textStyle: { fontFamily: 'Archivo, system-ui, sans-serif', color: '#33403A' },
   tooltip: {
     trigger: 'item',
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12 },
+    textStyle: { color: '#FFFFFF', fontFamily: 'Archivo, system-ui, sans-serif', fontSize: 12 },
     formatter: p => `${p.name}: <strong>${p.value}</strong>`
   },
   legend: { show: false },
@@ -274,7 +274,7 @@ chart.setOption({
     label: {
       show: true,
       fontSize: 10,
-      color: '#3D3D3A',
+      color: '#33403A',
       formatter: p => p.value > 0 ? `${p.name}\n${p.value}` : ''
     },
     labelLine: { length: 6, length2: 8 }

@@ -116,8 +116,8 @@
 <script>
 const PALETAS = {
   normal: {
-    sexo: ['#3B6D11', '#EF9F27'],
-    peso: ['#C0DD97', '#7CAB42', '#3B6D11', '#27500A']
+    sexo: ['#0B6E4F', '#EF9F27'],
+    peso: ['#C0DD97', '#7CAB42', '#0B6E4F', '#27500A']
   },
   contraste: {
     sexo: ['#1565C0', '#E65100'],
@@ -126,11 +126,11 @@ const PALETAS = {
 };
 
 const ECHART_DEFAULTS = {
-  textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#1C1C1A' },
+  textStyle: { fontFamily: 'Archivo, system-ui, sans-serif', color: '#1C1C1A' },
   tooltip: {
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 13 }
+    textStyle: { color: '#FFFFFF', fontFamily: 'Archivo, system-ui, sans-serif', fontSize: 13 }
   }
 };
 
@@ -148,7 +148,7 @@ function desenharSexo(paleta) {
     tooltip: { ...ECHART_DEFAULTS.tooltip, trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     legend: {
       orient: 'horizontal', bottom: 0,
-      textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#3D3D3A' }
+      textStyle: { fontFamily: 'Archivo, system-ui, sans-serif', color: '#33403A' }
     },
     series: [{
       type: 'pie',
@@ -185,7 +185,7 @@ function desenharPeso(paleta) {
     tooltip: { ...ECHART_DEFAULTS.tooltip, trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     legend: {
       orient: 'horizontal', bottom: 0,
-      textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#3D3D3A' }
+      textStyle: { fontFamily: 'Archivo, system-ui, sans-serif', color: '#33403A' }
     },
     series: [{
       type: 'pie',
@@ -228,8 +228,8 @@ function carregarDados() {
 
   instSexo = sggGrafico(document.getElementById('chartSexo'));
   instPeso = sggGrafico(document.getElementById('chartPeso'));
-  instSexo.showLoading({ text: 'Carregando...', color: '#3B6D11' });
-  instPeso.showLoading({ text: 'Carregando...', color: '#3B6D11' });
+  instSexo.showLoading({ text: 'Carregando...', color: '#0B6E4F' });
+  instPeso.showLoading({ text: 'Carregando...', color: '#0B6E4F' });
 
   Promise.all([
     fetch("{{ url_for('api.dashboard_summary') }}").then(r => r.json()),

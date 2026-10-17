@@ -135,34 +135,34 @@ const nomes   = touros.map(t => t.brinco).reverse();
 const valores = touros.map(t => ({
   value: t.gmd,
   itemStyle: {
-    color: t.gmd >= {{ gmd_meta }} ? '#3B6D11' : t.gmd >= {{ gmd_meta }} * 0.75 ? '#EF9F27' : '#E24B4A'
+    color: t.gmd >= {{ gmd_meta }} ? '#0B6E4F' : t.gmd >= {{ gmd_meta }} * 0.75 ? '#EF9F27' : '#E24B4A'
   }
 })).reverse();
 
 const chart = sggGrafico(document.getElementById('chartTouros'));
 chart.setOption({
-  textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: '#3D3D3A' },
+  textStyle: { fontFamily: 'Archivo, system-ui, sans-serif', color: '#33403A' },
   grid: { top: 10, right: 80, bottom: 30, left: 20, containLabel: true },
   tooltip: {
     trigger: 'axis',
     axisPointer: { type: 'shadow' },
     backgroundColor: '#1C1C1A',
     borderColor: '#1C1C1A',
-    textStyle: { color: '#FAFAF8', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 13 },
+    textStyle: { color: '#FFFFFF', fontFamily: 'Archivo, system-ui, sans-serif', fontSize: 13 },
     formatter: p => `${p[0].name}<br/><strong>${sggNum(p[0].value, 3)} kg/dia</strong>`
   },
   xAxis: {
     type: 'value',
     name: 'kg/dia',
-    nameTextStyle: { color: '#6B6B68', fontSize: 11 },
-    axisLabel: { color: '#6B6B68', fontSize: 11, formatter: v => sggNum(v, 2) },
+    nameTextStyle: { color: '#5B6A5F', fontSize: 11 },
+    axisLabel: { color: '#5B6A5F', fontSize: 11, formatter: v => sggNum(v, 2) },
     splitLine: { lineStyle: { color: '#EDEDE8' } },
     max: value => Math.max(value.max * 1.15, 1.0)
   },
   yAxis: {
     type: 'category',
     data: nomes,
-    axisLabel: { color: '#3D3D3A', fontSize: 12 },
+    axisLabel: { color: '#33403A', fontSize: 12 },
     axisLine: { lineStyle: { color: '#D6D6D0' } }
   },
   series: [{
@@ -171,17 +171,17 @@ chart.setOption({
     barMaxWidth: 32,
     label: {
       show: true, position: 'right',
-      fontSize: 12, color: '#3D3D3A',
+      fontSize: 12, color: '#33403A',
       formatter: p => p.value > 0 ? sggNum(p.value, 3) : ''
     },
     markLine: {
       silent: true,
       symbol: 'none',
-      lineStyle: { color: '#9B9B99', type: 'dashed', width: 1.5 },
+      lineStyle: { color: '#8A9890', type: 'dashed', width: 1.5 },
       data: [{ xAxis: gmdRebanho, name: 'Rebanho' }],
       label: {
         formatter: p => `Rebanho\n${sggNum(p.value, 3)}`,
-        color: '#9B9B99', fontSize: 10
+        color: '#8A9890', fontSize: 10
       }
     }
   }]
