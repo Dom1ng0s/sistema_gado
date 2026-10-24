@@ -16,8 +16,8 @@ from routes.configuracoes import config_bp
 from routes.pastos import pastos_bp
 from routes.estoque import estoque_bp
 from routes.sanitario import sanitario_bp
-from repositories import configuracao_repository
-from utils.permissions import PUBLICO, registrar_politica
+from repositories import acesso_repository, configuracao_repository
+from utils.permissions import PUBLICO, autorizado, papel_de, registrar_politica
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -110,6 +110,19 @@ def carregar_plano():
             "Falha ao carregar plano de farm_id=%s", current_user.farm_id)
     return None
 
+@app.template_global()
+def pode_ver(endpoint, metodo='GET'):
+    """O papel do usuário pode chamar este endpoint?
+
+    Existe para o menu não oferecer o que a política vai negar: um contador
+    com "Lixeira" no menu clica e toma 403. A fonte é a mesma POLICY que
+    protege a rota, então menu e porta não podem divergir.
+    """
+    if not current_user.is_authenticated:
+        return False
+    return autorizado(endpoint, metodo, papel_de(current_user))
+
+
 @app.template_filter('brl')
 def format_brl(value):
     try:
@@ -164,7 +177,30 @@ def inject_user_info():
         session['nome_fazenda'] = cached
         session['gmd_meta'] = gmd_meta
 
-    return {'nome_fazenda_header': cached, 'gmd_meta': gmd_meta}
+    return {'nome_fazenda_header': cached, 'gmd_meta': gmd_meta,
+            'fazendas_disponiveis': _fazendas_disponiveis()}
+
+
+def _fazendas_disponiveis():
+    """Fazendas que o usuário pode abrir, para o seletor da navbar.
+
+    Lista vazia para quem só tem a própria — que é quase todo mundo — e aí o
+    menu nem desenha o seletor. A consulta de nomes só acontece para quem tem
+    mais de uma; os ids já vieram do loader, sem round-trip novo.
+    """
+    ids = current_user.fazendas
+    if len(ids) < 2:
+        return []
+    try:
+        nomes = acesso_repository.nomes_de_fazendas(ids)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao listar fazendas do seletor")
+        return []
+    return [{'id': i,
+             'nome': nomes.get(i, '—'),
+             'papel': current_user.acessos.get(i, 'dono'),
+             'atual': i == current_user.farm_id}
+            for i in ids]
 
 
 @app.after_request

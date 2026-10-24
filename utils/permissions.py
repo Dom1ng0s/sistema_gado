@@ -1,10 +1,8 @@
 """Mapa de política de acesso por endpoint, com negação por padrão.
 
-Este módulo entra **antes** do RBAC de verdade (papéis vêm na migration de
-`acessos_fazenda`). Hoje existe um papel só — `dono`, que está em todas as
-tuplas abaixo — então o `before_request` é inócuo em comportamento: nenhuma
-requisição que funcionava passa a falhar. O que ele compra é o teste
-`test_todo_endpoint_tem_politica`: a partir daqui, rota nova sem política
+Os papéis vêm de `acessos_fazenda`; `dono` é quem não tem linha ativa lá, e
+está em todas as tuplas abaixo. O que este módulo compra, além do controle em
+si, é o teste `test_todo_endpoint_tem_politica`: rota nova sem política
 declarada deixa a suíte vermelha, em vez de nascer aberta e ninguém notar.
 
 Os papéis previstos:
@@ -36,6 +34,7 @@ NAO_ESCREVE_NA_FAZENDA = frozenset({
     'api.relatorio_pdf',
     'financeiro.simulador_custo',
     'auth.apagar_conta',
+    'auth.trocar_fazenda',
 })
 
 PAPEIS = ('dono', 'vaqueiro', 'contador', 'consultor')
@@ -66,6 +65,7 @@ POLICY = {
     # --- identidade ---
     'auth.logout':                     TODOS,
     'auth.apagar_conta':               TODOS,
+    'auth.trocar_fazenda':             TODOS,
 
     # --- rebanho: leitura ---
     'operacional.inicio':              CAMPO_LEITURA,
@@ -151,6 +151,8 @@ POLICY = {
     # --- configuração da fazenda ---
     'configuracoes.settings':          GESTAO,
     'configuracoes.plano':             GESTAO,
+    'configuracoes.acessos':           GESTAO,
+    'configuracoes.revogar_acesso':    GESTAO,
 }
 
 

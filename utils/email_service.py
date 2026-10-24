@@ -333,3 +333,68 @@ def send_reset_code(to_email: str, code: str) -> None:
     </html>
     """
     _send(to_email, 'Código de Verificação — SGG Sistema de Gado', html, required=True)
+
+
+def send_invite_code(to_email: str, fazenda: str, papel: str,
+                     code: str = None, username: str = None) -> None:
+    """Convite para operar uma fazenda.
+
+    Com `code`, a conta acabou de ser criada e o código é a primeira senha —
+    mesmo fluxo e mesma expiração de "esqueci minha senha". Sem `code`, a
+    pessoa já tinha conta: é só o aviso de que ganhou acesso.
+    """
+    if code:
+        corpo = f"""
+                <p style="margin:0 0 24px;color:#4A4A46;font-size:15px;line-height:1.6;">
+                  Use o código abaixo para criar sua senha e entrar.<br>
+                  Ele expira em <strong>15 minutos</strong> — se perder o prazo,
+                  use "Esqueci minha senha" com este email.
+                </p>
+                <div style="text-align:center;margin:0 0 28px;">
+                  <span style="display:inline-block;font-size:42px;font-weight:700;letter-spacing:12px;
+                               color:#3B6D11;background:#EAF3DE;padding:18px 28px;border-radius:10px;
+                               border:2px solid #C0DD97;">
+                    {code}
+                  </span>
+                </div>
+                <p style="margin:0;color:#888780;font-size:13px;line-height:1.5;">
+                  Entre com <strong>{to_email}</strong>.
+                </p>
+        """
+    else:
+        corpo = """
+                <p style="margin:0 0 24px;color:#4A4A46;font-size:15px;line-height:1.6;">
+                  Entre com a sua conta de sempre: a fazenda aparece no seletor
+                  do menu da conta, no canto da tela.
+                </p>
+        """
+
+    html = f"""
+    <html>
+    <body style="margin:0;padding:0;background:#EAF3DE;font-family:'DM Sans',sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr><td align="center" style="padding:40px 16px;">
+          <table width="400" cellpadding="0" cellspacing="0"
+                 style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(59,109,17,.12);">
+            <tr>
+              <td style="background:#3B6D11;padding:24px 32px;">
+                <p style="margin:0;color:#fff;font-size:20px;font-weight:600;">SGG &mdash; Sistema de Gado</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <h2 style="margin:0 0 12px;color:#1C1C1A;font-size:22px;">Você foi convidado</h2>
+                <p style="margin:0 0 16px;color:#4A4A46;font-size:15px;line-height:1.6;">
+                  A fazenda <strong>{fazenda}</strong> liberou seu acesso como
+                  <strong>{papel}</strong>.
+                </p>
+                {corpo}
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+    </body>
+    </html>
+    """
+    _send(to_email, f'Acesso liberado — {fazenda}', html, required=True)

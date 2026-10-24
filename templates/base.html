@@ -38,7 +38,9 @@
      tom do tipo, não num rótulo de grupo em caixa alta. #}
   <aside class="barra-lateral" id="barra-lateral">
 
-    <a class="barra-lateral__marca" href="{{ url_for('operacional.inicio') }}">
+    {# A marca aponta para o início, mas não é item de navegação: é o logo, e
+       some para ninguém. #}
+    <a class="barra-lateral__marca" href="{{ url_for(pode_ver('operacional.inicio') and 'operacional.inicio' or 'index') }}">
       <strong>SGG</strong>
       <span>{{ nome_fazenda_header or 'Sistema de Gestão de Gado' }}</span>
     </a>
@@ -53,6 +55,7 @@
     {# ── Registrar: a única porta de escrita do sistema ────────
        Reúne o que antes estava espalhado entre o dropdown "+ Novo",
        a barra de ações do painel e a ficha do animal. #}
+    {% if pode_ver('operacional.cadastro', 'POST') or pode_ver('financeiro.custos_operacionais', 'POST') %}
     <div class="action-menu registrar">
       <button type="button" class="action-menu__trigger registrar__gatilho" id="btn-registrar"
               aria-haspopup="true" aria-expanded="false" aria-controls="menu-registrar">
@@ -62,63 +65,70 @@
         </svg>
       </button>
       <div id="menu-registrar" class="action-menu__panel" role="menu" aria-labelledby="btn-registrar">
-        <a role="menuitem" class="action-menu__item registrar__item" href="{{ url_for('operacional.pesagem_lote') }}">
+        {% if pode_ver('operacional.pesagem_lote', 'POST') %}<a role="menuitem" class="action-menu__item registrar__item" href="{{ url_for('operacional.pesagem_lote') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14"/><path d="M5 7 2 14h6zM19 7l-3 7h6z"/></svg>
           <span><strong>Pesagem</strong><small>um animal ou um lote</small></span>
-        </a>
-        <a role="menuitem" class="action-menu__item registrar__item" href="{{ url_for('operacional.vacinacao_coletiva') }}">
+        </a>{% endif %}
+        {% if pode_ver('operacional.vacinacao_coletiva', 'POST') %}<a role="menuitem" class="action-menu__item registrar__item" href="{{ url_for('operacional.vacinacao_coletiva') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 2 4 4-1.5 1.5-4-4L18 2ZM10.5 9.5l4 4M7 8l4 4m-7 7 4-4m1-8 8 8"/><path d="m2 22 4-4"/></svg>
           <span><strong>Medicação ou vacina</strong><small>um animal ou um lote</small></span>
-        </a>
-        <a role="menuitem" class="action-menu__item registrar__item" href="{{ url_for('operacional.cadastro') }}">
+        </a>{% endif %}
+        {% if pode_ver('operacional.cadastro', 'POST') %}<a role="menuitem" class="action-menu__item registrar__item" href="{{ url_for('operacional.cadastro') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 9 12 4 17 9"/><line x1="12" y1="4" x2="12" y2="16"/></svg>
           <span><strong>Entrada de animal</strong><small>cadastro, lote ou CSV</small></span>
-        </a>
-        <a role="menuitem" class="action-menu__item registrar__item" href="{{ url_for('operacional.venda_lote') }}">
+        </a>{% endif %}
+        {% if pode_ver('operacional.venda_lote', 'POST') %}<a role="menuitem" class="action-menu__item registrar__item" href="{{ url_for('operacional.venda_lote') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5.5H9.75a3.25 3.25 0 0 0 0 6.5h4.5a3.25 3.25 0 0 1 0 6.5H6"/></svg>
           <span><strong>Venda</strong><small>um animal ou um lote</small></span>
-        </a>
-        <a role="menuitem" class="action-menu__item registrar__item" href="{{ url_for('financeiro.custos_operacionais') }}">
+        </a>{% endif %}
+        {% if pode_ver('financeiro.custos_operacionais', 'POST') %}<a role="menuitem" class="action-menu__item registrar__item" href="{{ url_for('financeiro.custos_operacionais') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           <span><strong>Custo</strong><small>pago ou a pagar</small></span>
-        </a>
+        </a>{% endif %}
       </div>
     </div>
+    {% endif %}
 
     <nav class="nav-grupos" aria-label="Navegação principal">
       {# Rotina — uso diário #}
       <div class="nav-grupo">
-        <a href="{{ url_for('operacional.inicio') }}"
+        {% if pode_ver('operacional.inicio') %}<a href="{{ url_for('operacional.inicio') }}"
            class="nav-item nav-item--rotina{% if _ep == 'operacional.inicio' %} active{% endif %}"
-           {% if _ep == 'operacional.inicio' %}aria-current="page"{% endif %}>Início</a>
-        <a href="{{ url_for('operacional.painel') }}"
+           {% if _ep == 'operacional.inicio' %}aria-current="page"{% endif %}>Início</a>{% endif %}
+        {% if pode_ver('operacional.painel') %}<a href="{{ url_for('operacional.painel') }}"
            class="nav-item nav-item--rotina{% if _at_rebanho %} active{% endif %}"
-           {% if _at_rebanho %}aria-current="page"{% endif %}>Rebanho</a>
-        <a href="{{ url_for('financeiro.financeiro') }}"
+           {% if _at_rebanho %}aria-current="page"{% endif %}>Rebanho</a>{% endif %}
+        {% if pode_ver('financeiro.financeiro') %}<a href="{{ url_for('financeiro.financeiro') }}"
            class="nav-item nav-item--rotina{% if _ep.startswith('financeiro') %} active{% endif %}"
-           {% if _ep.startswith('financeiro') %}aria-current="page"{% endif %}>Financeiro</a>
+           {% if _ep.startswith('financeiro') %}aria-current="page"{% endif %}>Financeiro</a>{% endif %}
       </div>
 
+      {% set _tem_periodico = pode_ver('pastos.listar_pastos') or pode_ver('estoque.lista_estoque')
+                              or pode_ver('sanitario.lista_protocolos')
+                              or pode_ver('operacional.reproducao_painel')
+                              or pode_ver('api.graficos_page') %}
+      {% if _tem_periodico %}
       <hr>
 
       {# Periódico — quinzenal ou eventual #}
       <div class="nav-grupo">
-        <a href="{{ url_for('pastos.listar_pastos') }}"
+        {% if pode_ver('pastos.listar_pastos') %}<a href="{{ url_for('pastos.listar_pastos') }}"
            class="nav-item nav-item--periodico{% if _at_pastos %} active{% endif %}"
-           {% if _at_pastos %}aria-current="page"{% endif %}>Pastos</a>
-        <a href="{{ url_for('estoque.lista_estoque') }}"
+           {% if _at_pastos %}aria-current="page"{% endif %}>Pastos</a>{% endif %}
+        {% if pode_ver('estoque.lista_estoque') %}<a href="{{ url_for('estoque.lista_estoque') }}"
            class="nav-item nav-item--periodico{% if _ep.startswith('estoque') %} active{% endif %}"
-           {% if _ep.startswith('estoque') %}aria-current="page"{% endif %}>Estoque</a>
-        <a href="{{ url_for('sanitario.lista_protocolos') }}"
+           {% if _ep.startswith('estoque') %}aria-current="page"{% endif %}>Estoque</a>{% endif %}
+        {% if pode_ver('sanitario.lista_protocolos') %}<a href="{{ url_for('sanitario.lista_protocolos') }}"
            class="nav-item nav-item--periodico{% if _ep.startswith('sanitario') %} active{% endif %}"
-           {% if _ep.startswith('sanitario') %}aria-current="page"{% endif %}>Sanidade</a>
-        <a href="{{ url_for('operacional.reproducao_painel') }}"
+           {% if _ep.startswith('sanitario') %}aria-current="page"{% endif %}>Sanidade</a>{% endif %}
+        {% if pode_ver('operacional.reproducao_painel') %}<a href="{{ url_for('operacional.reproducao_painel') }}"
            class="nav-item nav-item--periodico{% if _ep_reproducao %} active{% endif %}"
-           {% if _ep_reproducao %}aria-current="page"{% endif %}>Reprodução</a>
-        <a href="{{ url_for('api.graficos_page') }}"
+           {% if _ep_reproducao %}aria-current="page"{% endif %}>Reprodução</a>{% endif %}
+        {% if pode_ver('api.graficos_page') %}<a href="{{ url_for('api.graficos_page') }}"
            class="nav-item nav-item--periodico{% if _ep_relatorios %} active{% endif %}"
-           {% if _ep_relatorios %}aria-current="page"{% endif %}>Relatórios</a>
+           {% if _ep_relatorios %}aria-current="page"{% endif %}>Relatórios</a>{% endif %}
       </div>
+      {% endif %}
     </nav>
 
     {# ── Conta: o que é raro sai da navegação ────────────────── #}
@@ -133,14 +143,35 @@
           <strong>{{ current_user.username if current_user.is_authenticated else '' }}</strong>
           <span>{{ nome_fazenda_header or '' }}</span>
         </div>
-        <a role="menuitem" class="action-menu__item conta__item" href="{{ url_for('configuracoes.settings') }}">
+        {# Seletor de fazenda: só aparece para quem tem acesso a mais de uma.
+           Troca de tenant é escrita de sessão, então vai por POST. #}
+        {% if fazendas_disponiveis %}
+        <div class="conta__identidade" style="border-top:1px solid var(--color-border); padding-top:var(--space-2);">
+          <span>Fazenda ativa</span>
+        </div>
+        {% for f in fazendas_disponiveis %}
+        <form method="POST" action="{{ url_for('auth.trocar_fazenda') }}" style="margin:0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="farm_id" value="{{ f.id }}">
+          <button type="submit" role="menuitem"
+                  class="action-menu__item conta__item w-full"
+                  style="background:none; border:none; text-align:left; cursor:pointer;"
+                  {% if f.atual %}aria-current="true" disabled{% endif %}>
+            <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">{% if f.atual %}<polyline points="20 6 9 17 4 12"/>{% else %}<circle cx="12" cy="12" r="9"/>{% endif %}</svg>
+            {{ f.nome }} <span class="text-xs text-muted">({{ f.papel }})</span>
+          </button>
+        </form>
+        {% endfor %}
+        <hr class="action-menu__sep">
+        {% endif %}
+        {% if pode_ver('configuracoes.settings') %}<a role="menuitem" class="action-menu__item conta__item" href="{{ url_for('configuracoes.settings') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5v.2a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1h-.2a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5v-.2a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1h.2a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
           Configurações
-        </a>
-        <a role="menuitem" class="action-menu__item conta__item" href="{{ url_for('operacional.lixeira') }}">
+        </a>{% endif %}
+        {% if pode_ver('operacional.lixeira') %}<a role="menuitem" class="action-menu__item conta__item" href="{{ url_for('operacional.lixeira') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
           Lixeira
-        </a>
+        </a>{% endif %}
         <hr class="action-menu__sep">
         <a role="menuitem" class="action-menu__item conta__item" href="{{ url_for('auth.logout') }}">
           <svg aria-hidden="true" class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -156,6 +187,7 @@
     {# A busca por brinco fica no topo de qualquer tela: o brinco é a
        chave universal do sistema e o uso varia demais de um dia para o
        outro para obrigar a passar pelo Rebanho antes de achar um animal. #}
+    {% if pode_ver('operacional.painel') %}
     <form class="busca-global" role="search" method="GET"
           action="{{ url_for('operacional.painel') }}" aria-label="Buscar animal por brinco">
       <div class="busca-global__campo combo">
@@ -171,6 +203,7 @@
       </div>
       <span class="busca-global__dica">Busca por brinco funciona em qualquer tela</span>
     </form>
+    {% endif %}
 
     <main class="page-container" id="main-content">
       {% with _fmsgs = get_flashed_messages(with_categories=True) %}

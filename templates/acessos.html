@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}Acessos{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">Configurações</p>
+    {{ m.breadcrumb([('Configurações', url_for('configuracoes.settings')), ('Acessos', '')]) }}
+    <h1 class="page-title">Quem entra nesta fazenda</h1>
+    <p class="page-subtitle">
+      Cada pessoa entra com a própria conta e o próprio papel — ninguém precisa
+      da sua senha. Revogar vale na requisição seguinte.
+    </p>
+  </div>
+  <a href="{{ url_for('configuracoes.settings') }}" class="btn btn-ghost btn-sm shrink-0">← Configurações</a>
+</div>
+
+<div style="max-width:760px;">
+
+  {% if mensagem %}
+  <div class="alert alert-success" style="margin-bottom:var(--space-5);">
+    <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+    <div>{{ mensagem }}</div>
+  </div>
+  {% endif %}
+  {% if erro %}
+  <div class="alert alert-danger" style="margin-bottom:var(--space-5);">
+    <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></span>
+    <div>{{ erro }}</div>
+  </div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom:var(--space-6);">
+    <div class="card-header"><span>Convidar</span></div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('configuracoes.acessos') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="grid-2col" style="gap:var(--space-4);">
+          <div class="form-group">
+            <label for="email">Email da pessoa</label>
+            <input id="email" type="email" name="email" class="form-input" required
+                   placeholder="joao@exemplo.com">
+            <span class="form-hint">
+              Recebe um código para criar a senha. Se já tiver conta no SGG, só
+              ganha a fazenda no seletor.
+            </span>
+          </div>
+          <div class="form-group">
+            <label for="papel">Papel</label>
+            <select id="papel" name="papel" class="form-select" required>
+              {% for p in papeis %}
+              <option value="{{ p }}">{{ p|capitalize }}</option>
+              {% endfor %}
+            </select>
+            <span class="form-hint">
+              Vaqueiro opera o rebanho e não vê dinheiro; contador vê dinheiro e
+              não escreve; consultor lê para análise.
+            </span>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Liberar acesso</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>Acessos</span></div>
+    {% if acessos %}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Pessoa</th>
+            <th>Papel</th>
+            <th>Desde</th>
+            <th>Situação</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in acessos %}
+          <tr>
+            <td class="td-primary">
+              {{ a[3] or a[2] }}
+              {% if a[3] %}<br><span class="text-xs text-muted">{{ a[2] }}</span>{% endif %}
+            </td>
+            <td>{{ a[4]|capitalize }}</td>
+            <td>{{ a[6]|date_br }}</td>
+            <td>
+              {% if a[5] %}
+              <span class="badge badge-success">Ativo</span>
+              {% else %}
+              <span class="badge badge-neutral">Revogado</span>
+              {% endif %}
+            </td>
+            <td class="text-right">
+              {% if a[5] %}
+              <form method="POST" action="{{ url_for('configuracoes.revogar_acesso', acesso_id=a[0]) }}"
+                    style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-ghost btn-sm">Revogar</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card-body">
+      <div class="empty-state">
+        <p class="empty-state__title">Ninguém além de você</p>
+        <p class="empty-state__desc">
+          Convide o vaqueiro para registrar pesagem no curral, ou o contador
+          para fechar o mês — sem passar a sua senha para ninguém.
+        </p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

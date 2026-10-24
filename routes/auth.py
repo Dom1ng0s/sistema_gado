@@ -1,6 +1,7 @@
 import secrets
 import logging
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, login_required, logout_user, current_user
@@ -74,6 +75,33 @@ def logout():
     # o próximo login no mesmo navegador começa com o cabeçalho de outra conta.
     session.clear()
     return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/fazenda/trocar', methods=['POST'])
+@login_required
+def trocar_fazenda():
+    """Troca a fazenda ativa de quem tem acesso a mais de uma.
+
+    Só grava a escolha na sessão. Quem decide se ela vale é o loader, que a
+    revalida contra `acessos_fazenda` em todo request — então um valor
+    inventado aqui não abre fazenda nenhuma.
+    """
+    escolhida = request.form.get('farm_id', type=int)
+    if escolhida in current_user.fazendas:
+        session['farm_id'] = escolhida
+        # O nome da fazenda e a meta de GMD ficam em cache na sessão
+        # (inject_user_info): sem limpar, o cabeçalho continuaria na anterior.
+        session.pop('nome_fazenda', None)
+        session.pop('gmd_meta', None)
+    else:
+        flash('Você não tem acesso a essa fazenda.', 'error')
+
+    # Volta para onde estava, se for uma página daqui. O destino vem do
+    # Referer, então é conferido antes de virar redirect.
+    destino = request.referrer or ''
+    if destino and urlparse(destino).netloc == request.host:
+        return redirect(destino)
+    return redirect(url_for('operacional.painel'))
 
 
 @auth_bp.route('/novo_usuario', methods=['GET', 'POST'])

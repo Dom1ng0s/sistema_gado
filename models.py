@@ -16,7 +16,8 @@ class User(UserMixin):
     """
 
     def __init__(self, id, username, password_hash, email=None,
-                 farm_id=None, papel='dono', ativo=1):
+                 farm_id=None, papel='dono', ativo=1, acessos=None,
+                 tem_fazenda_propria=True):
         self.id = id
         self.username = username
         self.password_hash = password_hash
@@ -24,6 +25,16 @@ class User(UserMixin):
         self.farm_id = farm_id or id
         self.papel = papel
         self.ativo = ativo
+        # Guardado no objeto porque o loader já pagou a consulta: o seletor de
+        # fazenda na navbar sai daqui sem um segundo round-trip por request.
+        self.acessos = acessos or {}
+        self.tem_fazenda_propria = tem_fazenda_propria
+
+    @property
+    def fazendas(self):
+        """Ids de fazenda que este usuário pode abrir, a própria primeiro."""
+        ids = [self.id] if (self.tem_fazenda_propria or not self.acessos) else []
+        return ids + [i for i in self.acessos if i != self.id]
 
     # `get_id()` vem do UserMixin e serializa `self.id` — continua correto de
     # graça porque `self.id` voltou a ser só a conta.
@@ -44,19 +55,25 @@ class User(UserMixin):
             return {linha[0]: linha[1] for linha in cursor.fetchall()}
 
     @staticmethod
-    def resolver_fazenda(uid, acessos, escolhida=None):
+    def resolver_fazenda(uid, acessos, escolhida=None, tem_fazenda_propria=False):
         """(farm_id, papel) a partir dos acessos ativos e da fazenda escolhida.
 
         Função pura: é aqui que mora a revalidação. `escolhida` vem da sessão do
-        usuário e **só** é aceita se o banco a devolveu como acesso ativo —
-        qualquer outro valor cai no primeiro acesso, ou na própria conta. Um
-        consultor atende N fazendas; o seletor na navbar vem depois, a
-        revalidação não pode.
+        usuário e **só** é aceita se o banco a devolveu como acesso ativo (ou se
+        for a própria fazenda) — qualquer outro valor é descartado.
+
+        O padrão de quem não escolheu nada depende de ter fazenda própria. Quem
+        tem — um dono que também é contador de outra fazenda — abre na sua, e
+        não no rebanho alheio, senão aceitar um convite mudaria a tela inicial
+        de alguém. Quem não tem é convidado puro: cai na fazenda a que foi
+        convidado, em vez de abrir num rebanho vazio.
         """
-        if not acessos:
+        if escolhida == uid and (tem_fazenda_propria or not acessos):
             return uid, 'dono'
         if escolhida in acessos:
             return escolhida, acessos[escolhida]
+        if tem_fazenda_propria or not acessos:
+            return uid, 'dono'
         primeira = next(iter(acessos))
         return primeira, acessos[primeira]
 
@@ -72,14 +89,21 @@ class User(UserMixin):
             # `ativo = 1` aqui é a revogação da conta inteira: o cookie de quem
             # foi desligado para de valer no request seguinte.
             cursor.execute(
-                "SELECT id, username, password_hash, email, ativo "
-                "FROM usuarios WHERE id = %s AND ativo = 1",
+                # `tem_fazenda` sai no mesmo round-trip de propósito: ele decide
+                # em que fazenda a sessão abre, e isso é resolvido em todo
+                # request.
+                "SELECT u.id, u.username, u.password_hash, u.email, u.ativo, "
+                "       EXISTS (SELECT 1 FROM configuracoes c WHERE c.user_id = u.id) "
+                "FROM usuarios u WHERE u.id = %s AND u.ativo = 1",
                 (uid,),
             )
             dados = cursor.fetchone()
         if not dados:
             return None
+        tem_fazenda = bool(dados[5])
         acessos = User.acessos_de(uid)
-        farm_id, papel = User.resolver_fazenda(uid, acessos, fazenda_escolhida)
+        farm_id, papel = User.resolver_fazenda(uid, acessos, fazenda_escolhida,
+                                               tem_fazenda_propria=tem_fazenda)
         return User(dados[0], dados[1], dados[2], dados[3],
-                    farm_id=farm_id, papel=papel, ativo=dados[4])
+                    farm_id=farm_id, papel=papel, ativo=dados[4],
+                    acessos=acessos, tem_fazenda_propria=tem_fazenda)

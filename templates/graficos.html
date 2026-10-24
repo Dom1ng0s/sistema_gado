@@ -102,10 +102,10 @@
       Nenhum animal abaixo de 75% da meta configurada.
     </p>
     {% endif %}
-    <a href="{{ url_for('configuracoes.settings') }}"
+    {% if pode_ver('configuracoes.settings') %}<a href="{{ url_for('configuracoes.settings') }}"
        class="btn btn-ghost btn-sm" style="margin-top:var(--space-3);">
       Ajustar meta →
-    </a>
+    </a>{% endif %}
   </div>
 </div>
 
