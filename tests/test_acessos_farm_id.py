@@ -275,6 +275,26 @@ def test_conta_desativada_nao_loga(app):
         _purgar(uid)
 
 
+def test_login_nao_herda_a_sessao_do_usuario_anterior(app):
+    """Trocar de conta no mesmo navegador não pode deixar o cabeçalho na
+    fazenda antiga: inject_user_info guarda o nome em cache na sessão."""
+    uid, username = _criar_usuario()
+    client = app.test_client()
+    try:
+        _executar("INSERT INTO configuracoes (user_id, nome_fazenda) VALUES (%s, %s)",
+                  (uid, 'Fazenda Certa'))
+        with client.session_transaction() as sessao:
+            sessao['nome_fazenda'] = 'Fazenda De Outro'
+            sessao['farm_id'] = 999999
+        _login(client, username)
+        corpo = client.get('/painel').data.decode('utf-8')
+        assert 'Fazenda De Outro' not in corpo
+        assert 'Fazenda Certa' in corpo
+    finally:
+        _executar("DELETE FROM configuracoes WHERE user_id = %s", (uid,))
+        _purgar(uid)
+
+
 # -- HTTP: o vaqueiro dentro da fazenda --------------------------------------
 
 def test_vaqueiro_ve_o_rebanho_do_dono(fazenda):

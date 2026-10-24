@@ -150,6 +150,7 @@ POLICY = {
 
     # --- configuração da fazenda ---
     'configuracoes.settings':          GESTAO,
+    'configuracoes.plano':             GESTAO,
 }
 
 

@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as m %}
+{% block title %}Plano{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="label">Configurações</p>
+    {{ m.breadcrumb([('Configurações', url_for('configuracoes.settings')), ('Plano', '')]) }}
+    <h1 class="page-title">Plano da Fazenda</h1>
+    <p class="page-subtitle">
+      O limite de cabeças vale para o rebanho ativo: animal vendido ou excluído
+      deixa de contar e libera vaga.
+    </p>
+  </div>
+  <a href="{{ url_for('configuracoes.settings') }}" class="btn btn-ghost btn-sm shrink-0">← Configurações</a>
+</div>
+
+<div style="max-width:720px;">
+
+  {% if plano.expirado %}
+  <div class="alert alert-danger" style="margin-bottom:var(--space-6);">
+    <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></span>
+    <div>
+      <strong>Período de avaliação encerrado</strong><br>
+      Seus dados continuam aqui. Para seguir usando sem o limite de avaliação,
+      conclua o pagamento abaixo.
+    </div>
+  </div>
+  {% elif plano.em_trial and plano.dias_restantes is not none and plano.dias_restantes <= 5 %}
+  <div class="alert alert-warning" style="margin-bottom:var(--space-6);">
+    <span class="alert-icon" aria-hidden="true"><svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+    <div>
+      <strong>{{ plano.dias_restantes }} dia(s) de avaliação</strong><br>
+      Depois disso a conta não é apagada — só o pagamento libera o plano cheio.
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom:var(--space-6);">
+    <div class="card-header">
+      <span>Plano atual</span>
+      <span class="badge {% if plano.expirado %}badge-danger{% elif plano.em_trial %}badge-warning{% else %}badge-success{% endif %}">
+        {{ plano.rotulo }}
+      </span>
+    </div>
+    <div class="card-body">
+      <div style="display:flex; justify-content:space-between; align-items:center;
+                  margin-bottom:var(--space-2);">
+        <span class="label">Rebanho ativo</span>
+        <span style="font-size:var(--text-sm); font-weight:var(--weight-semibold);
+                     color:{% if plano.estourado %}var(--color-danger){% else %}var(--color-primary){% endif %};">
+          {% if plano.sem_limite %}
+            {{ plano.cabecas }} cabeças · sem limite
+          {% else %}
+            {{ plano.cabecas }} / {{ plano.limite_cabecas }} cabeças
+          {% endif %}
+        </span>
+      </div>
+
+      {% if plano.uso_pct is not none %}
+      <div class="lotacao-bar">
+        <!-- Só dois estados: neste sistema de cores `warning` e `danger` são o
+             mesmo accent, então uma barra "atenção" aos 80% ficaria idêntica à
+             de limite estourado — alarme sem informação. Quem conta a
+             aproximação é o número de vagas, logo abaixo. -->
+        <div class="lotacao-fill {% if plano.estourado %}danger{% else %}ok{% endif %}"
+             style="width:{{ plano.uso_pct }}%;"></div>
+      </div>
+      {% endif %}
+
+      <div class="grid-2col" style="margin-top:var(--space-5);">
+        <div>
+          <p class="label">Vagas restantes</p>
+          <!-- `.num` alinha à direita (é classe de célula de tabela) e
+               deixaria o número solto longe do rótulo; aqui vale só a fonte
+               tabular. -->
+          <p class="dado tabular" style="margin:0; font-weight:var(--weight-medium);">
+            {% if plano.sem_limite %}—{% else %}{{ [plano.vagas, 0]|max }}{% endif %}
+          </p>
+        </div>
+        <div>
+          <p class="label">
+            {% if plano.em_trial %}Avaliação até{% else %}Situação{% endif %}
+          </p>
+          <p style="margin:0; font-weight:var(--weight-medium);">
+            {% if plano.em_trial %}
+              {{ plano.trial_ends_at|date_br }}
+            {% else %}
+              {{ plano.status|capitalize }}
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      {% if plano.estourado %}
+      <p class="text-sm text-danger" style="margin:var(--space-4) 0 0;">
+        O limite não esconde nem apaga nada do que já está cadastrado — ele só
+        impede novos cadastros, inclusive por lote e por importação de CSV.
+      </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>Pagamento</span></div>
+    <div class="card-body">
+      {% if link_pagamento %}
+        <p class="text-sm text-secondary" style="margin:0 0 var(--space-4);">
+          O pagamento abre em uma página do Asaas. A liberação é conferida e
+          aplicada manualmente — se não mudar aqui em algumas horas, fale com o
+          suporte com o comprovante em mãos.
+        </p>
+        <a href="{{ link_pagamento }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+          Pagar pelo Asaas
+        </a>
+      {% else %}
+        <p class="text-sm text-secondary" style="margin:0;">
+          O link de pagamento ainda não está configurado nesta instalação.
+          Fale com o suporte para ampliar o plano.
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

@@ -12,6 +12,7 @@ from models import User
 from repositories import auth_repository
 from routes.validators import validate
 from utils.email_service import send_reset_code, send_welcome_email
+from utils.plano import TRIAL_DIAS
 
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
@@ -49,6 +50,12 @@ def login():
                 # desativada — aqui, não na tela seguinte.
                 user_obj = User.get_user_id(dados[0])
                 if user_obj:
+                    # Zera a sessão ANTES de logar: o que estava nela é do
+                    # usuário anterior neste navegador — a fazenda escolhida e o
+                    # nome dela em cache (inject_user_info). Sem isso o
+                    # cabeçalho abre com a fazenda de outra conta, e trocar de
+                    # usuário no mesmo navegador não reseta nada.
+                    session.clear()
                     login_user(user_obj)
                     session['farm_id'] = user_obj.farm_id
                     return redirect(url_for('operacional.painel'))
@@ -116,9 +123,15 @@ def novo_usuario():
                     (novo_user, hash_s, email)
                 )
                 user_id = cursor.fetchone()[0]
+                # O trial é carimbado aqui, na mesma transação que cria a
+                # conta: `trial_ends_at` não tem default de coluna justamente
+                # para que a migration não vencesse todas as contas antigas na
+                # mesma data (ver migrations/0007.planos.sql).
                 cursor.execute(
-                    "INSERT INTO configuracoes (user_id, nome_fazenda, cidade_estado, area_total) VALUES (%s, %s, %s, %s)",
-                    (user_id, nome_fazenda, cidade, area)
+                    "INSERT INTO configuracoes (user_id, nome_fazenda, cidade_estado, area_total, "
+                    "plano_tier, trial_ends_at) "
+                    "VALUES (%s, %s, %s, %s, 'trial', now() + make_interval(days => %s))",
+                    (user_id, nome_fazenda, cidade, area, TRIAL_DIAS)
                 )
 
             try:

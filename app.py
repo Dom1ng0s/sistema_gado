@@ -3,7 +3,7 @@ import time
 import logging
 import subprocess as _sp
 from datetime import datetime
-from flask import Flask, redirect, url_for, render_template, session, request
+from flask import Flask, g, redirect, url_for, render_template, session, request
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
 from extensions import limiter, scheduler, compress
@@ -17,7 +17,7 @@ from routes.pastos import pastos_bp
 from routes.estoque import estoque_bp
 from routes.sanitario import sanitario_bp
 from repositories import configuracao_repository
-from utils.permissions import registrar_politica
+from utils.permissions import PUBLICO, registrar_politica
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -84,6 +84,31 @@ app.register_blueprint(sanitario_bp)
 # test_todo_endpoint_tem_politica tem o que varrer. Com um papel só ela é
 # inócua em comportamento — ver utils/permissions.py.
 registrar_politica(app)
+
+
+@app.before_request
+def carregar_plano():
+    """Plano da fazenda em `g.plano`, uma vez por request.
+
+    Lê do banco, não da sessão: plano vive de ativação manual e de revogação,
+    e um valor carimbado no cookie continuaria valendo depois de o plano mudar.
+    É uma consulta por request autenticado — o índice é a PK de configuracoes.
+
+    Registrado depois da política para não consultar nada em request que já
+    vai levar 403. Falha de leitura não derruba a tela: cai em None, e quem
+    usa trata como PLANO_PADRAO.
+    """
+    g.plano = None
+    if request.endpoint is None or request.endpoint in PUBLICO:
+        return None
+    if not current_user.is_authenticated:
+        return None
+    try:
+        g.plano = configuracao_repository.get_plano(current_user.farm_id)
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Falha ao carregar plano de farm_id=%s", current_user.farm_id)
+    return None
 
 @app.template_filter('brl')
 def format_brl(value):

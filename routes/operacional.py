@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, g, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 import math
 import logging
@@ -12,10 +12,26 @@ from repositories import (animal_repository, financeiro_repository, reproducao_r
 from routes.validators import validate
 from utils.calculo import preco_por_arroba
 from utils.carencia import dias_carencia_sugerido
+from utils import plano as plano_regras
 from decimal import Decimal
 
 operacional_bp = Blueprint('operacional', __name__)
 logger = logging.getLogger(__name__)
+
+
+def _cabe_no_plano(quantos=1):
+    """(ok, mensagem) para cadastrar `quantos` animais no plano da fazenda.
+
+    Os três caminhos de entrada de animal passam por aqui — cadastro avulso,
+    cadastro de lote e importação de CSV. Limite que só olha o formulário de um
+    animal não é limite: o lote e o CSV entram centenas de cabeças de uma vez.
+
+    A contagem é feita na hora, não no `before_request`: só estas três rotas
+    precisam dela, e contar o rebanho em todo request para nada seria caro.
+    """
+    plano = getattr(g, 'plano', None) or plano_regras.PLANO_PADRAO
+    cabecas = animal_repository.contar_cabecas_ativas(current_user.farm_id)
+    return plano_regras.pode_cadastrar(plano, cabecas, quantos)
 
 
 def _msg_carencia(carencias):
@@ -262,6 +278,11 @@ def cadastro():
 
         if errors:
             return render_template("cadastro.html", mensagem=errors[0], form_data=request.form), 400
+
+        cabe, erro_plano = _cabe_no_plano(1)
+        if not cabe:
+            return render_template("cadastro.html", mensagem=erro_plano,
+                                   form_data=request.form), 403
 
         try:
             brinco = request.form["brinco"].strip()
@@ -606,14 +627,24 @@ def cadastro_lote():
                         errors.append(f"Peso do animal {i} deve ser maior que zero.")
                 except (ValueError, AttributeError):
                     errors.append(f"Peso do animal {i} é inválido.")
-        if errors:
+        def _devolver(mensagem, status):
+            # Devolve a tabela digitada: são dezenas de brincos e pesos, e
+            # perder isso por causa de uma linha inválida custa o retrabalho
+            # todo.
             restore_data = {
                 'brincos': request.form.getlist('brincos[]'),
                 'sexos': request.form.getlist('sexos[]'),
                 'pesos': request.form.getlist('pesos[]'),
             }
-            return render_template("cadastro_lote.html", mensagem=errors[0],
-                                   form_data=request.form, restore_data=restore_data), 400
+            return render_template("cadastro_lote.html", mensagem=mensagem,
+                                   form_data=request.form, restore_data=restore_data), status
+
+        if errors:
+            return _devolver(errors[0], 400)
+
+        cabe, erro_plano = _cabe_no_plano(len(brincos))
+        if not cabe:
+            return _devolver(erro_plano, 403)
         try:
             codigo_lote = request.form["codigo_lote"].strip()
             descricao = request.form["descricao"]
@@ -917,6 +948,16 @@ def importar_csv():
         return render_template('importar_csv.html',
                                erro=f"Colunas obrigatórias ausentes: {', '.join(sorted(faltando))}")
 
+    # Limite do plano: aqui o arquivo pode trazer centenas de cabeças de uma
+    # vez. Sem vaga nenhuma, recusa antes de parsear; com vaga parcial, importa
+    # o que cabe e reporta linha por linha o que ficou fora — mesmo tratamento
+    # que o limite de 5000 linhas recebe, em vez de perder o arquivo inteiro.
+    plano = getattr(g, 'plano', None) or plano_regras.PLANO_PADRAO
+    livres = plano_regras.vagas(plano, animal_repository.contar_cabecas_ativas(current_user.farm_id))
+    if livres is not None and livres <= 0:
+        _, erro_plano = plano_regras.pode_cadastrar(plano, plano['limite_cabecas'] - livres, 1)
+        return render_template('importar_csv.html', erro=erro_plano), 403
+
     inseridos, erros = 0, []
 
     try:
@@ -975,6 +1016,13 @@ def importar_csv():
                 brincos_existentes.add(brinco)
                 linhas_validas.append((i, brinco, sexo, raca, data_compra or None,
                                         data_nasc or None, preco_compra, peso))
+
+            if livres is not None and len(linhas_validas) > livres:
+                for linha, brinco, *_resto in linhas_validas[livres:]:
+                    erros.append({'linha': linha, 'msg': (
+                        f"limite do plano ({plano['limite_cabecas']} cabeças) "
+                        f"atingido — brinco '{brinco}' não importado")})
+                linhas_validas = linhas_validas[:livres]
 
             # brincos efetivamente inseridos, com a data e o peso da pesagem de
             # baseline (mesma transação): sem essa pesagem inicial o GMD nunca

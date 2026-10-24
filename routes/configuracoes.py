@@ -1,8 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, g, render_template, request, redirect, url_for, session, flash
 from flask_login import login_required, current_user
 import logging
-from repositories import configuracao_repository
+import os
+from repositories import animal_repository, configuracao_repository
 from routes.validators import validate
+from utils import plano as plano_regras
 
 config_bp = Blueprint('configuracoes', __name__)
 logger = logging.getLogger(__name__)
@@ -62,3 +64,22 @@ def settings():
         logger.error(f"Erro ao carregar configurações: {e}", exc_info=True)
 
     return render_template('configuracoes.html', config=dados_atuais)
+
+
+@config_bp.route('/plano')
+@login_required
+def plano():
+    """Tela do plano: o que a fazenda tem hoje e como pagar.
+
+    A ativação é manual neste estágio — o dono paga pelo link e a liberação é
+    aplicada por fora (scripts/ativar_plano.py). A tela existe para que ele
+    saiba o limite, quanto já usou e quando o trial vence; sem isso o limite
+    aparece pela primeira vez como um erro no meio de um cadastro.
+    """
+    atual = getattr(g, 'plano', None) or plano_regras.PLANO_PADRAO
+    cabecas = animal_repository.contar_cabecas_ativas(current_user.farm_id)
+    return render_template(
+        'plano.html',
+        plano=plano_regras.resumo(atual, cabecas),
+        link_pagamento=os.getenv('ASAAS_LINK_PAGAMENTO', ''),
+    )

@@ -790,3 +790,19 @@ def cadastrar_lote(user_id, codigo_lote, descricao, data_compra, animais_data, r
             [(id_por_brinco[brinco], data_compra, peso) for brinco, sexo, peso, custo_animal in animais_data]
         )
         return lote_id
+
+
+def contar_cabecas_ativas(user_id):
+    """Cabeças que o plano cobra: o rebanho que a fazenda administra hoje.
+
+    Vendido e excluído não contam — o dono não deve pagar pelo histórico, e é
+    por isso que vender libera vaga. Casa com o índice parcial
+    ix_animais_ativos_por_user (migration 0007).
+    """
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT COUNT(*) FROM animais "
+            "WHERE user_id = %s AND deleted_at IS NULL AND data_venda IS NULL",
+            (user_id,)
+        )
+        return cursor.fetchone()[0]
