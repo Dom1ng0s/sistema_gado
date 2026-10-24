@@ -17,6 +17,7 @@ from routes.pastos import pastos_bp
 from routes.estoque import estoque_bp
 from routes.sanitario import sanitario_bp
 from repositories import configuracao_repository
+from utils.permissions import registrar_politica
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -64,6 +65,12 @@ app.register_blueprint(api_bp)
 app.register_blueprint(pastos_bp)
 app.register_blueprint(estoque_bp)
 app.register_blueprint(sanitario_bp)
+
+# Política de acesso por endpoint (default-deny). Registrada depois dos
+# blueprints porque só então o url_map está completo e o teste
+# test_todo_endpoint_tem_politica tem o que varrer. Com um papel só ela é
+# inócua em comportamento — ver utils/permissions.py.
+registrar_politica(app)
 
 @app.template_filter('brl')
 def format_brl(value):
