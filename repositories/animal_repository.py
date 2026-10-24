@@ -369,14 +369,20 @@ def get_animal_id_by_pesagem(pesagem_id, user_id):
 # ---- GMD ----
 
 def get_gmd_by_animal(animal_id):
-    """GMD de um animal, lido da materialized view v_gmd_analitico (#115).
+    """GMD de um animal, lido da view **live** (#115, #117).
+
+    Aqui é a exceção deliberada à matview: um animal só, um índice, custo de
+    nada — e é a tela onde a defasagem de até 5 minutos aparece como erro. Quem
+    acabou de pesar no curral abre a ficha e quer ver o número que digitou; com
+    a matview, via o anterior e registrava de novo. As telas de rebanho inteiro
+    continuam na matview, que é o que a torna barata.
 
     Devolve (peso_final, ganho_total, dias, gmd) ou None se o animal ainda não
-    tem 2 pesagens em datas distintas (ou o REFRESH ainda não o alcançou)."""
+    tem 2 pesagens em datas distintas."""
     with get_db_cursor() as cursor:
         cursor.execute(
             "SELECT peso_final, ganho_total, dias, ROUND(gmd, 3) AS gmd "
-            "FROM v_gmd_analitico WHERE animal_id = %s AND dias > 0",
+            "FROM v_gmd_analitico_live WHERE animal_id = %s AND dias > 0",
             (animal_id,)
         )
         return cursor.fetchone()
