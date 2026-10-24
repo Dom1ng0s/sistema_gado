@@ -255,6 +255,7 @@
           <th scope="col">Data</th>
           <th scope="col">Medicamento</th>
           <th scope="col">Custo</th>
+          <th scope="col">Carência</th>
           <th scope="col">Observações</th>
         </tr>
       </thead>
@@ -264,11 +265,16 @@
           <td>{{ med[2] }}</td>
           <td class="td-primary">{{ med[3] }}</td>
           <td>R$ {{ med[4] }}</td>
+          <td class="dado">
+            {% if med[6] %}
+              {{ med[6] }} d — libera {{ med[7].strftime('%d/%m/%Y') }}
+            {% else %}—{% endif %}
+          </td>
           <td style="color:var(--color-ink-secondary);">{{ med[5] or '—' }}</td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="4"
+          <td colspan="5"
               style="text-align:center; padding:var(--space-8); color:var(--color-ink-tertiary);">
             Nenhuma medicação registrada.
           </td>

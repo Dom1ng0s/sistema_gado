@@ -50,6 +50,12 @@
           <span class="form-hint" id="vac-custo-dica">Pode digitar com vírgula: 12,50</span>
         </div>
         <div class="form-group">
+          <label class="form-label" for="vac-carencia">Dias de carência <span class="form-optional">(opcional)</span></label>
+          <input class="form-input" type="number" id="vac-carencia" name="dias_carencia"
+                 min="0" max="365" step="1" placeholder="Ex: 35" aria-describedby="vac-carencia-dica">
+          <span class="form-hint" id="vac-carencia-dica">Prazo da bula até o abate. Em branco, sugerido pelo nome do produto.</span>
+        </div>
+        <div class="form-group">
           <label class="form-label" for="vac-obs">Observação <span class="form-optional">(opcional)</span></label>
           <input class="form-input" type="text" id="vac-obs" name="obs" placeholder="Motivo ou lote da vacina">
         </div>

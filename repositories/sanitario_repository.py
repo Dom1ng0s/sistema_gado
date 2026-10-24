@@ -65,3 +65,53 @@ def desativar_protocolo(protocolo_id, user_id):
             "WHERE id = %s AND user_id = %s",
             (protocolo_id, user_id)
         )
+
+
+# ---- CARÊNCIA SANITÁRIA ----
+
+def get_carencias_ativas(user_id, animal_ids=None):
+    """Aplicações ainda em carência, da view `vw_animais_em_carencia`.
+
+    Retorna tuplas (animal_id, brinco, medicacao_id, nome_medicamento,
+    data_aplicacao, dias_carencia, data_liberacao, dias_restantes), do
+    vencimento mais distante para o mais próximo — o primeiro é o que manda na
+    liberação do animal.
+
+    `animal_ids=None` devolve tudo da fazenda (card do /inicio); com ids, filtra
+    (guarda da venda). Lista vazia devolve [] sem ir ao banco.
+    """
+    if animal_ids is not None and not animal_ids:
+        return []
+    sql = (
+        "SELECT animal_id, brinco, medicacao_id, nome_medicamento, data_aplicacao, "
+        "       dias_carencia, data_liberacao, dias_restantes "
+        "FROM vw_animais_em_carencia WHERE user_id = %s"
+    )
+    params = [user_id]
+    if animal_ids is not None:
+        sql += " AND animal_id = ANY(%s)"
+        params.append([int(a) for a in animal_ids])
+    sql += " ORDER BY data_liberacao DESC, brinco ASC"
+    with get_db_cursor() as cursor:
+        cursor.execute(sql, tuple(params))
+        return cursor.fetchall()
+
+
+def registrar_override_carencia(carencias, autorizado_por):
+    """Grava a autorização de venda dentro da carência.
+
+    `carencias` são as tuplas devolvidas por `get_carencias_ativas`. Override sem
+    registro não serve de nada: se a carcaça for rejeitada, esta tabela é a única
+    resposta para "quem liberou".
+    """
+    if not carencias:
+        return 0
+    linhas = [(c[0], c[2], autorizado_por, c[6]) for c in carencias]
+    with get_db_cursor() as cursor:
+        cursor.executemany(
+            "INSERT INTO vendas_com_carencia "
+            "(animal_id, medicacao_id, autorizado_por, data_liberacao) "
+            "VALUES (%s, %s, %s, %s)",
+            linhas
+        )
+    return len(linhas)

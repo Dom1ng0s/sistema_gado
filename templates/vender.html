@@ -22,27 +22,32 @@
   </div>
 </div>
 
-<div style="max-width:480px;">
+<div style="max-width:{{ '760px' if carencias else '480px' }};">
   <form action="{{ url_for('operacional.vender', id_animal=id_animal) }}"
         method="POST" class="form-container">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+    {% include '_carencia_bloqueio.html' %}
+
     <div class="form-group">
       <label for="data_venda">Data da Venda</label>
-      <input id="data_venda" type="date" name="data_venda" class="form-input" required>
+      <input id="data_venda" type="date" name="data_venda" class="form-input" required
+             value="{{ form_data.data_venda if form_data else '' }}">
     </div>
 
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--space-4);">
       <div class="form-group">
         <label for="peso_venda">Peso Final (kg)</label>
         <input id="peso_venda" type="number" step="0.01" name="peso_venda"
-               class="form-input" required placeholder="Ex: 540.5">
+               class="form-input" required placeholder="Ex: 540.5"
+               value="{{ form_data.peso_venda if form_data else '' }}">
       </div>
 
       <div class="form-group">
         <label for="valor_arroba">Valor da Arroba (R$)</label>
         <input id="valor_arroba" type="number" step="0.01" name="valor_arroba"
-               class="form-input" required placeholder="Ex: 280.00">
+               class="form-input" required placeholder="Ex: 280.00"
+               value="{{ form_data.valor_arroba if form_data else '' }}">
         <span class="form-hint">Ex: 1500.00 (separador: ponto)</span>
       </div>
     </div>

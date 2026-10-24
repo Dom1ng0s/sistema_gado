@@ -11,10 +11,44 @@ from repositories import (animal_repository, financeiro_repository, reproducao_r
                           sanitario_repository)
 from routes.validators import validate
 from utils.calculo import preco_por_arroba
+from utils.carencia import dias_carencia_sugerido
 from decimal import Decimal
 
 operacional_bp = Blueprint('operacional', __name__)
 logger = logging.getLogger(__name__)
+
+
+def _msg_carencia(carencias):
+    """Mensagem de bloqueio: brinco, produto e a data em que libera.
+
+    Quem está no curral precisa dos três — sem o brinco não sabe qual animal
+    tirar da lista, e sem a data não sabe quando voltar.
+    """
+    por_animal = {}
+    for animal_id, brinco, _med_id, nome, _aplic, _dias, liberacao, _restantes in carencias:
+        atual = por_animal.get(animal_id)
+        if atual is None or liberacao > atual[1]:
+            por_animal[animal_id] = (brinco, liberacao, nome)
+    partes = [f"{brinco} ({nome}, libera em {liberacao.strftime('%d/%m/%Y')})"
+              for brinco, liberacao, nome in sorted(por_animal.values())]
+    plural = "animais" if len(partes) > 1 else "animal"
+    return (f"Carência sanitária: {len(partes)} {plural} não pode(m) ir para o abate — "
+            + "; ".join(partes) + ".")
+
+
+def _dias_carencia_do_form(form):
+    """Carência declarada no formulário; em branco, cai na sugestão pelo nome.
+
+    Campo vazio não é "sem carência": é usuário que não preencheu, e para
+    Ivermectina o silêncio custa a carcaça. Zero explícito é respeitado.
+    """
+    bruto = (form.get('dias_carencia') or '').strip()
+    if bruto:
+        try:
+            return max(0, int(bruto))
+        except (TypeError, ValueError):
+            pass
+    return dias_carencia_sugerido(form.get('nome'))
 
 @operacional_bp.route('/inicio')
 @login_required
@@ -80,6 +114,40 @@ def inicio():
             })
     except Exception as e:
         logger.error(f"Erro Início (sanidade): {e}", exc_info=True)
+
+    try:
+        carencias = sanitario_repository.get_carencias_ativas(current_user.id)
+        if carencias:
+            brincos = sorted({c[1] for c in carencias})
+            liberacao = max(c[6] for c in carencias)
+            ocorrencias.append({
+                'tom': 'limite',
+                'titulo': 'Animais em carência sanitária',
+                'detalhe': ('Não podem ir para o abate; último libera em '
+                            f'{liberacao.strftime("%d/%m/%Y")} ('
+                            + ', '.join(brincos[:4])
+                            + (f' e mais {len(brincos) - 4}' if len(brincos) > 4 else '') + ')'),
+                'numero': len(brincos),
+                'acao': 'Ver no rebanho',
+                'href': url_for('operacional.painel'),
+            })
+    except Exception as e:
+        logger.error(f"Erro Início (carência): {e}", exc_info=True)
+
+    try:
+        paradas = animal_repository.get_lotes_sem_pesagem(current_user.id, dias=45)
+        if paradas:
+            ocorrencias.append({
+                'tom': 'dado',
+                'titulo': 'Lotes sem pesagem há 45 dias ou mais',
+                'detalhe': ('Sem pesagem não há GMD, e sem GMD não há como saber se o lote '
+                            f'está engordando — o mais antigo está há {paradas[0][4]} dias'),
+                'numero': len(paradas),
+                'acao': 'Pesar em lote',
+                'href': url_for('operacional.pesagem_lote'),
+            })
+    except Exception as e:
+        logger.error(f"Erro Início (pesagem de lote): {e}", exc_info=True)
 
     try:
         for ag in financeiro_repository.get_agendamentos(current_user.id):
@@ -278,6 +346,22 @@ def vender(id_animal):
         ])
         if errors:
             return render_template('vender.html', id_animal=id_animal, mensagem=errors[0]), 400
+
+        # Carência sanitária: animal medicado dentro da janela não pode ir ao abate.
+        # A trava é aqui e não no repositório porque é o override que precisa de
+        # formulário — e o override só vale com registro de quem autorizou.
+        confirmou = request.form.get('confirmar_carencia') == '1'
+        try:
+            carencias = sanitario_repository.get_carencias_ativas(
+                current_user.id, animal_ids=[id_animal])
+        except Exception as e:
+            logger.error(f"Erro checar carência: {e}", exc_info=True)
+            carencias = []
+        if carencias and not confirmou:
+            return render_template('vender.html', id_animal=id_animal,
+                                   carencias=carencias, form_data=request.form,
+                                   mensagem=_msg_carencia(carencias)), 400
+
         try:
             dt = request.form['data_venda']
             peso = float(request.form['peso_venda'])
@@ -286,6 +370,9 @@ def vender(id_animal):
             if not ok:
                 return render_template('vender.html', id_animal=id_animal,
                                        mensagem="Animal não encontrado."), 404
+            if carencias:
+                sanitario_repository.registrar_override_carencia(carencias, current_user.id)
+                flash("Venda autorizada dentro da carência — registrado para auditoria.", 'warning')
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro vender: {e}", exc_info=True)
@@ -318,6 +405,23 @@ def venda_lote():
             return render_template('venda_lote.html', animais=animais,
                                    erro="Selecione pelo menos um animal."), 400
 
+        confirmou = request.form.get('confirmar_carencia') == '1'
+        try:
+            carencias = sanitario_repository.get_carencias_ativas(
+                current_user.id, animal_ids=animal_ids)
+        except Exception as e:
+            logger.error(f"Erro checar carência (lote): {e}", exc_info=True)
+            carencias = []
+        if carencias and not confirmou:
+            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+            restore_data = {
+                'animal_ids': animal_ids,
+                'pesos_venda': pesos,
+            }
+            return render_template('venda_lote.html', animais=animais,
+                                   erro=_msg_carencia(carencias), carencias=carencias,
+                                   form_data=request.form, restore_data=restore_data), 400
+
         data_venda = request.form['data_venda']
         valor_arroba = float(request.form['valor_arroba'])
 
@@ -342,6 +446,12 @@ def venda_lote():
             return render_template('venda_lote.html', animais=animais,
                                    erro="Erro ao registrar venda. Tente novamente."), 400
 
+        if carencias:
+            vendidos_ids = {aid for aid, _, _ in vendas if aid not in set(invalidos)}
+            sanitario_repository.registrar_override_carencia(
+                [c for c in carencias if c[0] in vendidos_ids], current_user.id)
+            flash("Venda autorizada dentro da carência — registrado para auditoria.", 'warning')
+
         msg = f"{vendidos} animal(is) vendido(s) com sucesso."
         if invalidos:
             msg += f" {len(invalidos)} ignorado(s) (já vendido ou não pertence ao usuário)."
@@ -360,6 +470,7 @@ def medicar(id_animal):
             ('nome',           {'required': True,  'type': 'str',  'max_len': 200,  'label': 'Nome do medicamento'}),
             ('custo',          {'required': True,  'type': 'float','min_val': 0,    'label': 'Custo'}),
             ('obs',            {'required': False, 'type': 'str',  'max_len': 500,  'label': 'Observação'}),
+            ('dias_carencia',  {'required': False, 'type': 'int',  'min_val': 0, 'max_val': 365, 'label': 'Dias de carência'}),
         ])
         if errors:
             return render_template('medicar.html', id_animal=id_animal, mensagem=errors[0]), 400
@@ -367,7 +478,8 @@ def medicar(id_animal):
             ok = animal_repository.registrar_medicacao(
                 id_animal, current_user.id,
                 request.form['data_aplicacao'], request.form['nome'],
-                request.form['custo'], request.form['obs']
+                request.form['custo'], request.form['obs'],
+                dias_carencia=_dias_carencia_do_form(request.form)
             )
             if not ok:
                 return render_template('medicar.html', id_animal=id_animal,
@@ -440,6 +552,7 @@ def vacinacao_coletiva():
                 ('nome',           {'required': True,  'type': 'str',  'max_len': 200,  'label': 'Nome do produto'}),
                 ('custo',          {'required': True,  'type': 'float','min_val': 0,    'label': 'Custo'}),
                 ('obs',            {'required': False, 'type': 'str',  'max_len': 500,  'label': 'Observação'}),
+                ('dias_carencia',  {'required': False, 'type': 'int',  'min_val': 0, 'max_val': 365, 'label': 'Dias de carência'}),
             ])
             if errors:
                 lista_animais = animal_repository.get_animais_ativos(current_user.id)
@@ -452,6 +565,7 @@ def vacinacao_coletiva():
                 request.form['custo'],
                 request.form['obs'],
                 user_id=current_user.id,
+                dias_carencia=_dias_carencia_do_form(request.form),
             )
             flash(f"{len(animais_ids)} animal(is) vacinado(s) com sucesso.", 'success')
             return redirect(url_for('operacional.vacinacao_coletiva'))

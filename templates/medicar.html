@@ -41,9 +41,16 @@
     </div>
 
     <div class="form-group">
+      <label for="dias_carencia">Dias de carência</label>
+      <input id="dias_carencia" type="number" name="dias_carencia" class="form-input"
+             min="0" max="365" step="1" placeholder="Ex: 35">
+      <span class="form-hint">Prazo da bula até o abate. Em branco, o sistema sugere pelo nome do produto; 0 para produto sem carência.</span>
+    </div>
+
+    <div class="form-group">
       <label for="obs">Observações</label>
       <input id="obs" type="text" name="obs" class="form-input"
-             placeholder="Motivo, dosagem, carência...">
+             placeholder="Motivo, dosagem, via de aplicação...">
     </div>
 
     <div style="display:flex; gap:var(--space-3); margin-top:var(--space-2);">

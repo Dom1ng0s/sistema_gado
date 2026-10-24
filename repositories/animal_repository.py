@@ -220,6 +220,32 @@ def get_lotes(user_id):
         return cursor.fetchall()
 
 
+def get_lotes_sem_pesagem(user_id, dias=45):
+    """Lotes com animal ativo e sem pesagem há `dias` ou mais.
+
+    Lote que não é pesado não tem GMD, e sem GMD nada no sistema sabe dizer se
+    está engordando. Lote nunca pesado conta a partir da data de aquisição.
+
+    Retorna (lote_id, codigo_lote, cabecas, ultima_pesagem, dias_sem_pesagem).
+    """
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT l.id, l.codigo_lote, COUNT(DISTINCT a.id) AS cabecas, "
+            "       MAX(p.data_pesagem) AS ultima_pesagem, "
+            "       (CURRENT_DATE - COALESCE(MAX(p.data_pesagem), l.data_aquisicao)) AS dias_sem "
+            "FROM lotes l "
+            "JOIN animais a ON a.lote_id = l.id "
+            "     AND a.deleted_at IS NULL AND a.data_venda IS NULL "
+            "LEFT JOIN pesagens p ON p.animal_id = a.id AND p.deleted_at IS NULL "
+            "WHERE l.user_id = %s AND l.deleted_at IS NULL "
+            "GROUP BY l.id, l.codigo_lote, l.data_aquisicao "
+            "HAVING (CURRENT_DATE - COALESCE(MAX(p.data_pesagem), l.data_aquisicao)) >= %s "
+            "ORDER BY dias_sem DESC",
+            (user_id, dias)
+        )
+        return cursor.fetchall()
+
+
 def get_animais_ativos_por_lote(user_id, lote_id=None):
     with get_db_cursor() as cursor:
         if lote_id:
@@ -484,7 +510,8 @@ def get_ranking_touros(user_id):
 def get_medicacoes_by_animal(animal_id):
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT id, animal_id, data_aplicacao, nome_medicamento, custo, observacoes "
+            "SELECT id, animal_id, data_aplicacao, nome_medicamento, custo, observacoes, "
+            "       dias_carencia, (data_aplicacao + dias_carencia) AS data_liberacao "
             "FROM medicacoes WHERE animal_id = %s ORDER BY data_aplicacao DESC",
             (animal_id,)
         )
@@ -636,8 +663,13 @@ def registrar_pesagem(animal_id, user_id, data_pesagem, peso):
         return True
 
 
-def registrar_medicacao(animal_id, user_id, data_aplicacao, nome, custo, obs):
-    """Valida propriedade e insere medicação na mesma transação. Retorna True se bem-sucedido."""
+def registrar_medicacao(animal_id, user_id, data_aplicacao, nome, custo, obs,
+                       dias_carencia=0):
+    """Valida propriedade e insere medicação na mesma transação. Retorna True se bem-sucedido.
+
+    `dias_carencia` é o prazo até a carcaça poder ir ao abate; 0 significa sem
+    carência e é o que a guarda da venda ignora.
+    """
     with get_db_cursor() as cursor:
         cursor.execute(
             "SELECT id FROM animais WHERE id = %s AND user_id = %s AND deleted_at IS NULL",
@@ -646,14 +678,15 @@ def registrar_medicacao(animal_id, user_id, data_aplicacao, nome, custo, obs):
         if not cursor.fetchone():
             return False
         cursor.execute(
-            "INSERT INTO medicacoes (animal_id, data_aplicacao, nome_medicamento, custo, observacoes) "
-            "VALUES (%s, %s, %s, %s, %s)",
-            (animal_id, data_aplicacao, nome, custo, obs)
+            "INSERT INTO medicacoes (animal_id, data_aplicacao, nome_medicamento, custo, "
+            "observacoes, dias_carencia) VALUES (%s, %s, %s, %s, %s, %s)",
+            (animal_id, data_aplicacao, nome, custo, obs, dias_carencia)
         )
         return True
 
 
-def insert_medicacao_lote(animal_ids, data_aplicacao, nome, custo, obs, user_id):
+def insert_medicacao_lote(animal_ids, data_aplicacao, nome, custo, obs, user_id,
+                          dias_carencia=0):
     """Insere medicação em múltiplos animais na mesma transação.
 
     Apenas animais ativos pertencentes ao user_id são processados.
@@ -671,9 +704,9 @@ def insert_medicacao_lote(animal_ids, data_aplicacao, nome, custo, obs, user_id)
         if not animal_ids:
             return
         cursor.executemany(
-            "INSERT INTO medicacoes (animal_id, data_aplicacao, nome_medicamento, custo, observacoes) "
-            "VALUES (%s, %s, %s, %s, %s)",
-            [(aid, data_aplicacao, nome, custo, obs) for aid in animal_ids]
+            "INSERT INTO medicacoes (animal_id, data_aplicacao, nome_medicamento, custo, "
+            "observacoes, dias_carencia) VALUES (%s, %s, %s, %s, %s, %s)",
+            [(aid, data_aplicacao, nome, custo, obs, dias_carencia) for aid in animal_ids]
         )
 
 

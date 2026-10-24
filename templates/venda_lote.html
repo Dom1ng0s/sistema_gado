@@ -190,16 +190,20 @@
   <form method="POST" action="{{ url_for('operacional.venda_lote') }}" id="form-venda" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+    {% include '_carencia_bloqueio.html' %}
+
     <!-- Campos globais: data e valor da arroba -->
     <div class="filter-bar">
       <div class="form-group">
         <label class="label" for="data-venda">Data da venda</label>
-        <input type="date" name="data_venda" id="data-venda" class="form-input" required>
+        <input type="date" name="data_venda" id="data-venda" class="form-input" required
+               value="{{ form_data.data_venda if form_data else '' }}">
       </div>
       <div class="form-group">
         <label class="label" for="valor-arroba">Valor da arroba (R$)</label>
         <input type="number" name="valor_arroba" id="valor-arroba" class="form-input"
-               step="0.01" min="0.01" placeholder="Ex: 280.00" required>
+               step="0.01" min="0.01" placeholder="Ex: 280.00" required
+               value="{{ form_data.valor_arroba if form_data else '' }}">
       </div>
     </div>
 

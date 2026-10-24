@@ -1,0 +1,47 @@
+{#
+  Bloqueio de carência sanitária, compartilhado por vender.html e venda_lote.html.
+
+  Aparece só quando a venda bateu na trava. Mostra o que está em carência e
+  oferece o override na mesma tela — quem vende tem o caminhão no pátio, e
+  mandar o usuário embora para voltar depois é como ele aprende a desligar a
+  trava. Marcar a caixa grava autoria em `vendas_com_carencia`.
+#}
+{% if carencias %}
+<p class="label" style="margin-bottom:var(--space-2);">Aplicações em carência</p>
+
+<div class="table-wrapper" style="margin-bottom:var(--space-5);">
+  <table>
+    <caption class="sr-only">Animais em carência sanitária</caption>
+    <thead>
+      <tr>
+        <th scope="col">Brinco</th>
+        <th scope="col">Produto aplicado</th>
+        <th scope="col">Aplicação</th>
+        <th scope="col">Libera em</th>
+        <th scope="col" style="text-align:right;">Faltam</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in carencias %}
+      <tr>
+        <td class="td-primary">{{ c[1] }}</td>
+        <td>{{ c[3] }}</td>
+        <td>{{ c[4].strftime('%d/%m/%Y') }}</td>
+        <td class="dado">{{ c[6].strftime('%d/%m/%Y') }}</td>
+        <td class="dado" style="text-align:right;">{{ c[7] }} d</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<label style="display:flex; flex-direction:row; gap:var(--space-3); align-items:flex-start;
+              margin-bottom:var(--space-5); cursor:pointer;">
+  <input type="checkbox" name="confirmar_carencia" value="1"
+         style="margin-top:3px; accent-color:var(--color-danger, var(--color-primary));">
+  <span>
+    Vender mesmo assim, assumindo a responsabilidade pela carência.<br>
+    <span class="form-hint">Fica registrado quem autorizou, qual aplicação e qual data foi antecipada.</span>
+  </span>
+</label>
+{% endif %}
