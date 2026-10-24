@@ -99,13 +99,14 @@ def count_custos_por_ano(user_id, ano):
         return cursor.fetchone()[0]
 
 
-def insert_custo_operacional(user_id, categoria, tipo_custo, valor, data_custo, descricao):
+def insert_custo_operacional(user_id, categoria, tipo_custo, valor, data_custo, descricao,
+                             registrado_por=None):
     with get_db_cursor() as cursor:
         cursor.execute(
             "INSERT INTO custos_operacionais "
-            "(user_id, categoria, tipo_custo, valor, data_custo, descricao) "
-            "VALUES (%s, %s, %s, %s, %s, %s)",
-            (user_id, categoria, tipo_custo, valor, data_custo, descricao)
+            "(user_id, categoria, tipo_custo, valor, data_custo, descricao, registrado_por) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (user_id, categoria, tipo_custo, valor, data_custo, descricao, registrado_por)
         )
 
 
@@ -221,7 +222,7 @@ def delete_agendamento(id_agendamento, user_id):
         return cursor.rowcount > 0
 
 
-def baixar_agendamento(id_agendamento, user_id):
+def baixar_agendamento(id_agendamento, user_id, registrado_por=None):
     """
     Operação atômica: verifica se o agendamento é pendente e pertence ao usuário,
     marca como pago e registra o custo operacional correspondente.
@@ -243,9 +244,9 @@ def baixar_agendamento(id_agendamento, user_id):
         )
         cursor.execute(
             "INSERT INTO custos_operacionais "
-            "(user_id, categoria, tipo_custo, valor, data_custo, descricao) "
-            "VALUES (%s, %s, %s, %s, %s, %s)",
+            "(user_id, categoria, tipo_custo, valor, data_custo, descricao, registrado_por) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
             (user_id, 'Financeiro', 'Agendamento', valor, date.today(),
-             descricao_origem + " (Via Agendamento)")
+             descricao_origem + " (Via Agendamento)", registrado_por)
         )
         return True

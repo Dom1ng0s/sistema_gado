@@ -72,7 +72,7 @@ def get_saldo_atual(produto_id, user_id):
 
 
 def insert_movimentacao(user_id, produto_id, tipo, quantidade, custo_unitario, motivo, data_mov,
-                        lote_fabricante=None, data_validade=None):
+                        lote_fabricante=None, data_validade=None, registrado_por=None):
     with get_db_cursor() as cursor:
         if tipo == 'saida':
             # Serializa saídas concorrentes travando a linha do produto (o
@@ -95,11 +95,11 @@ def insert_movimentacao(user_id, produto_id, tipo, quantidade, custo_unitario, m
         cursor.execute(
             "INSERT INTO estoque_movimentacoes "
             "(user_id, produto_id, tipo, quantidade, custo_unitario, motivo, data_mov, "
-            " lote_fabricante, data_validade) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            " lote_fabricante, data_validade, registrado_por) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
             (user_id, produto_id, tipo,
              quantidade, custo_unitario or None, motivo or None, data_mov,
-             lote_fabricante or None, data_validade or None)
+             lote_fabricante or None, data_validade or None, registrado_por)
         )
         return cursor.fetchone()[0]
 

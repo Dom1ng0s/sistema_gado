@@ -79,6 +79,7 @@ def registrar_entrada(produto_id):
         estoque_repository.insert_movimentacao(
             current_user.farm_id, produto_id, 'entrada', quantidade, custo_unitario, motivo, data_mov,
             lote_fabricante=lote_fabricante, data_validade=data_validade,
+            registrado_por=current_user.id,
         )
         flash("Entrada registrada com sucesso.", 'success')
 
@@ -104,7 +105,8 @@ def registrar_saida(produto_id):
         data_mov = request.form['data_mov']
         try:
             estoque_repository.insert_movimentacao(
-                current_user.farm_id, produto_id, 'saida', quantidade, None, motivo, data_mov
+                current_user.farm_id, produto_id, 'saida', quantidade, None, motivo, data_mov,
+                registrado_por=current_user.id
             )
             flash("Saída registrada com sucesso.", 'success')
         except ValueError as e:

@@ -22,7 +22,16 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 #: Onde `current_user.id` é certo: ato de identidade, não acesso a dado da
 #: fazenda. Qualquer outra ocorrência é quase sempre bug de tenant.
-IDENTIDADE_PERMITIDA = {('routes/auth.py', 'apagar_conta')}
+IDENTIDADE_PERMITIDA = {
+    ('routes/auth.py', 'apagar_conta'),
+    # Quem assina o override de carência é a pessoa, não a fazenda: a tabela
+    # existe para responder "quem liberou" se a carcaça for rejeitada.
+    ('routes/operacional.py', 'vender'),
+    ('routes/operacional.py', 'venda_lote'),
+    # INSERT cru dentro da rota: a autoria entra posicionalmente na tupla, onde
+    # o nome `registrado_por` não aparece para a varredura reconhecer.
+    ('routes/operacional.py', 'importar_csv'),
+}
 
 
 # -- Helpers -----------------------------------------------------------------
@@ -160,13 +169,22 @@ def _ocorrencias_de_current_user_id():
     for rel in arquivos:
         with open(os.path.join(RAIZ, rel), encoding='utf-8') as fh:
             arvore = ast.parse(fh.read())
+
+        # `registrado_por=current_user.id` é autoria declarada, não tenant: a
+        # pessoa que fez o registro. A varredura reconhece pelo nome do
+        # argumento, então um ponto de escrita novo nasce coberto sem precisar
+        # entrar em allowlist nenhuma.
+        autoria = {id(kw.value) for kw in ast.walk(arvore)
+                   if isinstance(kw, ast.keyword) and kw.arg == 'registrado_por'}
+
         for no in ast.walk(arvore):
             if not isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             for interno in ast.walk(no):
                 if (isinstance(interno, ast.Attribute) and interno.attr == 'id'
                         and isinstance(interno.value, ast.Name)
-                        and interno.value.id == 'current_user'):
+                        and interno.value.id == 'current_user'
+                        and id(interno) not in autoria):
                     achados.append((rel, no.name))
     return achados
 
@@ -177,6 +195,14 @@ def test_identidade_nao_virou_tenant_nas_rotas():
         "current_user.id fora da allowlist — use current_user.farm_id para dado "
         f"da fazenda: {fora}"
     )
+
+
+def test_autoria_declarada_nao_entra_na_varredura():
+    """`registrado_por=current_user.id` não é bug de tenant — e a varredura
+    precisa saber disso sem que cada ponto de escrita vire exceção."""
+    achados = _ocorrencias_de_current_user_id()
+    assert ('routes/operacional.py', 'nova_pesagem') not in achados
+    assert ('routes/estoque.py', 'registrar_saida') not in achados
 
 
 def test_allowlist_nao_tem_entrada_morta():

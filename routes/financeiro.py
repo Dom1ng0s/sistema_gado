@@ -185,7 +185,9 @@ def custos_operacionais():
                 dt = request.form.get('data')
                 desc = request.form.get('descricao')
 
-                financeiro_repository.insert_custo_operacional(current_user.farm_id, cat, tipo, val, dt, desc)
+                financeiro_repository.insert_custo_operacional(
+                    current_user.farm_id, cat, tipo, val, dt, desc,
+                    registrado_por=current_user.id)
                 flash("Custo registrado com sucesso.", 'success')
                 return redirect(url_for('financeiro.custos_operacionais'))
             except Exception as e:
@@ -323,7 +325,8 @@ def excluir_agendamento(id_agendamento):
 @login_required
 def baixar_agendamento(id_agendamento):
     try:
-        ok = financeiro_repository.baixar_agendamento(id_agendamento, current_user.farm_id)
+        ok = financeiro_repository.baixar_agendamento(id_agendamento, current_user.farm_id,
+                                                      registrado_por=current_user.id)
         if ok:
             flash('Conta baixada com sucesso.', 'success')
         else:

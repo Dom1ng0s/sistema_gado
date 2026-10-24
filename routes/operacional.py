@@ -13,6 +13,7 @@ from routes.validators import validate
 from utils.calculo import preco_por_arroba
 from utils.carencia import dias_carencia_sugerido
 from utils import plano as plano_regras
+from services import pesagem as servico_pesagem
 from decimal import Decimal
 
 operacional_bp = Blueprint('operacional', __name__)
@@ -304,6 +305,7 @@ def cadastro():
             new_id = animal_repository.cadastrar_animal(
                 brinco, sexo, data_compra, preco_compra, peso, current_user.farm_id,
                 data_nascimento=data_nascimento, raca=raca,
+                registrado_por=current_user.id,
             )
             flash(f"Animal {brinco} cadastrado com sucesso.", 'success')
             return redirect(url_for('operacional.detalhes', id_animal=new_id))
@@ -387,12 +389,17 @@ def vender(id_animal):
             dt = request.form['data_venda']
             peso = float(request.form['peso_venda'])
             val = float(request.form['valor_arroba'])
-            ok = animal_repository.registrar_venda(id_animal, current_user.farm_id, dt, preco_por_arroba(peso, val), peso)
+            ok = animal_repository.registrar_venda(id_animal, current_user.farm_id, dt,
+                                                   preco_por_arroba(peso, val), peso,
+                                                   registrado_por=current_user.id)
             if not ok:
                 return render_template('vender.html', id_animal=id_animal,
                                        mensagem="Animal não encontrado."), 404
             if carencias:
-                sanitario_repository.registrar_override_carencia(carencias, current_user.farm_id)
+                # Assinatura, não tenant: a tabela existe para responder "quem
+                # liberou" se a carcaça for rejeitada no frigorífico, e a
+                # resposta é uma pessoa.
+                sanitario_repository.registrar_override_carencia(carencias, current_user.id)
                 flash("Venda autorizada dentro da carência — registrado para auditoria.", 'warning')
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
@@ -460,7 +467,8 @@ def venda_lote():
                                        erro="Peso inválido em um ou mais animais."), 400
 
         try:
-            vendidos, invalidos = animal_repository.registrar_venda_lote(vendas, current_user.farm_id, data_venda)
+            vendidos, invalidos = animal_repository.registrar_venda_lote(
+                vendas, current_user.farm_id, data_venda, registrado_por=current_user.id)
         except Exception as e:
             logger.error(f"Erro venda lote: {e}", exc_info=True)
             animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.farm_id)
@@ -470,7 +478,7 @@ def venda_lote():
         if carencias:
             vendidos_ids = {aid for aid, _, _ in vendas if aid not in set(invalidos)}
             sanitario_repository.registrar_override_carencia(
-                [c for c in carencias if c[0] in vendidos_ids], current_user.farm_id)
+                [c for c in carencias if c[0] in vendidos_ids], current_user.id)
             flash("Venda autorizada dentro da carência — registrado para auditoria.", 'warning')
 
         msg = f"{vendidos} animal(is) vendido(s) com sucesso."
@@ -500,7 +508,8 @@ def medicar(id_animal):
                 id_animal, current_user.farm_id,
                 request.form['data_aplicacao'], request.form['nome'],
                 request.form['custo'], request.form['obs'],
-                dias_carencia=_dias_carencia_do_form(request.form)
+                dias_carencia=_dias_carencia_do_form(request.form),
+                registrado_por=current_user.id,
             )
             if not ok:
                 return render_template('medicar.html', id_animal=id_animal,
@@ -516,25 +525,26 @@ def medicar(id_animal):
 @login_required
 def nova_pesagem(id_animal):
     if request.method == 'POST':
-        errors = validate(request.form, [
-            ('data_pesagem', {'required': True, 'type': 'date',                  'label': 'Data da pesagem'}),
-            ('peso',         {'required': True, 'type': 'float','min_val': 0.1, 'max_val': 2000, 'label': 'Peso'}),
-        ])
-        if errors:
-            return render_template('nova_pesagem.html', id_animal=id_animal, mensagem=errors[0]), 400
+        # O que é uma pesagem válida mora em services/pesagem.py; aqui só
+        # entra e sai HTTP. Ver o módulo para o porquê.
         try:
-            ok = animal_repository.registrar_pesagem(
-                id_animal, current_user.farm_id,
-                request.form['data_pesagem'], request.form['peso']
+            gravado, erro = servico_pesagem.registrar(
+                current_user.farm_id,
+                request.form.get('peso'),
+                request.form.get('data_pesagem'),
+                registrado_por=current_user.id,
+                animal_id=id_animal,
             )
-            if not ok:
-                return render_template('nova_pesagem.html', id_animal=id_animal,
-                                       mensagem="Animal não encontrado."), 404
-            return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
             logger.error(f"Erro pesar: {e}", exc_info=True)
             return render_template('nova_pesagem.html', id_animal=id_animal,
                                    mensagem="Não foi possível registrar. Tente novamente."), 400
+
+        if erro:
+            status = 404 if erro == "Animal não encontrado." else 400
+            return render_template('nova_pesagem.html', id_animal=id_animal,
+                                   mensagem=erro), status
+        return redirect(url_for('operacional.detalhes', id_animal=gravado))
     return render_template('nova_pesagem.html', id_animal=id_animal)
 
 @operacional_bp.route('/excluir_animal/<int:id_animal>', methods=['POST'])
@@ -587,6 +597,7 @@ def vacinacao_coletiva():
                 request.form['obs'],
                 user_id=current_user.farm_id,
                 dias_carencia=_dias_carencia_do_form(request.form),
+                registrado_por=current_user.id,
             )
             flash(f"{len(animais_ids)} animal(is) vacinado(s) com sucesso.", 'success')
             return redirect(url_for('operacional.vacinacao_coletiva'))
@@ -661,7 +672,8 @@ def cadastro_lote():
             ]
 
             animal_repository.cadastrar_lote(
-                current_user.farm_id, codigo_lote, descricao, data_compra, animais_data, raca=raca
+                current_user.farm_id, codigo_lote, descricao, data_compra, animais_data,
+                raca=raca, registrado_por=current_user.id
             )
             flash(f"Lote '{codigo_lote}' salvo com {len(brincos)} animais e pesos individuais!", 'success')
             # ponytail: painel/get_animais_paginados não têm filtro por lote_id (fora do escopo
@@ -720,7 +732,8 @@ def pesagem_lote():
                                            erro="Peso inválido em um ou mais animais."), 400
 
             inseridos, invalidos = animal_repository.registrar_pesagens_lote(
-                pairs, current_user.farm_id, request.form['data_pesagem']
+                pairs, current_user.farm_id, request.form['data_pesagem'],
+                registrado_por=current_user.id
             )
             msg = f"{inseridos} pesagem(ns) registrada(s) com sucesso."
             if invalidos:
@@ -1080,8 +1093,9 @@ def importar_csv():
                 )
                 id_por_brinco = {brinco: aid for aid, brinco in cursor.fetchall()}
                 cursor.executemany(
-                    "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
-                    [(id_por_brinco[brinco], data_pesagem, peso)
+                    "INSERT INTO pesagens (animal_id, data_pesagem, peso, registrado_por) "
+                    "VALUES (%s, %s, %s, %s)",
+                    [(id_por_brinco[brinco], data_pesagem, peso, current_user.id)
                      for brinco, data_pesagem, peso in inseridos_pesagem if brinco in id_por_brinco]
                 )
 

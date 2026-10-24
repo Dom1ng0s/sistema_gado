@@ -127,7 +127,14 @@
         <tbody>
           {% for p in historico_peso %}
           <tr>
-            <td>{{ p[2] }}</td>
+            <td>
+              {{ p[2] }}
+              {# Autoria só aparece quando existe: linha antiga e importação
+                 nascem sem autor, e um "—" em toda tabela seria ruído. #}
+              {% if p|length > 5 and p[5] %}
+              <br><span class="text-xs text-muted">por {{ p[5] }}</span>
+              {% endif %}
+            </td>
             <td class="td-primary">{{ p[3] }} kg</td>
             <td>
               <form method="POST"
@@ -262,7 +269,12 @@
       <tbody>
         {% for med in historico_med %}
         <tr>
-          <td>{{ med[2] }}</td>
+          <td>
+            {{ med[2] }}
+            {% if med|length > 8 and med[8] %}
+            <br><span class="text-xs text-muted">por {{ med[8] }}</span>
+            {% endif %}
+          </td>
           <td class="td-primary">{{ med[3] }}</td>
           <td>R$ {{ med[4] }}</td>
           <td class="dado">

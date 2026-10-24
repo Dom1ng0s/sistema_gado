@@ -265,7 +265,7 @@ def get_animais_ativos_por_lote(user_id, lote_id=None):
         return cursor.fetchall()
 
 
-def registrar_pesagens_lote(pairs, user_id, data_pesagem):
+def registrar_pesagens_lote(pairs, user_id, data_pesagem, registrado_por=None):
     """Insere múltiplas pesagens em uma única transação.
 
     pairs: lista de (animal_id, peso).
@@ -286,10 +286,12 @@ def registrar_pesagens_lote(pairs, user_id, data_pesagem):
         validos = {row[0] for row in cursor.fetchall()}
         invalidos = [aid for aid in animal_ids if aid not in validos]
 
-        pares_validos = [(aid, data_pesagem, peso) for aid, peso in pairs if aid in validos]
+        pares_validos = [(aid, data_pesagem, peso, registrado_por)
+                         for aid, peso in pairs if aid in validos]
         if pares_validos:
             cursor.executemany(
-                "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
+                "INSERT INTO pesagens (animal_id, data_pesagem, peso, registrado_por) "
+                "VALUES (%s, %s, %s, %s)",
                 pares_validos
             )
 
@@ -310,6 +312,23 @@ def get_animal_by_id(animal_id, user_id):
         return cursor.fetchone()
 
 
+def get_animal_id_by_brinco(brinco, user_id):
+    """Id do animal ativo com esse brinco nesta fazenda, ou None.
+
+    O brinco é a chave que a pessoa usa — no curral, no WhatsApp, na planilha.
+    Quem escreve por brinco (o serviço de pesagem) precisa dessa tradução sem
+    carregar a ficha inteira.
+    """
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "SELECT id FROM animais WHERE brinco = %s AND user_id = %s "
+            "AND deleted_at IS NULL AND data_venda IS NULL",
+            (brinco, user_id)
+        )
+        linha = cursor.fetchone()
+        return linha[0] if linha else None
+
+
 def check_brinco_exists(brinco, user_id):
     with get_db_cursor() as cursor:
         cursor.execute(
@@ -323,10 +342,13 @@ def check_brinco_exists(brinco, user_id):
 
 def get_pesagens_by_animal(animal_id):
     with get_db_cursor() as cursor:
+        # O autor entra no fim da tupla: linha antiga tem NULL, e quem já lia
+        # por índice não se mexe.
         cursor.execute(
-            "SELECT id, animal_id, data_pesagem, peso, deleted_at "
-            "FROM pesagens WHERE animal_id = %s AND deleted_at IS NULL "
-            "ORDER BY data_pesagem DESC",
+            "SELECT p.id, p.animal_id, p.data_pesagem, p.peso, p.deleted_at, u.username "
+            "FROM pesagens p LEFT JOIN usuarios u ON u.id = p.registrado_por "
+            "WHERE p.animal_id = %s AND p.deleted_at IS NULL "
+            "ORDER BY p.data_pesagem DESC",
             (animal_id,)
         )
         return cursor.fetchall()
@@ -510,9 +532,11 @@ def get_ranking_touros(user_id):
 def get_medicacoes_by_animal(animal_id):
     with get_db_cursor() as cursor:
         cursor.execute(
-            "SELECT id, animal_id, data_aplicacao, nome_medicamento, custo, observacoes, "
-            "       dias_carencia, (data_aplicacao + dias_carencia) AS data_liberacao "
-            "FROM medicacoes WHERE animal_id = %s ORDER BY data_aplicacao DESC",
+            "SELECT m.id, m.animal_id, m.data_aplicacao, m.nome_medicamento, m.custo, "
+            "       m.observacoes, m.dias_carencia, "
+            "       (m.data_aplicacao + m.dias_carencia) AS data_liberacao, u.username "
+            "FROM medicacoes m LEFT JOIN usuarios u ON u.id = m.registrado_por "
+            "WHERE m.animal_id = %s ORDER BY m.data_aplicacao DESC",
             (animal_id,)
         )
         return cursor.fetchall()
@@ -554,7 +578,8 @@ def get_pesos_atuais_rebanho(user_id):
 # ---- ESCRITAS ATÔMICAS ----
 
 def _inserir_animal(cursor, brinco, sexo, data_compra, preco_compra, peso_entrada, user_id,
-                    data_nascimento=None, mae_id=None, pai_id=None, raca=None):
+                    data_nascimento=None, mae_id=None, pai_id=None, raca=None,
+                    registrado_por=None):
     """Insere animal e pesagem inicial (quando disponível) usando um cursor já aberto.
 
     Extraído de cadastrar_animal para ser reaproveitado por transações que
@@ -573,14 +598,16 @@ def _inserir_animal(cursor, brinco, sexo, data_compra, preco_compra, peso_entrad
     data_ref = data_compra or data_nascimento
     if peso_entrada and data_ref:
         cursor.execute(
-            "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
-            (animal_id, data_ref, peso_entrada)
+            "INSERT INTO pesagens (animal_id, data_pesagem, peso, registrado_por) "
+            "VALUES (%s, %s, %s, %s)",
+            (animal_id, data_ref, peso_entrada, registrado_por)
         )
     return animal_id
 
 
 def cadastrar_animal(brinco, sexo, data_compra, preco_compra, peso_entrada, user_id,
-                     data_nascimento=None, mae_id=None, pai_id=None, raca=None):
+                     data_nascimento=None, mae_id=None, pai_id=None, raca=None,
+                     registrado_por=None):
     """Insere animal e pesagem inicial (quando disponível) na mesma transação. Retorna animal_id.
 
     Animais nascidos na fazenda passam data_compra=None e data_nascimento preenchida.
@@ -588,10 +615,12 @@ def cadastrar_animal(brinco, sexo, data_compra, preco_compra, peso_entrada, user
     """
     with get_db_cursor() as cursor:
         return _inserir_animal(cursor, brinco, sexo, data_compra, preco_compra, peso_entrada,
-                               user_id, data_nascimento, mae_id, pai_id, raca)
+                               user_id, data_nascimento, mae_id, pai_id, raca,
+                               registrado_por)
 
 
-def registrar_venda(animal_id, user_id, data_venda, preco_venda, peso_venda):
+def registrar_venda(animal_id, user_id, data_venda, preco_venda, peso_venda,
+                    registrado_por=None):
     """Atualiza venda e registra pesagem final na mesma transação. Retorna True se o animal pertence ao usuário."""
     with get_db_cursor() as cursor:
         cursor.execute(
@@ -605,13 +634,14 @@ def registrar_venda(animal_id, user_id, data_venda, preco_venda, peso_venda):
             (data_venda, preco_venda, animal_id)
         )
         cursor.execute(
-            "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
-            (animal_id, data_venda, peso_venda)
+            "INSERT INTO pesagens (animal_id, data_pesagem, peso, registrado_por) "
+            "VALUES (%s, %s, %s, %s)",
+            (animal_id, data_venda, peso_venda, registrado_por)
         )
         return True
 
 
-def registrar_venda_lote(vendas, user_id, data_venda):
+def registrar_venda_lote(vendas, user_id, data_venda, registrado_por=None):
     """Registra venda de múltiplos animais em uma única transação.
 
     vendas: lista de (animal_id, peso_venda, preco_venda).
@@ -640,14 +670,16 @@ def registrar_venda_lote(vendas, user_id, data_venda):
                 [(data_venda, preco_venda, aid) for aid, peso_venda, preco_venda in vendas_validas]
             )
             cursor.executemany(
-                "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
-                [(aid, data_venda, peso_venda) for aid, peso_venda, preco_venda in vendas_validas]
+                "INSERT INTO pesagens (animal_id, data_pesagem, peso, registrado_por) "
+                "VALUES (%s, %s, %s, %s)",
+                [(aid, data_venda, peso_venda, registrado_por)
+                 for aid, peso_venda, preco_venda in vendas_validas]
             )
 
     return len(vendas_validas), invalidos
 
 
-def registrar_pesagem(animal_id, user_id, data_pesagem, peso):
+def registrar_pesagem(animal_id, user_id, data_pesagem, peso, registrado_por=None):
     """Valida propriedade e insere pesagem na mesma transação. Retorna True se bem-sucedido."""
     with get_db_cursor() as cursor:
         cursor.execute(
@@ -657,14 +689,15 @@ def registrar_pesagem(animal_id, user_id, data_pesagem, peso):
         if not cursor.fetchone():
             return False
         cursor.execute(
-            "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
-            (animal_id, data_pesagem, peso)
+            "INSERT INTO pesagens (animal_id, data_pesagem, peso, registrado_por) "
+            "VALUES (%s, %s, %s, %s)",
+            (animal_id, data_pesagem, peso, registrado_por)
         )
         return True
 
 
 def registrar_medicacao(animal_id, user_id, data_aplicacao, nome, custo, obs,
-                       dias_carencia=0):
+                       dias_carencia=0, registrado_por=None):
     """Valida propriedade e insere medicação na mesma transação. Retorna True se bem-sucedido.
 
     `dias_carencia` é o prazo até a carcaça poder ir ao abate; 0 significa sem
@@ -679,14 +712,15 @@ def registrar_medicacao(animal_id, user_id, data_aplicacao, nome, custo, obs,
             return False
         cursor.execute(
             "INSERT INTO medicacoes (animal_id, data_aplicacao, nome_medicamento, custo, "
-            "observacoes, dias_carencia) VALUES (%s, %s, %s, %s, %s, %s)",
-            (animal_id, data_aplicacao, nome, custo, obs, dias_carencia)
+            "observacoes, dias_carencia, registrado_por) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (animal_id, data_aplicacao, nome, custo, obs, dias_carencia, registrado_por)
         )
         return True
 
 
 def insert_medicacao_lote(animal_ids, data_aplicacao, nome, custo, obs, user_id,
-                          dias_carencia=0):
+                          dias_carencia=0, registrado_por=None):
     """Insere medicação em múltiplos animais na mesma transação.
 
     Apenas animais ativos pertencentes ao user_id são processados.
@@ -705,8 +739,10 @@ def insert_medicacao_lote(animal_ids, data_aplicacao, nome, custo, obs, user_id,
             return
         cursor.executemany(
             "INSERT INTO medicacoes (animal_id, data_aplicacao, nome_medicamento, custo, "
-            "observacoes, dias_carencia) VALUES (%s, %s, %s, %s, %s, %s)",
-            [(aid, data_aplicacao, nome, custo, obs, dias_carencia) for aid in animal_ids]
+            "observacoes, dias_carencia, registrado_por) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            [(aid, data_aplicacao, nome, custo, obs, dias_carencia, registrado_por)
+             for aid in animal_ids]
         )
 
 
@@ -754,7 +790,8 @@ def restore_animal(animal_id, user_id):
         )
 
 
-def cadastrar_lote(user_id, codigo_lote, descricao, data_compra, animais_data, raca=None):
+def cadastrar_lote(user_id, codigo_lote, descricao, data_compra, animais_data, raca=None,
+                   registrado_por=None):
     """
     Insere lote e todos os seus animais/pesagens em uma única transação.
     animais_data: lista de (brinco, sexo, peso_kg, custo_animal)
@@ -786,8 +823,10 @@ def cadastrar_lote(user_id, codigo_lote, descricao, data_compra, animais_data, r
         id_por_brinco = {brinco: aid for aid, brinco in cursor.fetchall()}
 
         cursor.executemany(
-            "INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES (%s, %s, %s)",
-            [(id_por_brinco[brinco], data_compra, peso) for brinco, sexo, peso, custo_animal in animais_data]
+            "INSERT INTO pesagens (animal_id, data_pesagem, peso, registrado_por) "
+            "VALUES (%s, %s, %s, %s)",
+            [(id_por_brinco[brinco], data_compra, peso, registrado_por)
+             for brinco, sexo, peso, custo_animal in animais_data]
         )
         return lote_id
 
