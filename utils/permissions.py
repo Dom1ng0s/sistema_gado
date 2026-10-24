@@ -59,6 +59,8 @@ PUBLICO = frozenset({
     'auth.nova_senha',
     'auth.verificar_codigo',
     'auth.reenviar_codigo',
+    # Máquina, não pessoa: quem autentica é o token do provider.
+    'webhooks.asaas',
 })
 
 POLICY = {

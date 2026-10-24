@@ -16,6 +16,7 @@ from routes.configuracoes import config_bp
 from routes.pastos import pastos_bp
 from routes.estoque import estoque_bp
 from routes.sanitario import sanitario_bp
+from routes.webhooks import webhooks_bp
 from repositories import acesso_repository, configuracao_repository
 from utils.permissions import PUBLICO, autorizado, papel_de, registrar_politica
 
@@ -78,6 +79,12 @@ app.register_blueprint(api_bp)
 app.register_blueprint(pastos_bp)
 app.register_blueprint(estoque_bp)
 app.register_blueprint(sanitario_bp)
+app.register_blueprint(webhooks_bp)
+
+# O webhook é POST de máquina, sem sessão e sem formulário: o CSRFProtect
+# global responderia 400 em toda entrega. Quem autentica ali é o token do
+# provider, comparado com hmac.compare_digest — ver routes/webhooks.py.
+csrf.exempt(webhooks_bp)
 
 # Política de acesso por endpoint (default-deny). Registrada depois dos
 # blueprints porque só então o url_map está completo e o teste

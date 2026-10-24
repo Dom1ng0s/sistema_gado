@@ -1,5 +1,10 @@
 from db_config import get_db_cursor
 
+#: Tier aplicado quando o pagamento confirma uma conta que ainda estava em
+#: trial. Existe um plano só hoje; quando houver mais de um, quem decide qual é
+#: continua sendo quem vende, não o webhook.
+TIER_PAGO_PADRAO = 'porteira'
+
 
 def get_configuracao(user_id):
     """Retorna (nome_fazenda, cidade_estado, area_total, gmd_meta) ou None se não configurado."""
@@ -70,8 +75,35 @@ def ativar_plano(user_id, tier, limite_cabecas, status='ativo'):
         return cursor.rowcount > 0
 
 
+def marcar_status_plano(user_id, status):
+    """Só o status, sem tocar em tier nem limite.
+
+    É o que o webhook pode decidir sozinho: que o pagamento entrou ou que
+    parou de entrar. O tamanho do plano continua sendo decisão de quem vende.
+    """
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "UPDATE configuracoes SET plano_status = %s WHERE user_id = %s",
+            (status, user_id)
+        )
+        return cursor.rowcount > 0
+
+
+def encerrar_trial(user_id):
+    """Pagamento confirmado: o trial deixa de ser a resposta para "até quando
+    esta conta vale"."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            "UPDATE configuracoes SET plano_status = 'ativo', trial_ends_at = NULL, "
+            "plano_tier = CASE WHEN plano_tier = 'trial' THEN %s ELSE plano_tier END "
+            "WHERE user_id = %s",
+            (TIER_PAGO_PADRAO, user_id)
+        )
+        return cursor.rowcount > 0
+
+
 def registrar_pagamento(user_id, provider, provider_event_id, valor, status,
-                        payload=None):
+                        payload=None, evento=None):
     """Grava o pagamento e devolve True se era novo.
 
     O ON CONFLICT DO NOTHING sobre UNIQUE (provider, provider_event_id) é o que
@@ -83,9 +115,9 @@ def registrar_pagamento(user_id, provider, provider_event_id, valor, status,
     with get_db_cursor() as cursor:
         cursor.execute(
             "INSERT INTO pagamentos (user_id, provider, provider_event_id, valor, "
-            "status, payload) VALUES (%s, %s, %s, %s, %s, %s) "
+            "status, payload, evento) VALUES (%s, %s, %s, %s, %s, %s, %s) "
             "ON CONFLICT (provider, provider_event_id) DO NOTHING",
             (user_id, provider, provider_event_id, valor, status,
-             json.dumps(payload) if payload is not None else None)
+             json.dumps(payload) if payload is not None else None, evento)
         )
         return cursor.rowcount > 0
