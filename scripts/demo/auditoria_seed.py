@@ -75,13 +75,13 @@ for ano in range(2021, 2026):
           f"receita=R${receita:,.2f}, despesas=R${despesas:,.2f}, lucro=R${lucro:,.2f}, margem={margem:.1f}%")
 
 agio_compra = {r[0]: float(r[1]) for r in q(
-    "SELECT YEAR(a.data_compra), AVG(a.preco_compra*30/p.peso) "
+    "SELECT EXTRACT(YEAR FROM a.data_compra)::int, AVG(a.preco_compra*30/p.peso) "
     "FROM animais a JOIN pesagens p ON p.animal_id=a.id AND p.data_pesagem=a.data_compra "
-    "WHERE a.user_id=%s AND a.brinco LIKE 'REP-%%' GROUP BY YEAR(a.data_compra)", (uid,))}
+    "WHERE a.user_id=%s AND a.brinco LIKE 'REP-%%' GROUP BY EXTRACT(YEAR FROM a.data_compra)::int", (uid,))}
 agio_venda = {r[0]: float(r[1]) for r in q(
-    "SELECT YEAR(a.data_venda), AVG(a.preco_venda*30/p.peso) "
+    "SELECT EXTRACT(YEAR FROM a.data_venda)::int, AVG(a.preco_venda*30/p.peso) "
     "FROM animais a JOIN pesagens p ON p.animal_id=a.id AND p.data_pesagem=a.data_venda "
-    "WHERE a.user_id=%s AND a.brinco LIKE 'REP-%%' AND a.preco_venda>0 GROUP BY YEAR(a.data_venda)", (uid,))}
+    "WHERE a.user_id=%s AND a.brinco LIKE 'REP-%%' AND a.preco_venda>0 GROUP BY EXTRACT(YEAR FROM a.data_venda)::int", (uid,))}
 for ano in sorted(set(agio_compra) & set(agio_venda)):
     c, v = agio_compra[ano], agio_venda[ano]
     checa('financeiro', f'Regra do Ágio {ano} (compra > venda)', c > v,
@@ -93,8 +93,8 @@ for ano in sorted(set(agio_compra) & set(agio_venda)):
 print("\n=== 2. Validação Operacional e Giro (~36 dias) ===")
 
 vendas_ano = {r[0]: r[1] for r in q(
-    "SELECT YEAR(data_venda), COUNT(*) FROM animais "
-    "WHERE user_id=%s AND lote_id IS NOT NULL AND preco_venda>0 GROUP BY YEAR(data_venda)", (uid,))}
+    "SELECT EXTRACT(YEAR FROM data_venda)::int, COUNT(*) FROM animais "
+    "WHERE user_id=%s AND lote_id IS NOT NULL AND preco_venda>0 GROUP BY EXTRACT(YEAR FROM data_venda)::int", (uid,))}
 for ano in range(2021, 2026):
     n = vendas_ano.get(ano, 0)
     checa('giro', f'Cabeças vendidas em {ano} (~200/ano)', 150 <= n <= 260,
@@ -204,8 +204,8 @@ print("\n=== 4. Custos Fixos e Consumo ===")
 SALARIO_MINIMO = {2020: 1045, 2021: 1100, 2022: 1212, 2023: 1320, 2024: 1412, 2025: 1518, 2026: 1518}
 
 vaqueiro = q(
-    "SELECT YEAR(data_custo), COUNT(*), MIN(valor), MAX(valor) FROM custos_operacionais "
-    "WHERE user_id=%s AND descricao LIKE '%%Vaqueiro%%' GROUP BY YEAR(data_custo) ORDER BY 1", (uid,))
+    "SELECT EXTRACT(YEAR FROM data_custo)::int, COUNT(*), MIN(valor), MAX(valor) FROM custos_operacionais "
+    "WHERE user_id=%s AND descricao LIKE '%%Vaqueiro%%' GROUP BY EXTRACT(YEAR FROM data_custo)::int ORDER BY 1", (uid,))
 for ano, n, vmin, vmax in vaqueiro:
     esperado_n = 12 if ano < 2026 else 6
     ok = n == esperado_n and float(vmin) == float(vmax) == 2200.00
@@ -213,8 +213,8 @@ for ano, n, vmin, vmax in vaqueiro:
           f"{n} lançamentos, valor={vmin}-{vmax}")
 
 cerqueiro = q(
-    "SELECT YEAR(data_custo), COUNT(*), MIN(valor), MAX(valor) FROM custos_operacionais "
-    "WHERE user_id=%s AND descricao LIKE '%%Cerqueiro%%' GROUP BY YEAR(data_custo) ORDER BY 1", (uid,))
+    "SELECT EXTRACT(YEAR FROM data_custo)::int, COUNT(*), MIN(valor), MAX(valor) FROM custos_operacionais "
+    "WHERE user_id=%s AND descricao LIKE '%%Cerqueiro%%' GROUP BY EXTRACT(YEAR FROM data_custo)::int ORDER BY 1", (uid,))
 for ano, n, vmin, vmax in cerqueiro:
     esperado_n = 12 if ano < 2026 else 6
     esperado_val = SALARIO_MINIMO.get(ano)
@@ -224,9 +224,9 @@ for ano, n, vmin, vmax in cerqueiro:
 
 consumo = {}
 for r in q(
-        "SELECT ep.nome, YEAR(em.data_mov), SUM(em.quantidade) FROM estoque_movimentacoes em "
+        "SELECT ep.nome, EXTRACT(YEAR FROM em.data_mov)::int, SUM(em.quantidade) FROM estoque_movimentacoes em "
         "JOIN estoque_produtos ep ON ep.id=em.produto_id "
-        "WHERE em.user_id=%s AND em.tipo='saida' GROUP BY ep.nome, YEAR(em.data_mov)", (uid,)):
+        "WHERE em.user_id=%s AND em.tipo='saida' GROUP BY ep.nome, EXTRACT(YEAR FROM em.data_mov)::int", (uid,)):
     consumo.setdefault(r[0], {})[r[1]] = float(r[2])
 
 alvo_anual = {'Estaca de Madeira': 500, 'Arame Farpado (rolo 250m)': 10,
