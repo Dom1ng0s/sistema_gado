@@ -55,7 +55,20 @@ login_manager.login_view = 'auth.login'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.get_user_id(user_id)
+    """Resolve conta + fazenda em todo request.
+
+    A fazenda escolhida mora na sessão, mas quem decide é o banco:
+    `resolver_fazenda` só aceita esse valor se ele voltar de `acessos_fazenda`
+    como acesso ativo. Sem revalidar a cada request, revogar o acesso de alguém
+    não teria efeito até o cookie dele vencer — e um consultor que trocou de
+    fazenda carregaria a anterior para sempre.
+    """
+    user = User.get_user_id(user_id, session.get('farm_id'))
+    if user is None:
+        return None
+    if session.get('farm_id') != user.farm_id:
+        session['farm_id'] = user.farm_id
+    return user
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(financeiro_bp)
@@ -117,7 +130,7 @@ def inject_user_info():
     gmd_meta = session.get('gmd_meta')
     if cached is None or gmd_meta is None:
         try:
-            res = configuracao_repository.get_configuracao(current_user.id)
+            res = configuracao_repository.get_configuracao(current_user.farm_id)
             cached = res[0] if (res and res[0]) else "Meu Rebanho"
             gmd_meta = float(res[3]) if (res and res[3] is not None) else 0.800
         except Exception:

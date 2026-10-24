@@ -42,11 +42,16 @@ def login():
                 )
                 dados = cursor.fetchone()
 
-                if dados:
-                    user_obj = User(dados[0], dados[1], dados[2], dados[3])
-                    if check_password_hash(user_obj.password_hash, password):
-                        login_user(user_obj)
-                        return redirect(url_for('operacional.painel'))
+            if dados and check_password_hash(dados[2], password):
+                # Recarrega pelo loader (fora do `with`, para não pedir uma
+                # segunda conexão ao pool com a primeira ainda na mão): é ele
+                # que resolve papel e fazenda, e é ele que recusa conta
+                # desativada — aqui, não na tela seguinte.
+                user_obj = User.get_user_id(dados[0])
+                if user_obj:
+                    login_user(user_obj)
+                    session['farm_id'] = user_obj.farm_id
+                    return redirect(url_for('operacional.painel'))
         except Exception as e:
             logger.error(f"Erro login: {e}", exc_info=True)
 
@@ -58,6 +63,9 @@ def login():
 @login_required
 def logout():
     logout_user()
+    # A sessão guarda a fazenda escolhida e o nome dela em cache; sem limpar,
+    # o próximo login no mesmo navegador começa com o cabeçalho de outra conta.
+    session.clear()
     return redirect(url_for('auth.login'))
 
 
@@ -277,6 +285,9 @@ def apagar_conta():
         flash('Confirmação incorreta. Digite seu nome de usuário exatamente.', 'error')
         return redirect(url_for('configuracoes.settings'))
 
+    # Identidade, não tenant: apaga a CONTA de quem está logado. Com
+    # `farm_id` aqui, um vaqueiro convidado confirmaria o próprio username
+    # e levaria embora a fazenda inteira do dono.
     user_id = current_user.id
     try:
         auth_repository.delete_user_and_data(user_id)

@@ -28,13 +28,13 @@ def lista_estoque():
             categoria = request.form.get('categoria', '').strip()
             minimo_raw = request.form.get('estoque_minimo', '').strip()
             estoque_minimo = float(minimo_raw) if minimo_raw else 0.0
-            estoque_repository.insert_produto(current_user.id, nome, unidade, categoria, estoque_minimo)
+            estoque_repository.insert_produto(current_user.farm_id, nome, unidade, categoria, estoque_minimo)
             flash(f"Produto '{nome}' cadastrado com sucesso.", 'success')
         return redirect(url_for('estoque.lista_estoque'))
 
     busca = request.args.get('busca', '').strip()
     try:
-        produtos = estoque_repository.get_produtos(current_user.id, termo=busca or None)
+        produtos = estoque_repository.get_produtos(current_user.farm_id, termo=busca or None)
     except Exception as e:
         logger.error(f"Erro ao listar estoque: {e}", exc_info=True)
         flash("Erro ao carregar estoque. Execute init_db.py para criar as views necessárias.", 'error')
@@ -45,18 +45,18 @@ def lista_estoque():
 @estoque_bp.route('/estoque/<int:produto_id>')
 @login_required
 def detalhe_estoque(produto_id):
-    produto = estoque_repository.get_produto_by_id(produto_id, current_user.id)
+    produto = estoque_repository.get_produto_by_id(produto_id, current_user.farm_id)
     if not produto:
         flash("Produto não encontrado.", 'error')
         return redirect(url_for('estoque.lista_estoque'))
-    movimentacoes = estoque_repository.get_movimentacoes_by_produto(produto_id, current_user.id)
+    movimentacoes = estoque_repository.get_movimentacoes_by_produto(produto_id, current_user.farm_id)
     return render_template('estoque_detalhe.html', produto=produto, movimentacoes=movimentacoes)
 
 
 @estoque_bp.route('/estoque/<int:produto_id>/entrada', methods=['POST'])
 @login_required
 def registrar_entrada(produto_id):
-    if not estoque_repository.get_produto_by_id(produto_id, current_user.id):
+    if not estoque_repository.get_produto_by_id(produto_id, current_user.farm_id):
         flash("Produto não encontrado.", 'error')
         return redirect(url_for('estoque.lista_estoque'))
 
@@ -77,7 +77,7 @@ def registrar_entrada(produto_id):
         data_validade = request.form.get('data_validade', '').strip() or None
 
         estoque_repository.insert_movimentacao(
-            current_user.id, produto_id, 'entrada', quantidade, custo_unitario, motivo, data_mov,
+            current_user.farm_id, produto_id, 'entrada', quantidade, custo_unitario, motivo, data_mov,
             lote_fabricante=lote_fabricante, data_validade=data_validade,
         )
         flash("Entrada registrada com sucesso.", 'success')
@@ -88,7 +88,7 @@ def registrar_entrada(produto_id):
 @estoque_bp.route('/estoque/<int:produto_id>/saida', methods=['POST'])
 @login_required
 def registrar_saida(produto_id):
-    if not estoque_repository.get_produto_by_id(produto_id, current_user.id):
+    if not estoque_repository.get_produto_by_id(produto_id, current_user.farm_id):
         flash("Produto não encontrado.", 'error')
         return redirect(url_for('estoque.lista_estoque'))
 
@@ -104,7 +104,7 @@ def registrar_saida(produto_id):
         data_mov = request.form['data_mov']
         try:
             estoque_repository.insert_movimentacao(
-                current_user.id, produto_id, 'saida', quantidade, None, motivo, data_mov
+                current_user.farm_id, produto_id, 'saida', quantidade, None, motivo, data_mov
             )
             flash("Saída registrada com sucesso.", 'success')
         except ValueError as e:

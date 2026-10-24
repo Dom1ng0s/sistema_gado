@@ -60,7 +60,7 @@ def financeiro():
     anos = [date.today().year]
 
     try:
-        uid = current_user.id
+        uid = current_user.farm_id
 
         valor_reb = financeiro_repository.get_valor_rebanho(uid)
         if valor_reb:
@@ -94,11 +94,11 @@ def financeiro():
     total_custos = 0
     total_paginas = 1
     try:
-        total_custos = financeiro_repository.count_custos_por_ano(current_user.id, ano_sel)
+        total_custos = financeiro_repository.count_custos_por_ano(current_user.farm_id, ano_sel)
         total_paginas = max(1, math.ceil(total_custos / PER_PAGE))
         page = max(1, min(page, total_paginas))
         offset = (page - 1) * PER_PAGE
-        custos = financeiro_repository.get_custos_por_ano_paginado(current_user.id, ano_sel, PER_PAGE, offset)
+        custos = financeiro_repository.get_custos_por_ano_paginado(current_user.farm_id, ano_sel, PER_PAGE, offset)
     except Exception as e:
         logger.error(f"Erro ao carregar custos: {e}", exc_info=True)
 
@@ -117,7 +117,7 @@ def simulador_custo():
 
     try:
         if request.method == 'GET':
-            sugestoes = calcular_kpis_unificados(current_user.id)
+            sugestoes = calcular_kpis_unificados(current_user.farm_id)
     except Exception as e:
         logger.error(f"Erro simulador: {e}", exc_info=True)
 
@@ -185,7 +185,7 @@ def custos_operacionais():
                 dt = request.form.get('data')
                 desc = request.form.get('descricao')
 
-                financeiro_repository.insert_custo_operacional(current_user.id, cat, tipo, val, dt, desc)
+                financeiro_repository.insert_custo_operacional(current_user.farm_id, cat, tipo, val, dt, desc)
                 flash("Custo registrado com sucesso.", 'success')
                 return redirect(url_for('financeiro.custos_operacionais'))
             except Exception as e:
@@ -224,7 +224,7 @@ def agendamentos():
         else:
             try:
                 financeiro_repository.insert_agendamento(
-                    current_user.id,
+                    current_user.farm_id,
                     request.form.get('descricao'),
                     float(request.form.get('valor')),
                     request.form.get('vencimento'),
@@ -239,7 +239,7 @@ def agendamentos():
     contas = []
     editando = None
     try:
-        contas = financeiro_repository.get_agendamentos(current_user.id)
+        contas = financeiro_repository.get_agendamentos(current_user.farm_id)
         editar_id = request.args.get('editar', type=int)
         if editar_id:
             editando = next((c for c in contas if c[0] == editar_id and c[4] == 'pendente'), None)
@@ -255,7 +255,7 @@ def agendamentos():
 def resultado_lotes():
     lotes = []
     try:
-        lotes = financeiro_repository.get_resultado_lotes(current_user.id)
+        lotes = financeiro_repository.get_resultado_lotes(current_user.farm_id)
     except Exception as e:
         logger.error(f"Erro resultado lotes: {e}", exc_info=True)
     return render_template('resultado_lotes.html', lotes=lotes)
@@ -267,10 +267,10 @@ def detalhe_lote(lote_id):
     lote = None
     animais = []
     try:
-        lote = financeiro_repository.get_resultado_lote_by_id(lote_id, current_user.id)
+        lote = financeiro_repository.get_resultado_lote_by_id(lote_id, current_user.farm_id)
         if lote is None:
             return redirect(url_for('financeiro.resultado_lotes'))
-        animais = financeiro_repository.get_animais_por_lote(lote_id, current_user.id)
+        animais = financeiro_repository.get_animais_por_lote(lote_id, current_user.farm_id)
     except Exception as e:
         logger.error(f"Erro detalhe lote: {e}", exc_info=True)
     return render_template('detalhe_lote.html', lote=lote, animais=animais)
@@ -289,7 +289,7 @@ def editar_agendamento(id_agendamento):
     else:
         try:
             ok = financeiro_repository.update_agendamento(
-                id_agendamento, current_user.id,
+                id_agendamento, current_user.farm_id,
                 request.form.get('descricao'),
                 float(request.form.get('valor')),
                 request.form.get('vencimento'),
@@ -308,7 +308,7 @@ def editar_agendamento(id_agendamento):
 @login_required
 def excluir_agendamento(id_agendamento):
     try:
-        ok = financeiro_repository.delete_agendamento(id_agendamento, current_user.id)
+        ok = financeiro_repository.delete_agendamento(id_agendamento, current_user.farm_id)
         if ok:
             flash('Agendamento excluído.', 'success')
         else:
@@ -323,7 +323,7 @@ def excluir_agendamento(id_agendamento):
 @login_required
 def baixar_agendamento(id_agendamento):
     try:
-        ok = financeiro_repository.baixar_agendamento(id_agendamento, current_user.id)
+        ok = financeiro_repository.baixar_agendamento(id_agendamento, current_user.farm_id)
         if ok:
             flash('Conta baixada com sucesso.', 'success')
         else:

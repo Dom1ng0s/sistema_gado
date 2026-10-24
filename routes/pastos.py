@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def listar_pastos():
     busca = request.args.get('busca', '').strip()
     try:
-        pastos = pasto_repository.get_pastos(current_user.id, termo=busca or None)
+        pastos = pasto_repository.get_pastos(current_user.farm_id, termo=busca or None)
     except Exception as e:
         logger.error(f"Erro ao listar pastos: {e}", exc_info=True)
         flash("Erro ao carregar pastos. Execute init_db.py para criar as views necessárias.", 'error')
@@ -41,7 +41,7 @@ def criar_pasto():
     cap_ua    = request.form.get('capacidade_ua', '').strip() or None
 
     pasto_repository.insert_pasto(
-        current_user.id, nome,
+        current_user.farm_id, nome,
         float(area) if area else None,
         forrageira,
         float(cap_ua) if cap_ua else None
@@ -53,25 +53,25 @@ def criar_pasto():
 @pastos_bp.route('/pastos/<int:pasto_id>')
 @login_required
 def detalhe_pasto(pasto_id):
-    pasto = pasto_repository.get_pasto_by_id(pasto_id, current_user.id)
+    pasto = pasto_repository.get_pasto_by_id(pasto_id, current_user.farm_id)
     if not pasto:
         flash('Pasto não encontrado.', 'error')
         return redirect(url_for('pastos.listar_pastos'))
 
-    modulos       = pasto_repository.get_modulos_by_pasto(pasto_id, current_user.id)
-    animais_ativos = animal_repository.get_animais_ativos(current_user.id)
+    modulos       = pasto_repository.get_modulos_by_pasto(pasto_id, current_user.farm_id)
+    animais_ativos = animal_repository.get_animais_ativos(current_user.farm_id)
 
     # A lista de pastos vem junto para o detalhe abrir ao LADO dela, e não
     # no lugar dela: trocar de pasto era voltar à lista e entrar de novo,
     # o que atrapalha justamente quando se está comparando lotação entre
     # pastos. São poucas linhas e a consulta já é agregada numa query só.
     try:
-        pastos = pasto_repository.get_pastos(current_user.id)
+        pastos = pasto_repository.get_pastos(current_user.farm_id)
     except Exception as e:
         logger.error(f"Erro ao listar pastos no detalhe: {e}", exc_info=True)
         pastos = []
 
-    animais_raw = pasto_repository.get_animais_ocupacoes_ativas(pasto_id, current_user.id)
+    animais_raw = pasto_repository.get_animais_ocupacoes_ativas(pasto_id, current_user.farm_id)
     animais_por_ocupacao = {}
     for row in animais_raw:
         oc_id = row[0]
@@ -91,7 +91,7 @@ def detalhe_pasto(pasto_id):
 @pastos_bp.route('/pastos/<int:pasto_id>/modulos', methods=['POST'])
 @login_required
 def criar_modulo(pasto_id):
-    if not pasto_repository.get_pasto_by_id(pasto_id, current_user.id):
+    if not pasto_repository.get_pasto_by_id(pasto_id, current_user.farm_id):
         flash('Pasto não encontrado.', 'error')
         return redirect(url_for('pastos.listar_pastos'))
 
@@ -109,7 +109,7 @@ def criar_modulo(pasto_id):
     cap_ua = request.form.get('capacidade_ua', '').strip() or None
 
     pasto_repository.insert_modulo(
-        pasto_id, current_user.id, nome,
+        pasto_id, current_user.farm_id, nome,
         float(area) if area else None,
         float(cap_ua) if cap_ua else None
     )
@@ -120,14 +120,14 @@ def criar_modulo(pasto_id):
 @pastos_bp.route('/modulos/<int:modulo_id>/ocupar', methods=['POST'])
 @login_required
 def ocupar_modulo(modulo_id):
-    modulo = pasto_repository.get_modulo_by_id(modulo_id, current_user.id)
+    modulo = pasto_repository.get_modulo_by_id(modulo_id, current_user.farm_id)
     if not modulo:
         flash('Módulo não encontrado.', 'error')
         return redirect(url_for('pastos.listar_pastos'))
 
     pasto_id = modulo[4]
 
-    if pasto_repository.get_ocupacao_ativa(modulo_id, current_user.id):
+    if pasto_repository.get_ocupacao_ativa(modulo_id, current_user.farm_id):
         flash('Módulo já possui uma ocupação ativa.', 'error')
         return redirect(url_for('pastos.detalhe_pasto', pasto_id=pasto_id))
 
@@ -142,7 +142,7 @@ def ocupar_modulo(modulo_id):
         return redirect(url_for('pastos.detalhe_pasto', pasto_id=pasto_id))
 
     data_entrada = request.form.get('data_entrada')
-    pasto_repository.iniciar_ocupacao(modulo_id, current_user.id, data_entrada, animal_ids)
+    pasto_repository.iniciar_ocupacao(modulo_id, current_user.farm_id, data_entrada, animal_ids)
     flash('Ocupação iniciada com sucesso.', 'success')
     return redirect(url_for('pastos.detalhe_pasto', pasto_id=pasto_id))
 
@@ -150,7 +150,7 @@ def ocupar_modulo(modulo_id):
 @pastos_bp.route('/ocupacoes/<int:ocupacao_id>/encerrar', methods=['POST'])
 @login_required
 def encerrar_ocupacao(ocupacao_id):
-    pasto_id = pasto_repository.get_pasto_id_by_ocupacao(ocupacao_id, current_user.id)
+    pasto_id = pasto_repository.get_pasto_id_by_ocupacao(ocupacao_id, current_user.farm_id)
 
     erros = validate(request.form, [
         ('data_saida', {'label': 'Data de saída', 'required': True, 'type': 'date'}),
@@ -161,7 +161,7 @@ def encerrar_ocupacao(ocupacao_id):
         return redirect(dest)
 
     data_saida = request.form.get('data_saida')
-    ok = pasto_repository.encerrar_ocupacao(ocupacao_id, current_user.id, data_saida)
+    ok = pasto_repository.encerrar_ocupacao(ocupacao_id, current_user.farm_id, data_saida)
     if not ok:
         flash('Ocupação não encontrada ou já encerrada.', 'error')
     else:
@@ -175,5 +175,5 @@ def encerrar_ocupacao(ocupacao_id):
 @pastos_bp.route('/pastos/gmd')
 @login_required
 def gmd_por_modulo():
-    ranking = pasto_repository.get_gmd_por_modulo(current_user.id)
+    ranking = pasto_repository.get_gmd_por_modulo(current_user.farm_id)
     return render_template('pastos_gmd.html', ranking=ranking)

@@ -23,7 +23,7 @@ def settings():
         if errors:
             dados_atuais = {}
             try:
-                res = configuracao_repository.get_configuracao(current_user.id)
+                res = configuracao_repository.get_configuracao(current_user.farm_id)
                 if res:
                     dados_atuais = {'nome_fazenda': res[0], 'cidade_estado': res[1], 'area_total': res[2],
                                     'gmd_meta': res[3] if res[3] is not None else 0.800}
@@ -42,7 +42,7 @@ def settings():
             area = request.form.get('area_total') or 0
             gmd_meta = request.form.get('gmd_meta') or 0.800
 
-            configuracao_repository.upsert_configuracao(current_user.id, nome, cidade, area, gmd_meta)
+            configuracao_repository.upsert_configuracao(current_user.farm_id, nome, cidade, area, gmd_meta)
             session.pop('nome_fazenda', None)
             session.pop('gmd_meta', None)
             flash("Configurações salvas com sucesso!", 'success')
@@ -54,7 +54,7 @@ def settings():
 
     dados_atuais = {}
     try:
-        res = configuracao_repository.get_configuracao(current_user.id)
+        res = configuracao_repository.get_configuracao(current_user.farm_id)
         if res:
             dados_atuais = {'nome_fazenda': res[0], 'cidade_estado': res[1], 'area_total': res[2],
                             'gmd_meta': res[3] if res[3] is not None else 0.800}

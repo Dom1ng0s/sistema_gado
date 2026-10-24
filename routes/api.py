@@ -152,9 +152,9 @@ def graficos_page():
     animais_abaixo_meta = []
     gmd_meta_atual = 0.800
     try:
-        cfg = configuracao_repository.get_configuracao(current_user.id)
+        cfg = configuracao_repository.get_configuracao(current_user.farm_id)
         gmd_meta_atual = float(cfg[3]) if (cfg and cfg[3] is not None) else 0.800
-        animais_abaixo_meta = animal_repository.get_animais_abaixo_gmd_meta(current_user.id, gmd_meta_atual)
+        animais_abaixo_meta = animal_repository.get_animais_abaixo_gmd_meta(current_user.farm_id, gmd_meta_atual)
     except Exception as e:
         logger.error(f"Erro ao carregar animais abaixo da meta: {e}", exc_info=True)
 
@@ -170,14 +170,14 @@ def _with_cache(response, max_age=60):
 @login_required
 @limiter.limit("60 per minute")
 def graficos_sexo():
-    rows = animal_repository.get_contagem_por_sexo(current_user.id)
+    rows = animal_repository.get_contagem_por_sexo(current_user.farm_id)
     return _with_cache(jsonify({sexo: qtd for sexo, qtd in rows}))
 
 @api_bp.route('/api/graficos/peso')
 @login_required
 @limiter.limit("60 per minute")
 def graficos_peso():
-    rows = animal_repository.get_pesos_atuais_rebanho(current_user.id)
+    rows = animal_repository.get_pesos_atuais_rebanho(current_user.farm_id)
     cat_peso = {'Menos de 10@': 0, '10@ a 15@': 0, '15@ a 20@': 0, 'Mais de 20@': 0}
     for (p_kg,) in rows:
         p_arr = float(p_kg) / KG_POR_ARROBA
@@ -196,7 +196,7 @@ def graficos_peso():
 @limiter.limit("60 per minute")
 def graficos_gmd():
     sexo = request.args.get('sexo') if request.args.get('sexo') in ('M', 'F') else None
-    gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.id, sexo=sexo)
+    gmd_medio = animal_repository.get_gmd_medio_rebanho(current_user.farm_id, sexo=sexo)
     return _with_cache(jsonify({'gmd_medio': gmd_medio}))
 
 
@@ -214,7 +214,7 @@ def gmd_lote():
         return jsonify({'error': 'IDs inválidos'}), 400
     if len(animal_ids) > 50:
         return jsonify({'error': 'Máximo 50 IDs por requisição'}), 400
-    resultado = animal_repository.get_gmd_lote(animal_ids, current_user.id)
+    resultado = animal_repository.get_gmd_lote(animal_ids, current_user.farm_id)
     return jsonify(resultado)
 
 
@@ -223,7 +223,7 @@ def gmd_lote():
 @limiter.limit("60 per minute")
 def dashboard_summary():
     """Retorna sexo + GMD + alertas em uma única request — 2 queries vs 3 antes."""
-    uid = current_user.id
+    uid = current_user.farm_id
     sexo_filtro = request.args.get('sexo') if request.args.get('sexo') in ('M', 'F') else None
     origem_filtro = request.args.get('origem') if request.args.get('origem') == 'fazenda' else None
     rows_sexo = animal_repository.get_contagem_por_sexo(uid, origem=origem_filtro)
@@ -256,9 +256,9 @@ def dashboard_summary():
 @limiter.limit("6 per minute")
 def relatorio_pdf():
     """Inicia geração de PDF em background. Retorna job_id para polling."""
-    config    = configuracao_repository.get_configuracao(current_user.id)
-    fluxo     = financeiro_repository.get_fluxo_caixa(current_user.id)
-    animais   = animal_repository.get_animais_com_gmd(current_user.id)
+    config    = configuracao_repository.get_configuracao(current_user.farm_id)
+    fluxo     = financeiro_repository.get_fluxo_caixa(current_user.farm_id)
+    animais   = animal_repository.get_animais_com_gmd(current_user.farm_id)
     gmds      = [float(a[5]) for a in animais if a[5] is not None]
     gmd_medio = sum(gmds) / len(gmds) if gmds else 0.0
 
@@ -322,7 +322,7 @@ def pdf_download(job_id: str):
 @limiter.limit("10 per minute")
 def export_animais_csv():
     # get_animais_com_gmd: id(0) brinco(1) sexo(2) raca(3) data_compra(4) gmd(5) dias(6) peso_final(7)
-    rows = animal_repository.get_animais_com_gmd(current_user.id)
+    rows = animal_repository.get_animais_com_gmd(current_user.farm_id)
     linhas = [[
         r[0],
         r[1],
@@ -346,7 +346,7 @@ def export_animais_csv():
 def custos_por_ano():
     """Retorna detalhamento de custos do ano em JSON — usado pelo lazy-load do financeiro."""
     ano = request.args.get('ano', date.today().year, type=int)
-    rows = financeiro_repository.get_custos_por_ano(current_user.id, ano)
+    rows = financeiro_repository.get_custos_por_ano(current_user.farm_id, ano)
     return jsonify([{
         'data':      r[0].strftime('%d/%m/%Y') if r[0] else '',
         'categoria': r[1] or '',
@@ -362,7 +362,7 @@ def custos_por_ano():
 @limiter.limit("10 per minute")
 def export_financeiro_csv():
     ano = request.args.get('ano', date.today().year, type=int)
-    rows = financeiro_repository.get_custos_por_ano(current_user.id, ano)
+    rows = financeiro_repository.get_custos_por_ano(current_user.farm_id, ano)
     linhas = [[
         r[0].strftime('%d/%m/%Y') if r[0] else '',
         r[1] or '',
@@ -382,9 +382,9 @@ def export_financeiro_csv():
 @login_required
 @limiter.limit("30 per minute")
 def alerta_gmd():
-    rows = animal_repository.get_animais_abaixo_gmd_medio(current_user.id)
+    rows = animal_repository.get_animais_abaixo_gmd_medio(current_user.farm_id)
     if not rows:
-        gmd_media = animal_repository.get_gmd_medio_rebanho(current_user.id)
+        gmd_media = animal_repository.get_gmd_medio_rebanho(current_user.farm_id)
         return jsonify({
             'gmd_media_rebanho': round(gmd_media, 3),
             'total': 0,
@@ -448,7 +448,7 @@ def proxy_cidades():
 @limiter.limit("30 per minute")
 def cotacoes_regionais():
     uf_usuario = None
-    res = configuracao_repository.get_configuracao(current_user.id)
+    res = configuracao_repository.get_configuracao(current_user.farm_id)
     if res and res[1]:
         partes = res[1].split('-')
         if len(partes) > 1:

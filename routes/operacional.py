@@ -69,9 +69,9 @@ def inicio():
     ocorrencias = []
 
     try:
-        leituras['gmd_medio'] = animal_repository.get_gmd_medio_rebanho(current_user.id)
-        leituras['total_animais'] = animal_repository.count_animais(current_user.id, status='ativos')
-        abaixo = animal_repository.get_animais_abaixo_gmd_medio(current_user.id)
+        leituras['gmd_medio'] = animal_repository.get_gmd_medio_rebanho(current_user.farm_id)
+        leituras['total_animais'] = animal_repository.count_animais(current_user.farm_id, status='ativos')
+        abaixo = animal_repository.get_animais_abaixo_gmd_medio(current_user.farm_id)
         leituras['abaixo_gmd'] = len(abaixo)
         if abaixo:
             ocorrencias.append({
@@ -86,7 +86,7 @@ def inicio():
         logger.error(f"Erro Início (rebanho): {e}", exc_info=True)
 
     try:
-        partos = reproducao_repository.get_partos_previstos(current_user.id, dias=285)
+        partos = reproducao_repository.get_partos_previstos(current_user.farm_id, dias=285)
         atrasados = [p for p in partos if p[4] <= 0]
         if atrasados:
             ocorrencias.append({
@@ -101,7 +101,7 @@ def inicio():
         logger.error(f"Erro Início (reprodução): {e}", exc_info=True)
 
     try:
-        protocolos = sanitario_repository.get_vencendo_em_dias(current_user.id, dias=7)
+        protocolos = sanitario_repository.get_vencendo_em_dias(current_user.farm_id, dias=7)
         for p in protocolos:
             dias = (p[2] - hoje).days if p[2] else None
             ocorrencias.append({
@@ -116,7 +116,7 @@ def inicio():
         logger.error(f"Erro Início (sanidade): {e}", exc_info=True)
 
     try:
-        carencias = sanitario_repository.get_carencias_ativas(current_user.id)
+        carencias = sanitario_repository.get_carencias_ativas(current_user.farm_id)
         if carencias:
             brincos = sorted({c[1] for c in carencias})
             liberacao = max(c[6] for c in carencias)
@@ -135,7 +135,7 @@ def inicio():
         logger.error(f"Erro Início (carência): {e}", exc_info=True)
 
     try:
-        paradas = animal_repository.get_lotes_sem_pesagem(current_user.id, dias=45)
+        paradas = animal_repository.get_lotes_sem_pesagem(current_user.farm_id, dias=45)
         if paradas:
             ocorrencias.append({
                 'tom': 'dado',
@@ -150,7 +150,7 @@ def inicio():
         logger.error(f"Erro Início (pesagem de lote): {e}", exc_info=True)
 
     try:
-        for ag in financeiro_repository.get_agendamentos(current_user.id):
+        for ag in financeiro_repository.get_agendamentos(current_user.farm_id):
             if (ag[4] or '').lower() == 'pago' or not ag[3]:
                 continue
             dias = (ag[3] - hoje).days
@@ -191,13 +191,13 @@ def painel():
 
     alertas_sanitarios = []
     try:
-        racas_disponiveis = animal_repository.get_racas_distintas(current_user.id)
-        total = animal_repository.count_animais(current_user.id, termo, status, raca=raca, origem=origem, sexo=sexo)
-        animais = animal_repository.get_animais_paginados(current_user.id, limit, offset, termo, status,
+        racas_disponiveis = animal_repository.get_racas_distintas(current_user.farm_id)
+        total = animal_repository.count_animais(current_user.farm_id, termo, status, raca=raca, origem=origem, sexo=sexo)
+        animais = animal_repository.get_animais_paginados(current_user.farm_id, limit, offset, termo, status,
                                                            raca=raca, origem=origem, sexo=sexo, ordem=ordem)
         if total > 0:
             total_pg = math.ceil(total / limit)
-        alertas_sanitarios = sanitario_repository.get_vencendo_em_dias(current_user.id, dias=7)
+        alertas_sanitarios = sanitario_repository.get_vencendo_em_dias(current_user.farm_id, dias=7)
     except Exception as e:
         logger.error(f"Erro painel: {e}", exc_info=True)
         flash("Não foi possível carregar o rebanho agora. Tente novamente em instantes.", 'error')
@@ -220,8 +220,8 @@ def lixeira():
     total_pg = 1
 
     try:
-        total = animal_repository.count_animais_lixeira(current_user.id, termo)
-        animais = animal_repository.get_animais_lixeira_paginados(current_user.id, limit, offset, termo)
+        total = animal_repository.count_animais_lixeira(current_user.farm_id, termo)
+        animais = animal_repository.get_animais_lixeira_paginados(current_user.farm_id, limit, offset, termo)
         if total > 0:
             total_pg = math.ceil(total / limit)
     except Exception as e:
@@ -234,7 +234,7 @@ def lixeira():
 @login_required
 def restaurar_animal(id_animal):
     try:
-        animal_repository.restore_animal(id_animal, current_user.id)
+        animal_repository.restore_animal(id_animal, current_user.farm_id)
     except Exception as e:
         logger.error(f"Erro restaurar: {e}", exc_info=True)
     return redirect(url_for('operacional.lixeira'))
@@ -277,11 +277,11 @@ def cadastro():
             val_arr = float(val_arr_str) if val_arr_str else None
             preco_compra = preco_por_arroba(peso, val_arr) if (peso and val_arr) else None
 
-            if animal_repository.check_brinco_exists(brinco, current_user.id):
+            if animal_repository.check_brinco_exists(brinco, current_user.farm_id):
                 return render_template("cadastro.html", mensagem="Brinco já existe."), 400
 
             new_id = animal_repository.cadastrar_animal(
-                brinco, sexo, data_compra, preco_compra, peso, current_user.id,
+                brinco, sexo, data_compra, preco_compra, peso, current_user.farm_id,
                 data_nascimento=data_nascimento, raca=raca,
             )
             flash(f"Animal {brinco} cadastrado com sucesso.", 'success')
@@ -289,7 +289,7 @@ def cadastro():
         except _IntegrityError:
             # UNIQUE (brinco, user_id) conta linhas soft-deletadas, que
             # check_brinco_exists ignora — o brinco pode estar na lixeira.
-            logger.warning("IntegrityError cadastro (brinco duplicado) user=%s", current_user.id)
+            logger.warning("IntegrityError cadastro (brinco duplicado) user=%s", current_user.farm_id)
             return render_template(
                 "cadastro.html",
                 mensagem="Já existe um animal com esse brinco. Verifique a lixeira — ele pode estar excluído.",
@@ -303,7 +303,7 @@ def cadastro():
 @login_required
 def detalhes(id_animal):
     try:
-        animal = animal_repository.get_animal_by_id(id_animal, current_user.id)
+        animal = animal_repository.get_animal_by_id(id_animal, current_user.farm_id)
         if not animal:
             return redirect(url_for('operacional.painel'))
 
@@ -353,7 +353,7 @@ def vender(id_animal):
         confirmou = request.form.get('confirmar_carencia') == '1'
         try:
             carencias = sanitario_repository.get_carencias_ativas(
-                current_user.id, animal_ids=[id_animal])
+                current_user.farm_id, animal_ids=[id_animal])
         except Exception as e:
             logger.error(f"Erro checar carência: {e}", exc_info=True)
             carencias = []
@@ -366,12 +366,12 @@ def vender(id_animal):
             dt = request.form['data_venda']
             peso = float(request.form['peso_venda'])
             val = float(request.form['valor_arroba'])
-            ok = animal_repository.registrar_venda(id_animal, current_user.id, dt, preco_por_arroba(peso, val), peso)
+            ok = animal_repository.registrar_venda(id_animal, current_user.farm_id, dt, preco_por_arroba(peso, val), peso)
             if not ok:
                 return render_template('vender.html', id_animal=id_animal,
                                        mensagem="Animal não encontrado."), 404
             if carencias:
-                sanitario_repository.registrar_override_carencia(carencias, current_user.id)
+                sanitario_repository.registrar_override_carencia(carencias, current_user.farm_id)
                 flash("Venda autorizada dentro da carência — registrado para auditoria.", 'warning')
             return redirect(url_for('operacional.detalhes', id_animal=id_animal))
         except Exception as e:
@@ -389,7 +389,7 @@ def venda_lote():
             ('valor_arroba', {'required': True, 'type': 'float', 'min_val': 0.01, 'label': 'Valor da arroba'}),
         ])
         if errors:
-            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.farm_id)
             restore_data = {
                 'animal_ids': request.form.getlist('animal_ids[]'),
                 'pesos_venda': request.form.getlist('pesos_venda[]'),
@@ -401,19 +401,19 @@ def venda_lote():
         pesos = request.form.getlist('pesos_venda[]')
 
         if not animal_ids:
-            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.farm_id)
             return render_template('venda_lote.html', animais=animais,
                                    erro="Selecione pelo menos um animal."), 400
 
         confirmou = request.form.get('confirmar_carencia') == '1'
         try:
             carencias = sanitario_repository.get_carencias_ativas(
-                current_user.id, animal_ids=animal_ids)
+                current_user.farm_id, animal_ids=animal_ids)
         except Exception as e:
             logger.error(f"Erro checar carência (lote): {e}", exc_info=True)
             carencias = []
         if carencias and not confirmou:
-            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.farm_id)
             restore_data = {
                 'animal_ids': animal_ids,
                 'pesos_venda': pesos,
@@ -434,22 +434,22 @@ def venda_lote():
                     raise ValueError
                 vendas.append((aid, peso, preco_por_arroba(peso, valor_arroba)))
             except (ValueError, TypeError):
-                animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+                animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.farm_id)
                 return render_template('venda_lote.html', animais=animais,
                                        erro="Peso inválido em um ou mais animais."), 400
 
         try:
-            vendidos, invalidos = animal_repository.registrar_venda_lote(vendas, current_user.id, data_venda)
+            vendidos, invalidos = animal_repository.registrar_venda_lote(vendas, current_user.farm_id, data_venda)
         except Exception as e:
             logger.error(f"Erro venda lote: {e}", exc_info=True)
-            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+            animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.farm_id)
             return render_template('venda_lote.html', animais=animais,
                                    erro="Erro ao registrar venda. Tente novamente."), 400
 
         if carencias:
             vendidos_ids = {aid for aid, _, _ in vendas if aid not in set(invalidos)}
             sanitario_repository.registrar_override_carencia(
-                [c for c in carencias if c[0] in vendidos_ids], current_user.id)
+                [c for c in carencias if c[0] in vendidos_ids], current_user.farm_id)
             flash("Venda autorizada dentro da carência — registrado para auditoria.", 'warning')
 
         msg = f"{vendidos} animal(is) vendido(s) com sucesso."
@@ -458,7 +458,7 @@ def venda_lote():
         flash(msg, 'success')
         return redirect(url_for('operacional.painel'))
 
-    animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.id)
+    animais = animal_repository.get_animais_ativos_com_ultimo_peso(current_user.farm_id)
     return render_template('venda_lote.html', animais=animais)
 
 @operacional_bp.route('/medicar/<int:id_animal>', methods=['GET', 'POST'])
@@ -476,7 +476,7 @@ def medicar(id_animal):
             return render_template('medicar.html', id_animal=id_animal, mensagem=errors[0]), 400
         try:
             ok = animal_repository.registrar_medicacao(
-                id_animal, current_user.id,
+                id_animal, current_user.farm_id,
                 request.form['data_aplicacao'], request.form['nome'],
                 request.form['custo'], request.form['obs'],
                 dias_carencia=_dias_carencia_do_form(request.form)
@@ -503,7 +503,7 @@ def nova_pesagem(id_animal):
             return render_template('nova_pesagem.html', id_animal=id_animal, mensagem=errors[0]), 400
         try:
             ok = animal_repository.registrar_pesagem(
-                id_animal, current_user.id,
+                id_animal, current_user.farm_id,
                 request.form['data_pesagem'], request.form['peso']
             )
             if not ok:
@@ -520,7 +520,7 @@ def nova_pesagem(id_animal):
 @login_required
 def excluir_animal(id_animal):
     try:
-        animal_repository.soft_delete_animal(id_animal, current_user.id)
+        animal_repository.soft_delete_animal(id_animal, current_user.farm_id)
     except Exception as e:
         logger.error(f"Erro excluir: {e}", exc_info=True)
     return redirect(url_for('operacional.painel'))
@@ -530,7 +530,7 @@ def excluir_animal(id_animal):
 def excluir_pesagem(id_pesagem):
     aid = None
     try:
-        aid = animal_repository.soft_delete_pesagem(id_pesagem, current_user.id)
+        aid = animal_repository.soft_delete_pesagem(id_pesagem, current_user.farm_id)
     except Exception as e:
         logger.error(f"Erro excluir pesagem: {e}", exc_info=True)
 
@@ -555,7 +555,7 @@ def vacinacao_coletiva():
                 ('dias_carencia',  {'required': False, 'type': 'int',  'min_val': 0, 'max_val': 365, 'label': 'Dias de carência'}),
             ])
             if errors:
-                lista_animais = animal_repository.get_animais_ativos(current_user.id)
+                lista_animais = animal_repository.get_animais_ativos(current_user.farm_id)
                 return render_template('vacinacao_lote.html', erro=errors[0], animais=lista_animais), 400
 
             animal_repository.insert_medicacao_lote(
@@ -564,18 +564,18 @@ def vacinacao_coletiva():
                 request.form['nome'],
                 request.form['custo'],
                 request.form['obs'],
-                user_id=current_user.id,
+                user_id=current_user.farm_id,
                 dias_carencia=_dias_carencia_do_form(request.form),
             )
             flash(f"{len(animais_ids)} animal(is) vacinado(s) com sucesso.", 'success')
             return redirect(url_for('operacional.vacinacao_coletiva'))
         except Exception as e:
             logger.error(f"Erro vacinacao lote: {e}", exc_info=True)
-            lista_animais = animal_repository.get_animais_ativos(current_user.id)
+            lista_animais = animal_repository.get_animais_ativos(current_user.farm_id)
             return render_template('vacinacao_lote.html', erro="Erro interno ao processar vacinação.", animais=lista_animais), 500
 
     try:
-        lista_animais = animal_repository.get_animais_ativos(current_user.id)
+        lista_animais = animal_repository.get_animais_ativos(current_user.farm_id)
         nome_pre = request.args.get('protocolo', '')
         return render_template('vacinacao_lote.html', animais=lista_animais, nome_pre=nome_pre)
     except Exception as e:
@@ -630,7 +630,7 @@ def cadastro_lote():
             ]
 
             animal_repository.cadastrar_lote(
-                current_user.id, codigo_lote, descricao, data_compra, animais_data, raca=raca
+                current_user.farm_id, codigo_lote, descricao, data_compra, animais_data, raca=raca
             )
             flash(f"Lote '{codigo_lote}' salvo com {len(brincos)} animais e pesos individuais!", 'success')
             # ponytail: painel/get_animais_paginados não têm filtro por lote_id (fora do escopo
@@ -654,14 +654,14 @@ def pesagem_lote():
     erro_geral = None
 
     try:
-        lotes = animal_repository.get_lotes(current_user.id)
+        lotes = animal_repository.get_lotes(current_user.farm_id)
 
         if request.method == 'POST':
             animal_ids = request.form.getlist('animal_ids[]')
             pesos = request.form.getlist('pesos[]')
 
             if not animal_ids:
-                animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
+                animais = animal_repository.get_animais_ativos_por_lote(current_user.farm_id, lote_id)
                 return render_template('pesagem_lote.html', lotes=lotes, animais=animais,
                                        lote_id_selecionado=lote_id,
                                        erro="Selecione pelo menos um animal."), 400
@@ -670,7 +670,7 @@ def pesagem_lote():
                 ('data_pesagem', {'required': True, 'type': 'date', 'label': 'Data da pesagem'}),
             ])
             if errors:
-                animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
+                animais = animal_repository.get_animais_ativos_por_lote(current_user.farm_id, lote_id)
                 return render_template('pesagem_lote.html', lotes=lotes, animais=animais,
                                        lote_id_selecionado=lote_id, erro=errors[0]), 400
 
@@ -683,13 +683,13 @@ def pesagem_lote():
                         raise ValueError
                     pairs.append((aid, peso))
                 except (ValueError, TypeError):
-                    animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
+                    animais = animal_repository.get_animais_ativos_por_lote(current_user.farm_id, lote_id)
                     return render_template('pesagem_lote.html', lotes=lotes, animais=animais,
                                            lote_id_selecionado=lote_id,
                                            erro="Peso inválido em um ou mais animais."), 400
 
             inseridos, invalidos = animal_repository.registrar_pesagens_lote(
-                pairs, current_user.id, request.form['data_pesagem']
+                pairs, current_user.farm_id, request.form['data_pesagem']
             )
             msg = f"{inseridos} pesagem(ns) registrada(s) com sucesso."
             if invalidos:
@@ -697,7 +697,7 @@ def pesagem_lote():
             flash(msg, 'success')
             return redirect(url_for('operacional.pesagem_lote', lote_id=lote_id))
 
-        animais = animal_repository.get_animais_ativos_por_lote(current_user.id, lote_id)
+        animais = animal_repository.get_animais_ativos_por_lote(current_user.farm_id, lote_id)
     except Exception as e:
         logger.error(f"Erro pesagem lote: {e}", exc_info=True)
         erro_geral = "Erro ao registrar pesagens. Tente novamente."
@@ -713,25 +713,25 @@ def pesagem_lote():
 @operacional_bp.route('/animais/<int:id_animal>/progenie')
 @login_required
 def progenie_animal(id_animal):
-    animal = animal_repository.get_animal_by_id(id_animal, current_user.id)
+    animal = animal_repository.get_animal_by_id(id_animal, current_user.farm_id)
     if not animal:
         return redirect(url_for('operacional.painel'))
-    filhos = animal_repository.get_progenie_by_touro(id_animal, current_user.id)
+    filhos = animal_repository.get_progenie_by_touro(id_animal, current_user.farm_id)
     return render_template('animal_progenie.html', animal=animal, filhos=filhos)
 
 
 @operacional_bp.route('/animais/<int:id_animal>/reproducao')
 @login_required
 def reproducao_animal(id_animal):
-    animal = animal_repository.get_animal_by_id(id_animal, current_user.id)
+    animal = animal_repository.get_animal_by_id(id_animal, current_user.farm_id)
     if not animal:
         return redirect(url_for('operacional.painel'))
-    eventos          = reproducao_repository.get_reproducao_by_vaca(id_animal, current_user.id)
-    stats            = animal_repository.get_historico_reproducao(id_animal, current_user.id)
-    machos           = animal_repository.get_animais_ativos_por_sexo(current_user.id, 'M')
+    eventos          = reproducao_repository.get_reproducao_by_vaca(id_animal, current_user.farm_id)
+    stats            = animal_repository.get_historico_reproducao(id_animal, current_user.farm_id)
+    machos           = animal_repository.get_animais_ativos_por_sexo(current_user.farm_id, 'M')
     partos_previstos = []
     try:
-        partos_previstos = reproducao_repository.get_partos_previstos(current_user.id, dias=60)
+        partos_previstos = reproducao_repository.get_partos_previstos(current_user.farm_id, dias=60)
     except Exception:
         pass
     return render_template('animal_reproducao.html',
@@ -750,8 +750,8 @@ def reproducao_painel():
     """
     partos_previstos, total_gestantes = [], 0
     try:
-        partos_previstos = reproducao_repository.get_partos_previstos(current_user.id, dias=285)
-        total_gestantes = reproducao_repository.get_contagem_gestantes(current_user.id)
+        partos_previstos = reproducao_repository.get_partos_previstos(current_user.farm_id, dias=285)
+        total_gestantes = reproducao_repository.get_contagem_gestantes(current_user.farm_id)
     except Exception as e:
         logger.error(f"Erro painel reprodução: {e}", exc_info=True)
         flash("Não foi possível carregar os dados de reprodução agora. Tente novamente em instantes.", 'error')
@@ -792,7 +792,7 @@ def registrar_reproducao():
     elif touro_id_raw:
         try:
             _tid = int(touro_id_raw)
-            if not animal_repository.get_animal_by_id(_tid, current_user.id):
+            if not animal_repository.get_animal_by_id(_tid, current_user.farm_id):
                 erros.append("Touro informado não pertence ao seu rebanho.")
                 touro_id_raw = ''
         except (ValueError, TypeError):
@@ -805,7 +805,7 @@ def registrar_reproducao():
         if not sexo_bezerro or sexo_bezerro not in ('M', 'F'):
             erros.append("Informe o sexo do bezerro nascido.")
 
-    if not id_animal or not animal_repository.get_animal_by_id(id_animal, current_user.id):
+    if not id_animal or not animal_repository.get_animal_by_id(id_animal, current_user.farm_id):
         return redirect(url_for('operacional.painel'))
 
     if erros:
@@ -814,10 +814,10 @@ def registrar_reproducao():
         return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))
 
     criar_bezerro = (resultado == 'vivo' and data_parto and brinco_bezerro and sexo_bezerro
-                     and not animal_repository.check_brinco_exists(brinco_bezerro, current_user.id))
+                     and not animal_repository.check_brinco_exists(brinco_bezerro, current_user.farm_id))
 
     _, bezerro_id = reproducao_repository.registrar_parto_com_bezerro(
-        current_user.id,
+        current_user.farm_id,
         id_animal,
         int(touro_id_raw) if touro_id_raw else None,
         touro_externo,
@@ -854,7 +854,7 @@ def registrar_diagnostico(rep_id):
         try:
             reproducao_repository.update_diagnostico(
                 rep_id,
-                current_user.id,
+                current_user.farm_id,
                 request.form.get('diagnostico'),
                 request.form.get('data_diagnostico'),
             )
@@ -863,7 +863,7 @@ def registrar_diagnostico(rep_id):
             logger.error(f"Erro DG {rep_id}: {e}", exc_info=True)
             flash('Erro ao registrar diagnóstico.', 'error')
 
-    id_animal = reproducao_repository.get_vaca_id_by_reproducao(rep_id, current_user.id)
+    id_animal = reproducao_repository.get_vaca_id_by_reproducao(rep_id, current_user.farm_id)
     if id_animal:
         return redirect(url_for('operacional.reproducao_animal', id_animal=id_animal))
     return redirect(url_for('operacional.painel'))
@@ -873,14 +873,14 @@ def registrar_diagnostico(rep_id):
 @login_required
 def ranking_touros():
     try:
-        ranking = animal_repository.get_ranking_touros(current_user.id)
-        gmd_medio_raw = animal_repository.get_gmd_medio_rebanho(current_user.id)
+        ranking = animal_repository.get_ranking_touros(current_user.farm_id)
+        gmd_medio_raw = animal_repository.get_gmd_medio_rebanho(current_user.farm_id)
 
         # Converte o valor retornado para Decimal, ou usa Decimal('0.0') se vier vazio/None
         gmd_medio = Decimal(str(gmd_medio_raw)) if gmd_medio_raw else Decimal('0.0')
 
     except Exception:
-        logger.exception("Erro em ranking_touros user_id=%s", current_user.id)
+        logger.exception("Erro em ranking_touros user_id=%s", current_user.farm_id)
         # Substitui o 0.0 (float) por Decimal('0.0') no fallback do erro
         ranking, gmd_medio = [], Decimal('0.0')
         
@@ -924,7 +924,7 @@ def importar_csv():
         with get_db_cursor() as cursor:
             cursor.execute(
                 "SELECT brinco FROM animais WHERE user_id = %s AND deleted_at IS NULL",
-                (current_user.id,)
+                (current_user.farm_id,)
             )
             brincos_existentes = {row[0] for row in cursor.fetchall()}
             linhas_validas = []  # (linha, brinco, sexo, raca, data_compra, data_nasc, preco_compra)
@@ -999,7 +999,7 @@ def importar_csv():
                         cursor.executemany(
                             "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
                             "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                            [(brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.id)
+                            [(brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.farm_id)
                              for _, brinco, sexo, raca, data_compra, data_nasc, preco_compra, peso in chunk]
                         )
                     inseridos += len(chunk)
@@ -1012,7 +1012,7 @@ def importar_csv():
                                 cursor.execute(
                                     "INSERT INTO animais (brinco, sexo, raca, data_compra, data_nascimento, "
                                     "preco_compra, user_id) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                                    (brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.id)
+                                    (brinco, sexo, raca, data_compra, data_nasc, preco_compra, current_user.farm_id)
                                 )
                             inseridos += 1
                             inseridos_pesagem.append((brinco, data_compra or data_nasc, peso))
@@ -1028,7 +1028,7 @@ def importar_csv():
                 cursor.execute(
                     f"SELECT id, brinco FROM animais WHERE user_id = %s "
                     f"AND deleted_at IS NULL AND brinco IN ({ph})",
-                    [current_user.id] + brincos
+                    [current_user.farm_id] + brincos
                 )
                 id_por_brinco = {brinco: aid for aid, brinco in cursor.fetchall()}
                 cursor.executemany(

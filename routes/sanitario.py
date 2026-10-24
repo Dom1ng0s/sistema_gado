@@ -23,7 +23,7 @@ def lista_protocolos():
         else:
             try:
                 sanitario_repository.insert_protocolo(
-                    current_user.id,
+                    current_user.farm_id,
                     request.form.get('nome').strip(),
                     request.form.get('descricao', '').strip() or None,
                     int(request.form.get('intervalo_dias')),
@@ -38,7 +38,7 @@ def lista_protocolos():
     busca = request.args.get('busca', '').strip()
     protocolos = []
     try:
-        protocolos = sanitario_repository.get_protocolos(current_user.id)
+        protocolos = sanitario_repository.get_protocolos(current_user.farm_id)
         if busca:
             bl = busca.lower()
             protocolos = [p for p in protocolos if bl in (p[1] or '').lower()]
@@ -53,7 +53,7 @@ def lista_protocolos():
 @login_required
 def aplicar_protocolo(protocolo_id):
     try:
-        nome = sanitario_repository.registrar_aplicacao(protocolo_id, current_user.id)
+        nome = sanitario_repository.registrar_aplicacao(protocolo_id, current_user.farm_id)
         if nome is None:
             return redirect(url_for('sanitario.lista_protocolos'))
         return redirect(url_for('operacional.vacinacao_coletiva', protocolo=nome))
@@ -66,7 +66,7 @@ def aplicar_protocolo(protocolo_id):
 @login_required
 def desativar_protocolo(protocolo_id):
     try:
-        sanitario_repository.desativar_protocolo(protocolo_id, current_user.id)
+        sanitario_repository.desativar_protocolo(protocolo_id, current_user.farm_id)
     except Exception as e:
         logger.error(f"Erro ao desativar protocolo {protocolo_id}: {e}", exc_info=True)
     return redirect(url_for('sanitario.lista_protocolos'))
