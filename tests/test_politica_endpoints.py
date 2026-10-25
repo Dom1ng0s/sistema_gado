@@ -8,6 +8,8 @@ inócuo em comportamento enquanto existe um papel só.
 
 import pytest
 
+from conftest import login_as
+from tests.dbcompat import connect
 from utils.permissions import (
     NAO_ESCREVE_NA_FAZENDA,
     PAPEIS,
@@ -22,6 +24,15 @@ from utils.permissions import (
 
 def _endpoints(app):
     return {r.endpoint for r in app.url_map.iter_rules()}
+
+
+def _uid_testuser():
+    conn = connect()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM usuarios WHERE username = 'testuser'")
+    uid = cur.fetchone()[0]
+    cur.close(); conn.close()
+    return uid
 
 
 def test_todo_endpoint_tem_politica(app):
@@ -61,50 +72,45 @@ def test_endpoint_desconhecido_e_negado():
 
 
 def test_publico_passa_sem_papel():
-    assert autorizado('auth.login', 'POST', 'anonimo')
-    assert autorizado('static', 'GET', 'anonimo')
+    assert autorizado('webhooks.asaas', 'POST', 'anonimo')
 
 
 def test_papel_desconhecido_e_negado():
-    assert not autorizado('operacional.painel', 'GET', 'invasor')
+    assert not autorizado('api.graficos_sexo', 'GET', 'invasor')
 
 
 # ---- recortes de papel ----
+#
+# Encolheram com o HTML: a API que sobrou é toda GET, então o recorte que se
+# pode exercitar aqui é quem lê o quê — o barramento por método continua
+# coberto pela varredura abaixo.
 
-def test_vaqueiro_opera_campo_mas_nao_vende():
-    assert autorizado('operacional.medicar', 'POST', 'vaqueiro')
-    assert autorizado('operacional.pesagem_lote', 'POST', 'vaqueiro')
-    assert not autorizado('operacional.vender', 'POST', 'vaqueiro')
-    assert not autorizado('operacional.venda_lote', 'POST', 'vaqueiro')
-    assert not autorizado('operacional.excluir_animal', 'POST', 'vaqueiro')
+def test_vaqueiro_le_rebanho():
+    assert autorizado('api.graficos_sexo', 'GET', 'vaqueiro')
+    assert autorizado('api.alerta_gmd', 'GET', 'vaqueiro')
+    assert autorizado('api.export_animais_csv', 'GET', 'vaqueiro')
 
 
 def test_vaqueiro_nao_ve_dinheiro():
-    for endpoint in ('financeiro.financeiro', 'financeiro.resultado_lotes',
-                     'api.dashboard_summary', 'api.export_financeiro_csv',
-                     'configuracoes.settings'):
+    for endpoint in ('api.dashboard_summary', 'api.custos_por_ano',
+                     'api.export_financeiro_csv'):
         assert not autorizado(endpoint, 'GET', 'vaqueiro'), endpoint
 
 
-def test_contador_le_dinheiro_e_nao_escreve():
-    assert autorizado('financeiro.financeiro', 'GET', 'contador')
+def test_contador_le_dinheiro():
+    assert autorizado('api.dashboard_summary', 'GET', 'contador')
     assert autorizado('api.export_financeiro_csv', 'GET', 'contador')
-    # mesmo endpoint, método que grava: barrado pelo método, não pelo mapa
-    assert autorizado('financeiro.custos_operacionais', 'GET', 'contador')
-    assert not autorizado('financeiro.custos_operacionais', 'POST', 'contador')
-    assert not autorizado('financeiro.agendamentos', 'POST', 'contador')
+    assert autorizado('api.custos_por_ano', 'GET', 'contador')
 
 
 def test_contador_nao_entra_no_rebanho():
-    assert not autorizado('operacional.painel', 'GET', 'contador')
-    assert not autorizado('operacional.detalhes', 'GET', 'contador')
+    assert not autorizado('api.graficos_sexo', 'GET', 'contador')
+    assert not autorizado('api.export_animais_csv', 'GET', 'contador')
 
 
-def test_consultor_le_mas_nao_grava():
-    assert autorizado('operacional.painel', 'GET', 'consultor')
-    assert autorizado('estoque.lista_estoque', 'GET', 'consultor')
-    assert not autorizado('estoque.lista_estoque', 'POST', 'consultor')
-    assert not autorizado('sanitario.lista_protocolos', 'POST', 'consultor')
+def test_consultor_le_os_dois_lados():
+    assert autorizado('api.graficos_sexo', 'GET', 'consultor')
+    assert autorizado('api.dashboard_summary', 'GET', 'consultor')
 
 
 @pytest.mark.parametrize('endpoint', sorted(NAO_ESCREVE_NA_FAZENDA))
@@ -145,17 +151,17 @@ def test_usuario_sem_papel_e_dono():
     assert papel_de(None) == 'dono'
 
 
-def test_telas_protegidas_continuam_redirecionando_para_login(client):
-    """Sem sessão o hook não responde 403: quem responde é o login_required."""
-    resp = client.get('/painel')
-    assert resp.status_code == 302
-    assert '/login' in resp.headers['Location']
+def test_rota_protegida_sem_sessao_da_401(client):
+    """Sem sessão o hook não responde 403: quem responde é o login_required,
+    que agora devolve 401 — não há mais tela de login para onde redirecionar."""
+    resp = client.get('/api/graficos/sexo')
+    assert resp.status_code == 401
 
 
 def test_usuario_logado_passa_pelo_hook(client, app):
-    client.post('/login', data={'username': 'testuser', 'password': '123'},
-                follow_redirects=True)
-    for url in ('/inicio', '/painel', '/financeiro', '/configuracoes'):
+    uid = _uid_testuser()
+    login_as(client, uid)
+    for url in ('/api/graficos/sexo', '/api/graficos/gmd', '/api/dashboard-summary'):
         assert client.get(url).status_code == 200, url
 
 

@@ -1,0 +1,145 @@
+/* ============================================================
+   SGG — Design Tokens ("Field Ledger & Scale Readout")
+   Cool mineral stone canvas, pure white daylight surfaces,
+   deep pasture green, oxide red for crossed limits, 8px radius,
+   zero decorative gradients, zero glow shadows.
+   ============================================================ */
+
+:root {
+  /* Neutral scale — Cool mineral stone (oklch hue ~145) */
+  --n-0:   #FFFFFF;
+  --n-25:  #F8F9F7;
+  --n-50:  #F2F4F1;
+  --n-100: #E6EAE4;
+  --n-200: #DCE1DA;
+  --n-300: #C6CEC3;
+  --n-350: #9AA696;
+  --n-400: #738070;
+  --n-500: #525E56; /* 6.2:1 on white */
+  --n-600: #3B453E;
+  --n-700: #29312C;
+  --n-800: #1C231F;
+  --n-900: #141C17;
+
+  /* Primary — Deep pasture green */
+  --g-50:  #EEF6F1;
+  --g-100: #D6EADF;
+  --g-200: #B0D5C1;
+  --g-500: #155E3B;
+  --g-600: #124E31;
+  --g-700: #0E3F27;
+
+  /* Warning / Market — Earthy ochre */
+  --amber-50:  #FDF6EC;
+  --amber-100: #F9E6C8;
+  --amber-500: #9A5B13;
+  --amber-600: #7E490E;
+  --amber-700: #63380A;
+
+  /* Danger / Threshold crossed — Oxide red */
+  --a-50:  #FDF2F2;
+  --a-100: #FBE0DF;
+  --a-500: #B42318;
+  --a-600: #911B12;
+  --a-700: #7A160E;
+
+  /* Semantic roles */
+  --color-primary:         var(--g-500);
+  --color-primary-mid:     var(--g-500);
+  --color-primary-dark:    var(--g-700);
+  --color-primary-light:   var(--g-200);
+  --color-primary-bg:      var(--g-50);
+
+  --color-accent:          var(--amber-500);
+  --color-accent-dark:     var(--amber-700);
+  --color-accent-bg:       var(--amber-50);
+
+  --color-danger:          var(--a-500);
+  --color-danger-dark:     var(--a-700);
+  --color-danger-bg:       var(--a-50);
+
+  --color-success:         var(--g-500);
+  --color-success-bg:      var(--g-50);
+
+  --color-warning:         var(--amber-500);
+  --color-warning-bg:      var(--amber-50);
+
+  --color-ink:             var(--n-900);
+  --color-ink-secondary:   var(--n-600);
+  --color-ink-tertiary:    var(--n-500);
+  --color-ink-disabled:    var(--n-400);
+
+  --color-surface:         var(--n-0);
+  --color-surface-raised:  var(--n-25);
+  --color-surface-sunken:  var(--n-50);
+  --color-surface-side:    var(--n-0);
+  --color-border:          var(--n-200);
+  --color-border-strong:   #B8C2B5;
+
+  /* Typography */
+  --font-display: 'Archivo', sans-serif;
+  --font-body:    'Archivo', sans-serif;
+  --font-dado:    'IBM Plex Mono', monospace;
+
+  --text-xs:   0.75rem;    /* 12px */
+  --text-sm:   0.8125rem;  /* 13px */
+  --text-base: 0.875rem;   /* 14px */
+  --text-md:   0.9375rem;  /* 15px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.3125rem;  /* 21px */
+  --text-2xl:  1.5rem;     /* 24px */
+  --text-3xl:  1.875rem;   /* 30px */
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  --leading-tight:  1.2;
+  --leading-snug:   1.32;
+  --leading-normal: 1.5;
+
+  --tracking-display: -0.02em;
+  --tracking-title:   -0.01em;
+  --tracking-body:    0;
+
+  /* Spacing */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Restrained geometry */
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:   10px;
+  --radius-pill: 999px;
+
+  /* Shadows reserved strictly for floating overlays */
+  --shadow-xs: none;
+  --shadow-sm: 0 1px 2px rgba(20, 28, 23, 0.04);
+  --shadow-md: 0 8px 24px -4px rgba(20, 28, 23, 0.12);
+  --shadow-lg: 0 16px 36px -8px rgba(20, 28, 23, 0.18);
+
+  /* Z-index scale */
+  --z-sticky:   20;
+  --z-dropdown: 40;
+  --z-nav:      60;
+  --z-modal:    100;
+
+  /* Layout & Touch */
+  --sidebar-largura: 244px;
+  --sidebar-recolhida: 64px;
+  --bottom-nav-altura: 60px;
+  --touch-target: 44px;
+
+  /* Crisp transitions */
+  --transition-fast:   120ms ease;
+  --transition-normal: 160ms ease;
+}

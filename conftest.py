@@ -96,3 +96,15 @@ def app(db_setup):
 def client(app):
     """Retorna o cliente de teste simulando um navegador."""
     return app.test_client()
+
+
+def login_as(client, user_id):
+    """Autentica o cliente gravando o id na sessão, como o Flask-Login faria.
+
+    Era um POST em /login enquanto o app servia HTML. Sem tela de login não há
+    rota para autenticar por formulário, e a API espera a sessão já pronta —
+    então os testes montam a sessão direto, que é o que o `user_loader` lê.
+    """
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(user_id)
+        sess['_fresh'] = True

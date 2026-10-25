@@ -15,3 +15,8 @@ photos/demo_*.png
 
 # Credencial da conta local de desenvolvimento (nunca versionar)
 .dev-ui-credencial
+
+# Frontend build e dependências
+node_modules/
+frontend/dist/
+frontend/.svelte-kit/

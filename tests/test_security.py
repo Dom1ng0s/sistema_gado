@@ -1,17 +1,18 @@
 """
 Testes automatizados para os findings do audit de segurança.
-Cobre: S1, S2, S3, S4, S5, S6, S7, S8, S9, B3, F1, F2, F3.
-"""
-import io
-import itertools
-import smtplib
+Cobre: S4, S7, S8, B3.
 
-import pytest
+Encolheu quando o HTML saiu: o que cobria formulário, rate limit de login,
+405 em rota de exclusão e importação de CSV foi embora com as rotas. Ficou o
+que não depende de tela — cabeçalhos, CSP, flags de cookie, escape nos emails
+e o repositório.
+"""
+import itertools
+
 from werkzeug.security import generate_password_hash
 
-import db_config as dbc
+from conftest import login_as
 from tests.dbcompat import connect
-from extensions import limiter
 
 
 _seq = itertools.count(8500)
@@ -22,14 +23,6 @@ def _n():
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-
-def login(client):
-    return client.post(
-        '/login',
-        data={'username': 'testuser', 'password': '123'},
-        follow_redirects=True,
-    )
-
 
 def _make_user(sexo_animal='M'):
     """Cria usuário isolado com um animal. Retorna (user_id, username, animal_id)."""
@@ -72,11 +65,6 @@ def _purge(user_id):
     conn.close()
 
 
-def _login_as(client, username):
-    client.post('/login', data={'username': username, 'password': 'x'},
-                follow_redirects=True)
-
-
 def _fetch_one(sql, params=()):
     conn = connect()
     cur = conn.cursor()
@@ -87,45 +75,39 @@ def _fetch_one(sql, params=()):
     return row
 
 
-# ── Fixture rate-limit ────────────────────────────────────────────────────────
-
-@pytest.fixture
-def app_com_limite(app):
-    """Habilita rate limiting apenas neste teste e limpa o storage antes e depois."""
-    limiter.enabled = True
-    limiter._storage.reset()
-    yield app
-    limiter._storage.reset()
-    limiter.enabled = False
-
-
 # ── Grupo A — S8: Security Headers ───────────────────────────────────────────
 
 def test_security_headers_em_rota_autenticada(client):
-    login(client)
-    r = client.get('/painel')
+    uid = _fetch_one("SELECT id FROM usuarios WHERE username='testuser'")[0]
+    login_as(client, uid)
+    r = client.get('/api/graficos/sexo')
     assert r.headers.get('X-Content-Type-Options') == 'nosniff'
-    assert r.headers.get('X-Frame-Options') == 'SAMEORIGIN'
+    assert r.headers.get('X-Frame-Options') == 'DENY'
     assert r.headers.get('Referrer-Policy') == 'strict-origin-when-cross-origin'
 
 
 def test_security_headers_em_rota_publica(client):
-    r = client.get('/login')
+    r = client.get('/proxy-cidades')
     assert r.headers.get('X-Content-Type-Options') == 'nosniff'
-    assert r.headers.get('X-Frame-Options') == 'SAMEORIGIN'
+    assert r.headers.get('X-Frame-Options') == 'DENY'
 
 
-def test_csp_presente_e_restringe_default_src(client):
-    """Issue #46 — CSP como defesa em profundidade."""
-    r = client.get('/login')
+def test_csp_de_api_nao_libera_nada(client):
+    """Issue #46 — CSP como defesa em profundidade.
+
+    Nenhuma resposta é documento, então a CSP certa é a que não libera fonte
+    nenhuma: se um dia voltar a sair HTML daqui, ele nasce quebrado em vez de
+    nascer permissivo.
+    """
+    r = client.get('/proxy-cidades')
     csp = r.headers.get('Content-Security-Policy')
     assert csp is not None
-    assert "default-src 'self'" in csp
-    assert "frame-ancestors 'self'" in csp
-    # #116 — fontes self-hosted: nenhum host de terceiros para estilo/fonte
+    assert "default-src 'none'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "'unsafe-inline'" not in csp
+    assert "cdn.jsdelivr.net" not in csp
     assert "fonts.googleapis.com" not in csp
     assert "fonts.gstatic.com" not in csp
-    assert "font-src 'self'" in csp
 
 
 def test_session_cookie_flags_configurados(app):
@@ -134,242 +116,21 @@ def test_session_cookie_flags_configurados(app):
     assert app.config['SESSION_COOKIE_SAMESITE'] == 'Lax'
 
 
-# ── Grupo B — S1: Rate limit no login ────────────────────────────────────────
-
-def test_login_retorna_429_apos_10_tentativas(app_com_limite, client):
-    for _ in range(10):
-        client.post('/login', data={'username': 'nobody', 'password': 'wrong'})
-    r = client.post('/login', data={'username': 'nobody', 'password': 'wrong'})
-    assert r.status_code == 429
-
-
-# ── Grupo B — S5: Rate limit no verificar_codigo ─────────────────────────────
-
-def test_verificar_codigo_retorna_429_apos_10_tentativas(app_com_limite, client):
-    with client.session_transaction() as sess:
-        sess['reset_email'] = 'teste@exemplo.com'
-        sess['reset_expires_at'] = 9_999_999_999.0
-    for _ in range(10):
-        client.post('/verificar_codigo', data={'codigo': '000000'})
-    r = client.post('/verificar_codigo', data={'codigo': '000000'})
-    assert r.status_code == 429
-
-
-# ── Issue #50 — Enumeração de usuário/email no cadastro ──────────────────────
-
-def test_novo_usuario_retorna_429_apos_10_tentativas(app_com_limite, client):
-    for _ in range(10):
-        client.post('/novo_usuario', data={
-            'username': 'x', 'password': 'senha123', 'email': 'x@y.com'})
-    r = client.post('/novo_usuario', data={
-        'username': 'x', 'password': 'senha123', 'email': 'x@y.com'})
-    assert r.status_code == 429
-
-
-def test_novo_usuario_duplicado_mensagem_generica_nao_vaza_campo(client):
-    """testuser já existe (conftest). A resposta não pode revelar QUAL campo
-    colidiu — sem 'já existe' do username nem 'email já cadastrado'."""
-    r = client.post('/novo_usuario', data={
-        'username': 'testuser', 'password': 'senha123', 'email': 'novo@exemplo.com'})
-    assert r.status_code == 400
-    corpo = r.data.decode('utf-8')
-    assert 'já existe' not in corpo
-    assert 'já está cadastrado' not in corpo
-
-
-# ── Grupo C — S2: Mutating GET → POST ────────────────────────────────────────
-
-def test_excluir_animal_get_retorna_405(client):
-    login(client)
-    r = client.get('/excluir_animal/1')
-    assert r.status_code == 405
-
-
-def test_excluir_pesagem_get_retorna_405(client):
-    login(client)
-    r = client.get('/excluir_pesagem/1')
-    assert r.status_code == 405
-
-
-def test_restaurar_animal_get_retorna_405(client):
-    login(client)
-    r = client.get('/restaurar_animal/1')
-    assert r.status_code == 405
-
-
-def test_baixar_agendamento_get_retorna_405(client):
-    login(client)
-    r = client.get('/financeiro/baixar/1')
-    assert r.status_code == 405
-
-
-def test_excluir_animal_post_funciona(client):
-    """POST no excluir_animal com animal válido executa soft-delete e redireciona."""
-    login(client)
-    # Cria animal via rota
-    client.post('/cadastro', data={
-        'brinco': 'DEL-SEC-01', 'sexo': 'M',
-        'data_compra': '2024-01-01', 'peso_compra': '300', 'valor_arroba': '280',
-    })
-    row = _fetch_one(
-        "SELECT id FROM animais WHERE brinco='DEL-SEC-01' AND deleted_at IS NULL"
-    )
-    assert row is not None
-    aid = row[0]
-
-    r = client.post(f'/excluir_animal/{aid}')
-    assert r.status_code in (302, 200)
-
-    row2 = _fetch_one("SELECT deleted_at FROM animais WHERE id=%s", (aid,))
-    assert row2[0] is not None  # deve ter deleted_at setado
-
-
-def test_restaurar_animal_post_funciona(client):
-    """POST no restaurar_animal restaura um animal soft-deleted."""
-    login(client)
-    client.post('/cadastro', data={
-        'brinco': 'RST-SEC-01', 'sexo': 'M',
-        'data_compra': '2024-01-01', 'peso_compra': '300', 'valor_arroba': '280',
-    })
-    row = _fetch_one(
-        "SELECT id FROM animais WHERE brinco='RST-SEC-01' AND deleted_at IS NULL"
-    )
-    assert row is not None
-    aid = row[0]
-
-    # Soft-delete direto
-    conn = connect()
-    cur = conn.cursor()
-    cur.execute("UPDATE animais SET deleted_at=NOW() WHERE id=%s", (aid,))
-    conn.commit(); cur.close(); conn.close()
-
-    r = client.post(f'/restaurar_animal/{aid}')
-    assert r.status_code in (302, 200)
-
-    row2 = _fetch_one("SELECT deleted_at FROM animais WHERE id=%s", (aid,))
-    assert row2[0] is None  # deve ter sido restaurado
-
-
-# ── Grupo C — F1: baixar_agendamento feedback ─────────────────────────────────
-
-def test_baixar_agendamento_inexistente_exibe_mensagem_erro(client):
-    login(client)
-    r = client.post('/financeiro/baixar/99999', follow_redirects=True)
-    assert r.status_code == 200
-    assert ('não encontrado'.encode('utf-8') in r.data
-            or 'erro'.encode('utf-8') in r.data
-            or b'erro' in r.data.lower())
-
-
-def test_baixar_agendamento_valido_exibe_mensagem_sucesso(client):
-    login(client)
-    uid = _fetch_one("SELECT id FROM usuarios WHERE username='testuser'")[0]
-
-    conn = connect()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO financial_schedule (user_id, descricao, valor, vencimento, status) "
-        "VALUES (%s, 'Conta teste baixa', 100.0, '2024-12-01', 'pendente')",
-        (uid,)
-    )
-    agend_id = cur.lastrowid
-    conn.commit(); cur.close(); conn.close()
-
-    r = client.post(f'/financeiro/baixar/{agend_id}', follow_redirects=True)
-    assert r.status_code == 200
-    assert ('sucesso'.encode('utf-8') in r.data or b'sucesso' in r.data.lower()
-            or 'baixada'.encode('utf-8') in r.data)
-
-    row = _fetch_one("SELECT status FROM financial_schedule WHERE id=%s", (agend_id,))
-    assert row[0] == 'pago'
-
-
-# ── Grupo D — S4: proxy-cidades é público (dado não sensível, usado pré-login) ─
+# ── Grupo D — S4: proxy-cidades é público (dado não sensível) ────────────────
 
 def test_proxy_cidades_sem_login_funciona(client):
     r = client.get('/proxy-cidades')
-    # Pode retornar 200 (com dados) ou 500 (sem rede no CI) — nunca 302/401,
-    # pois é chamado por novo_usuario.html antes de qualquer login existir.
+    # Pode retornar 200 (com dados) ou 500 (sem rede no CI) — nunca 302/401.
     assert r.status_code != 302
     assert r.status_code != 401
 
 
 def test_proxy_cidades_com_login_funciona(client):
-    login(client)
+    uid = _fetch_one("SELECT id FROM usuarios WHERE username='testuser'")[0]
+    login_as(client, uid)
     r = client.get('/proxy-cidades')
-    # Pode retornar 200 (com dados) ou 500 (sem rede no CI) — nunca 302/401
     assert r.status_code != 302
     assert r.status_code != 401
-
-
-# ── Grupo D — S3: PDF IDOR ───────────────────────────────────────────────────
-
-def test_pdf_status_sem_job_na_sessao_retorna_404(client):
-    login(client)
-    fake_uuid = 'a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5'
-    r = client.get(f'/api/v1/relatorio/pdf/{fake_uuid}/status')
-    assert r.status_code == 404
-
-
-def test_pdf_download_sem_job_na_sessao_retorna_404(client):
-    login(client)
-    fake_uuid = 'a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5'
-    r = client.get(f'/api/v1/relatorio/pdf/{fake_uuid}/download')
-    assert r.status_code == 404
-
-
-def test_pdf_status_uuid_invalido_retorna_404(client):
-    login(client)
-    r = client.get('/api/v1/relatorio/pdf/nao-e-um-uuid/status')
-    assert r.status_code == 404
-
-
-# ── Grupo D — F3: touro_id ownership ────────────────────────────────────────
-
-def test_reproducao_touro_outro_usuario_rejeitado(app, client):
-    uid_a, user_a, touro_id = _make_user(sexo_animal='M')   # touro de A
-    uid_b, user_b, vaca_id  = _make_user(sexo_animal='F')   # vaca de B
-
-    try:
-        _login_as(client, user_b)
-        antes = _fetch_one(
-            "SELECT COUNT(*) FROM reproducao WHERE user_id=%s", (uid_b,)
-        )[0]
-
-        client.post('/reproducao', data={
-            'vaca_id': str(vaca_id),
-            'touro_id': str(touro_id),   # touro pertence ao user A
-            'data_cobertura': '2024-05-01',
-            'resultado': 'aborto',
-        })
-
-        depois = _fetch_one(
-            "SELECT COUNT(*) FROM reproducao WHERE user_id=%s", (uid_b,)
-        )[0]
-        assert depois == antes  # nenhuma reprodução deve ter sido inserida
-    finally:
-        _purge(uid_a)
-        _purge(uid_b)
-
-
-# ── Grupo F — S6: exceções não vazam para o usuário ─────────────────────────
-
-def test_erro_importacao_csv_nao_vaza_detalhes_excecao(client):
-    """Uma exceção interna não expõe mensagem com detalhes de schema."""
-    login(client)
-    # Envia CSV malformado para disparar erro interno
-    dados = b"brinco,sexo,data_compra,peso_kg,valor_arroba\n" + b"\x00" * 100
-    r = client.post(
-        '/importar-csv',
-        data={'arquivo': (io.BytesIO(dados), 'test.csv')},
-        content_type='multipart/form-data',
-        follow_redirects=True,
-    )
-    assert r.status_code == 200
-    # A mensagem de erro não deve conter nomes de colunas SQL ou tracebacks
-    assert b'Table' not in r.data
-    assert b'Column' not in r.data
-    assert b'Traceback' not in r.data
 
 
 # ── Grupo F — S7: HTML-escape em emails ─────────────────────────────────────
@@ -435,47 +196,6 @@ def test_send_welcome_email_escapa_html_no_username(monkeypatch):
     else:
         # Se não tiver base64, verifica diretamente no raw
         assert '<img src=x' not in raw
-
-
-# ── Grupo G — F2: CSV race condition / duplicate key ─────────────────────────
-
-def test_csv_import_brinco_ja_existente_reporta_erro_nao_duplica(client):
-    """Brinco duplicado no CSV gera linha de erro e não insere segundo registro."""
-    login(client)
-    uid = _fetch_one("SELECT id FROM usuarios WHERE username='testuser'")[0]
-
-    # Garante que o brinco existe no banco
-    conn = connect()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO animais (brinco, sexo, data_compra, preco_compra, user_id) "
-        "VALUES ('CSV-DUP-001','M','2024-01-01',500,%s) "
-        "ON CONFLICT (brinco, user_id) DO NOTHING",
-        (uid,),
-    )
-    conn.commit(); cur.close(); conn.close()
-
-    csv_content = (
-        "brinco,sexo,data_compra,peso_kg,valor_arroba\r\n"
-        "CSV-DUP-001,M,2024-06-01,300,280\r\n"
-    ).encode('utf-8')
-
-    r = client.post(
-        '/importar-csv',
-        data={'arquivo': (io.BytesIO(csv_content), 'import.csv')},
-        content_type='multipart/form-data',
-        follow_redirects=True,
-    )
-    assert r.status_code == 200
-
-    count = _fetch_one(
-        "SELECT COUNT(*) FROM animais WHERE brinco='CSV-DUP-001' AND user_id=%s",
-        (uid,),
-    )[0]
-    assert count == 1  # não deve ter inserido duplicata
-
-    # A resposta deve indicar 0 inseridos e ao menos 1 erro
-    assert b'0' in r.data or 'erro'.encode('utf-8') in r.data.lower()
 
 
 # ── Grupo E — B3: get_pesos_atuais sem duplicatas ────────────────────────────

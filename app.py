@@ -1,30 +1,23 @@
 import os
-import time
 import logging
-import subprocess as _sp
 from datetime import datetime
-from flask import Flask, g, redirect, url_for, render_template, session, request
+from flask import Flask, g, jsonify, session, request
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
 from extensions import limiter, scheduler, compress
 from models import User
-from routes.auth import auth_bp
-from routes.financeiro import financeiro_bp
-from routes.operacional import operacional_bp
 from routes.api import api_bp
-from routes.configuracoes import config_bp
-from routes.pastos import pastos_bp
-from routes.estoque import estoque_bp
-from routes.sanitario import sanitario_bp
 from routes.webhooks import webhooks_bp
-from repositories import acesso_repository, configuracao_repository
-from utils.permissions import PUBLICO, autorizado, papel_de, registrar_politica
+from repositories import configuracao_repository
+from utils.permissions import PUBLICO, registrar_politica
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 _DEBUG = os.getenv('FLASK_DEBUG', 'False') == 'True'
 
-app = Flask(__name__)
+# static_folder=None: não existe mais diretório static/ para servir, e deixar o
+# endpoint 'static' no url_map criaria uma rota que só sabe dar 404.
+app = Flask(__name__, static_folder=None)
 app.secret_key = os.getenv('SECRET_KEY')
 if not app.secret_key:
     # Sem SECRET_KEY as sessões/CSRF ficam inseguras. Em produção é erro fatal;
@@ -52,7 +45,9 @@ compress.init_app(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'auth.login'
+# Sem login_view: não há mais tela de login para redirecionar. O Flask-Login
+# responde 401 em requisição sem sessão, que é o certo para uma API JSON.
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -71,14 +66,7 @@ def load_user(user_id):
         session['farm_id'] = user.farm_id
     return user
 
-app.register_blueprint(auth_bp)
-app.register_blueprint(financeiro_bp)
-app.register_blueprint(operacional_bp)
-app.register_blueprint(config_bp)
 app.register_blueprint(api_bp)
-app.register_blueprint(pastos_bp)
-app.register_blueprint(estoque_bp)
-app.register_blueprint(sanitario_bp)
 app.register_blueprint(webhooks_bp)
 
 # O webhook é POST de máquina, sem sessão e sem formulário: o CSRFProtect
@@ -102,7 +90,7 @@ def carregar_plano():
     É uma consulta por request autenticado — o índice é a PK de configuracoes.
 
     Registrado depois da política para não consultar nada em request que já
-    vai levar 403. Falha de leitura não derruba a tela: cai em None, e quem
+    vai levar 403. Falha de leitura não derruba a resposta: cai em None, e quem
     usa trata como PLANO_PADRAO.
     """
     g.plano = None
@@ -117,128 +105,21 @@ def carregar_plano():
             "Falha ao carregar plano de farm_id=%s", current_user.farm_id)
     return None
 
-@app.template_global()
-def pode_ver(endpoint, metodo='GET'):
-    """O papel do usuário pode chamar este endpoint?
 
-    Existe para o menu não oferecer o que a política vai negar: um contador
-    com "Lixeira" no menu clica e toma 403. A fonte é a mesma POLICY que
-    protege a rota, então menu e porta não podem divergir.
-    """
-    if not current_user.is_authenticated:
-        return False
-    return autorizado(endpoint, metodo, papel_de(current_user))
-
-
-@app.template_filter('brl')
-def format_brl(value):
-    try:
-        return f"{float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except (ValueError, TypeError):
-        return "0,00"
-
-
-@app.template_filter('date_br')
-def format_date_br(value):
-    if value is None:
-        return ''
-    if hasattr(value, 'strftime'):
-        return value.strftime('%d/%m/%Y')
-    return str(value)
-
-
-@app.template_global()
-def painel_url(**overrides):
-    """URL do painel preservando os filtros que já estão na query string.
-
-    Existe porque cada link de filtro do painel precisava repassar busca,
-    status, raça, origem, sexo (e agora a ordenação) na mão — seis parâmetros
-    em uma dúzia de links, onde esquecer um significa perder silenciosamente o
-    filtro do usuário.
-
-    Voltar para a página 1 é o padrão: mudar filtro ou ordenação invalida a
-    página em que se estava. Só a paginação passa `page` explicitamente.
-    """
-    args = {**request.args.to_dict(), **overrides}
-    if 'page' not in overrides:
-        args.pop('page', None)
-    return url_for('operacional.painel',
-                   **{k: v for k, v in args.items() if v not in (None, '')})
-
-
-@app.context_processor
-def inject_user_info():
-    if not current_user.is_authenticated:
-        return {'nome_fazenda_header': "Meu Rebanho", 'gmd_meta': 0.800}
-
-    cached = session.get('nome_fazenda')
-    gmd_meta = session.get('gmd_meta')
-    if cached is None or gmd_meta is None:
-        try:
-            res = configuracao_repository.get_configuracao(current_user.farm_id)
-            cached = res[0] if (res and res[0]) else "Meu Rebanho"
-            gmd_meta = float(res[3]) if (res and res[3] is not None) else 0.800
-        except Exception:
-            cached = cached or "Meu Rebanho"
-            gmd_meta = gmd_meta or 0.800
-        session['nome_fazenda'] = cached
-        session['gmd_meta'] = gmd_meta
-
-    return {'nome_fazenda_header': cached, 'gmd_meta': gmd_meta,
-            'fazendas_disponiveis': _fazendas_disponiveis()}
-
-
-def _fazendas_disponiveis():
-    """Fazendas que o usuário pode abrir, para o seletor da navbar.
-
-    Lista vazia para quem só tem a própria — que é quase todo mundo — e aí o
-    menu nem desenha o seletor. A consulta de nomes só acontece para quem tem
-    mais de uma; os ids já vieram do loader, sem round-trip novo.
-    """
-    ids = current_user.fazendas
-    if len(ids) < 2:
-        return []
-    try:
-        nomes = acesso_repository.nomes_de_fazendas(ids)
-    except Exception:
-        logging.getLogger(__name__).exception("Falha ao listar fazendas do seletor")
-        return []
-    return [{'id': i,
-             'nome': nomes.get(i, '—'),
-             'papel': current_user.acessos.get(i, 'dono'),
-             'atual': i == current_user.farm_id}
-            for i in ids]
-
-
-@app.after_request
-def set_static_cache(response):
-    if request.path.startswith('/static/'):
-        response.cache_control.max_age = 31536000
-        response.cache_control.public = True
-    return response
-
-# CSP alinhada ao que o front realmente carrega: scripts/estilos inline (o app
-# usa <script> e handlers inline em vários templates → precisa de 'unsafe-inline'),
-# echarts via jsDelivr. Fontes agora são self-hosted (static/fonts/) — nenhum
-# host de terceiros para estilo/fonte. Toda chamada fetch é same-origin.
-# É defesa em profundidade (bloqueia origens externas não listadas), não substitui
-# o escape de dados — ver issue #48.
+# CSP de API JSON: nenhuma resposta é documento, então nada precisa carregar
+# script, estilo, fonte ou imagem. O default-src 'none' é o que sobrou da CSP
+# antiga, que existia para o HTML servido por este app.
 _CSP = (
-    "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-    "style-src 'self' 'unsafe-inline'; "
-    "font-src 'self'; "
-    "img-src 'self' data:; "
-    "connect-src 'self'; "
-    "frame-ancestors 'self'; "
-    "base-uri 'self'; "
-    "form-action 'self'"
+    "default-src 'none'; "
+    "frame-ancestors 'none'; "
+    "base-uri 'none'; "
+    "form-action 'none'"
 )
 
 @app.after_request
 def set_security_headers(response):
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
-    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
     response.headers.setdefault('Content-Security-Policy', _CSP)
     # HSTS só faz sentido sob HTTPS; em dev (HTTP) o browser ignoraria de qualquer forma.
@@ -249,77 +130,10 @@ def set_security_headers(response):
     return response
 
 
-def _cache_bust_value():
-    """Versão usada no `?v=` dos assets estáticos (ver base.html) — precisa
-    mudar a cada deploy, senão o Cache-Control de 1 ano em set_static_cache
-    prende o navegador numa versão velha de CSS/JS para sempre, enquanto o
-    HTML (nunca cacheado) já é o novo: descompasso silencioso, sem erro de
-    console, que já causou página em branco em produção.
-
-    `git rev-parse` funciona em dev local, mas o build do Railway (nixpacks)
-    não deixa o .git disponível em runtime — a exceção sempre caía no
-    fallback antigo, uma string fixa ('0'), que nunca mudava entre deploys.
-    A Railway expõe o SHA do commit via RAILWAY_GIT_COMMIT_SHA; isso tem
-    prioridade aqui. Sem os dois, cai para o horário de start do processo —
-    não é estável entre réplicas como um hash seria, mas pelo menos muda a
-    cada deploy/restart.
-    """
-    sha = os.getenv('RAILWAY_GIT_COMMIT_SHA')
-    if sha:
-        return sha[:7]
-    try:
-        return _sp.check_output(
-            ['git', 'rev-parse', '--short', 'HEAD'], stderr=_sp.DEVNULL
-        ).decode().strip()
-    except Exception:
-        return str(int(time.time()))
-
-_CACHE_BUST = _cache_bust_value()
-
-@app.context_processor
-def inject_cache_bust():
-    return {'cache_bust': _CACHE_BUST}
-
-
-@app.context_processor
-def inject_constantes():
-    # Fonte única de KG_POR_ARROBA para o front (utils/calculo.py) — evita
-    # literal 30 duplicado no JS. Ver issue #49.
-    from utils.calculo import KG_POR_ARROBA
-    return {'kg_por_arroba': KG_POR_ARROBA}
-
-@app.route('/')
-def index():
-    if current_user.is_authenticated:
-        return redirect(url_for('operacional.painel'))
-    return render_template('landing.html')
-
-
 @app.errorhandler(404)
 def not_found(e):
-    return render_template('404.html'), 404
+    return jsonify({'error': 'not found'}), 404
 
-
-@app.route('/robots.txt')
-def robots_txt():
-    return app.send_static_file('robots.txt')
-
-
-@app.route('/sitemap.xml')
-def sitemap_xml():
-    return app.send_static_file('sitemap.xml')
-
-
-@app.route('/llms.txt')
-def llms_txt():
-    return app.send_static_file('llms.txt')
-
-
-@app.route('/styleguide')
-def styleguide():
-    if not app.debug:
-        return '', 404
-    return app.send_static_file('components.html')
 
 # Em produção com Gunicorn + preload_app=True o scheduler inicia no processo master
 # (antes do fork). Com preload_app=False cada worker importaria o módulo e iniciaria
@@ -363,10 +177,10 @@ if _sched_permitido:
     scheduler.start()
 
 if __name__ == '__main__':
-    
+
     porta = int(os.getenv('PORT', 5000))
     modo_debug = os.getenv('FLASK_DEBUG', 'False') == 'True'
-    
+
     # O banner não pode derrubar o servidor. No Windows o console padrão é
     # cp1252 e o emoji estourava UnicodeEncodeError ANTES do app.run(), então
     # o processo morria sem abrir a porta — era o que fazia os testes e2e

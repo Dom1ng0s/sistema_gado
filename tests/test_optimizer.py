@@ -13,9 +13,21 @@ from werkzeug.security import generate_password_hash
 
 import db_config as dbc
 from tests.dbcompat import connect
+from conftest import login_as
 from repositories import animal_repository, financeiro_repository
 
 _seq = itertools.count(9000)
+
+
+def _uid_testuser():
+    """Id do usuário fixo que o conftest semeia. Antes bastava o POST em
+    /login com username e senha; sem tela de login, a sessão precisa do id."""
+    conn = connect()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM usuarios WHERE username = 'testuser'")
+    uid = cur.fetchone()[0]
+    cur.close(); conn.close()
+    return uid
 
 
 def _n():
@@ -408,7 +420,7 @@ class TestProxyCidadesCache:
 
         with patch('routes.api.requests.get', return_value=mock_resp) as mock_get:
             with app.test_client() as client:
-                client.post('/login', data={'username': 'testuser', 'password': '123'})
+                login_as(client, _uid_testuser())
                 client.get('/proxy-cidades')
                 client.get('/proxy-cidades')
 
@@ -434,7 +446,7 @@ class TestProxyCidadesCache:
 
         with patch('routes.api.requests.get', return_value=mock_resp) as mock_get:
             with app.test_client() as client:
-                client.post('/login', data={'username': 'testuser', 'password': '123'})
+                login_as(client, _uid_testuser())
                 client.get('/proxy-cidades')
 
             assert mock_get.call_count == 1, "Cache expirado deve refazer o request"
@@ -455,7 +467,7 @@ class TestProxyCidadesCache:
 
         with patch('routes.api.requests.get', return_value=mock_resp):
             with app.test_client() as client:
-                client.post('/login', data={'username': 'testuser', 'password': '123'})
+                login_as(client, _uid_testuser())
                 resp = client.get('/proxy-cidades')
                 assert resp.status_code == 200
                 data = resp.get_json()
@@ -472,7 +484,7 @@ class TestCacheControlHeaders:
     """M6 — Endpoints de métricas devem incluir Cache-Control nas respostas."""
 
     def _login(self, client):
-        client.post('/login', data={'username': 'testuser', 'password': '123'})
+        login_as(client, _uid_testuser())
 
     def test_dashboard_summary_tem_cache_control(self, app):
         with app.test_client() as client:

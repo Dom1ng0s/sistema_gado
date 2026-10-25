@@ -7,6 +7,7 @@ import pytest
 from werkzeug.security import generate_password_hash
 import db_config as dbc
 from tests.dbcompat import connect
+from conftest import login_as
 from repositories import configuracao_repository
 
 _seq = itertools.count(13000)
@@ -45,13 +46,7 @@ def _purge(user_id):
 
 
 def _login(client, uid):
-    conn = connect()
-    cur = conn.cursor()
-    cur.execute("SELECT username FROM usuarios WHERE id = %s", (uid,))
-    username = cur.fetchone()[0]
-    cur.close(); conn.close()
-    client.post("/login", data={"username": username, "password": "x"},
-                follow_redirects=True)
+    login_as(client, uid)
 
 
 @pytest.fixture
@@ -61,18 +56,18 @@ def um(app):
     _purge(uid)
 
 
-# ── /graficos (página) ───────────────────────────────────────────────────────
+# ── /api/graficos ────────────────────────────────────────────────────────────
 
-def test_graficos_page_requer_login(app):
+def test_graficos_sexo_requer_login(app):
     with app.test_client() as client:
-        r = client.get('/graficos')
+        r = client.get('/api/graficos/sexo')
         assert r.status_code in (302, 401)
 
 
-def test_graficos_page_logado_retorna_200(app, um):
+def test_graficos_sexo_logado_retorna_200(app, um):
     with app.test_client() as client:
         _login(client, um)
-        r = client.get('/graficos')
+        r = client.get('/api/graficos/sexo')
         assert r.status_code == 200
 
 
